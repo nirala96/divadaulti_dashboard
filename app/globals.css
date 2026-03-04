@@ -57,3 +57,19 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Stage status animations */
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+}
+
+.stage-in-progress {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}

@@ -8,21 +8,28 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export type Client = {
   id: string
   name: string
-  contact_person: string
-  email: string
+  contact_person?: string | null
+  email?: string | null
   created_at: string
 }
 
 export type DesignStatus = 
-  | 'Sourcing' 
+  | 'Payment Received'
   | 'Pattern' 
   | 'Grading' 
   | 'Cutting' 
-  | 'Stitching' 
-  | 'Photoshoot' 
+  | 'Stitching'
+  | 'Kaaj'
+  | 'Embroidery'
+  | 'Wash'
+  | 'Finishing'
+  | 'Photoshoot'
+  | 'Final Settlement'
   | 'Dispatch'
 
 export type DesignType = 'Sampling' | 'Production'
+
+export type StageState = 'vacant' | 'in-progress' | 'completed'
 
 export type Design = {
   id: string
@@ -32,18 +39,11 @@ export type Design = {
   quantity: number
   status: DesignStatus
   images: string[]
+  notes: string
+  stage_status: Record<DesignStatus, StageState>
   created_at: string
   start_date?: string | null
   end_date?: string | null
-  estimated_days?: {
-    sourcing?: number
-    pattern?: number
-    grading?: number
-    cutting?: number
-    stitching?: number
-    photoshoot?: number
-    dispatch?: number
-  }
 }
 
 export type WorkforceSettings = {

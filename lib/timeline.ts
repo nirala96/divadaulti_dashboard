@@ -6,27 +6,15 @@ export interface TimelineResult {
   total_days: number
 }
 
-export interface EstimatedDays {
-  sourcing?: number
-  pattern?: number
-  grading?: number
-  cutting?: number
-  stitching?: number
-  photoshoot?: number
-  dispatch?: number
-}
-
 /**
  * Calculate timeline for a new design based on workforce capacity
  * @param quantity - Number of units for the design
  * @param type - Design type ('Sampling' or 'Production')
- * @param estimatedDays - Optional estimated days for each process
  * @returns Timeline with start_date, end_date, and total_days
  */
 export async function calculateTimeline(
   quantity: number,
-  type: DesignType,
-  estimatedDays?: EstimatedDays
+  type: DesignType
 ): Promise<TimelineResult> {
   try {
     // 1. Fetch workforce capacity
@@ -46,23 +34,13 @@ export async function calculateTimeline(
     let totalDays = 0
 
     if (type === 'Sampling') {
-      // Sampling orders: use estimated days if provided, otherwise default to 1 day per stage
-      if (estimatedDays) {
-        totalDays = Object.values(estimatedDays).reduce((sum, days) => sum + (days || 0), 0)
-      } else {
-        totalDays = 7 // 1 day per stage by default
-      }
+      // Sampling orders: flat 2 weeks (14 days) for all samples
+      totalDays = 14
     } else {
       // Production orders: calculate based on quantity and capacity
-      if (estimatedDays) {
-        // Use provided estimated days
-        totalDays = Object.values(estimatedDays).reduce((sum, days) => sum + (days || 0), 0)
-      } else {
-        // Calculate based on workforce capacity
-        // Formula: (quantity / daily_capacity) * number_of_stages
-        const daysPerStage = Math.ceil(quantity / dailyCapacity)
-        totalDays = daysPerStage * 7 // 7 stages
-      }
+      // Formula: (quantity / daily_capacity) * number_of_stages
+      const daysPerStage = Math.ceil(quantity / dailyCapacity)
+      totalDays = daysPerStage * 12 // 12 stages in the new workflow
     }
 
     // Ensure minimum 1 day
@@ -120,7 +98,7 @@ export async function calculateTimeline(
       total_days: defaultDays,
     }
   }
-}
+}14
 
 /**
  * Calculate duration for a specific stage based on quantity and capacity

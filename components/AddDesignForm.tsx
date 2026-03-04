@@ -15,15 +15,28 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Upload, X, ImageIcon, Calendar, Clock } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Upload, X, ImageIcon, Calendar, Clock, Plus } from "lucide-react"
 
 const PROCESS_STEPS: DesignStatus[] = [
-  'Sourcing',
+  'Payment Received',
   'Pattern',
   'Grading',
   'Cutting',
   'Stitching',
+  'Kaaj',
+  'Embroidery',
+  'Wash',
+  'Finishing',
   'Photoshoot',
+  'Final Settlement',
   'Dispatch'
 ]
 
@@ -33,6 +46,8 @@ export function AddDesignForm() {
   const [isSampling, setIsSampling] = useState(true)
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [showAddClient, setShowAddClient] = useState(false)
+  const [newClientName, setNewClientName] = useState("")
   const [calculatedTimeline, setCalculatedTimeline] = useState<{
     start_date: string
     end_date: string
@@ -44,16 +59,8 @@ export function AddDesignForm() {
     title: "",
     type: "Sampling" as DesignType,
     quantity: 1,
-    status: "Sourcing" as DesignStatus,
-    estimated_days: {
-      sourcing: 0,
-      pattern: 0,
-      grading: 0,
-      cutting: 0,
-      stitching: 0,
-      photoshoot: 0,
-      dispatch: 0,
-    },
+    status: "Payment Received" as DesignStatus,
+    notes: "",
   })
 
   useEffect(() => {
@@ -68,15 +75,15 @@ export function AddDesignForm() {
     }
   }, [isSampling])
 
-  // Calculate timeline when quantity or estimated days change
+  // Calculate timeline when quantity changes (flat 14 days for samples)
   useEffect(() => {
     const calculateAndSetTimeline = async () => {
       if (formData.client_id && formData.title) {
         try {
+          // Flat 2 weeks (14 days) for all samples
           const timeline = await calculateTimeline(
             formData.quantity,
-            formData.type,
-            formData.estimated_days
+            formData.type
           )
           setCalculatedTimeline(timeline)
         } catch (error) {
@@ -86,7 +93,7 @@ export function AddDesignForm() {
     }
 
     calculateAndSetTimeline()
-  }, [formData.quantity, formData.type, formData.estimated_days])
+  }, [formData.quantity, formData.type, formData.client_id, formData.title])
 
   const fetchClients = async () => {
     const { data, error } = await supabase
@@ -95,6 +102,31 @@ export function AddDesignForm() {
       .order("name")
 
     if (data) setClients(data)
+  }
+
+  const handleAddNewClient = async () => {
+    if (!newClientName.trim()) {
+      alert("Please enter a client name")
+      return
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("clients")
+        .insert([{ name: newClientName.trim() }])
+        .select()
+
+      if (error) throw error
+
+      if (data && data[0]) {
+        await fetchClients()
+        setFormData({ ...formData, client_id: data[0].id })
+        setShowAddClient(false)
+        setNewClientName("")
+      }
+    } catch (error: any) {
+      alert("Error adding client: " + error.message)
+    }
   }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,15 +180,20 @@ export function AddDesignForm() {
     setLoading(true)
 
     try {
-      // Calculate timeline for the new design
+      // Calculate timeline for the new design (flat 14 days for samples)
       const timeline = await calculateTimeline(
         formData.quantity,
-        formData.type,
-        formData.estimated_days
+        formData.type
       )
 
       // Upload images first
       const imageUrls = await uploadImages()
+
+      // Initialize stage_status with all stages vacant except the initial status
+      const initialStageStatus: Record<string, string> = {}
+      PROCESS_STEPS.forEach(step => {
+        initialStageStatus[step] = step === formData.status ? 'in-progress' : 'vacant'
+      })
 
       // Insert design with calculated timeline
       const { data, error } = await supabase
@@ -165,6 +202,7 @@ export function AddDesignForm() {
           {
             ...formData,
             images: imageUrls,
+            stage_status: initialStageStatus,
             start_date: timeline.start_date,
             end_date: timeline.end_date,
           },
@@ -187,16 +225,8 @@ export function AddDesignForm() {
         title: "",
         type: "Sampling",
         quantity: 1,
-        status: "Sourcing",
-        estimated_days: {
-          sourcing: 0,
-          pattern: 0,
-          grading: 0,
-          cutting: 0,
-          stitching: 0,
-          photoshoot: 0,
-          dispatch: 0,
-        },
+        status: "Payment Received",
+        notes: "",
       })
       setImageFiles([])
       setImagePreviews([])
@@ -231,11 +261,21 @@ export function AddDesignForm() {
           <SelectContent>
             {clients.map((client) => (
               <SelectItem key={client.id} value={client.id}>
-                {client.name} - {client.contact_person}
+                {client.name}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setShowAddClient(true)}
+          className="gap-2 mt-1"
+        >
+          <Plus className="h-4 w-4" />
+          Add New Client
+        </Button>
       </div>
 
       {/* Design Title */}
@@ -270,22 +310,20 @@ export function AddDesignForm() {
         </div>
       </div>
 
-      {/* Quantity */}
-      {!isSampling && (
-        <div className="grid gap-2">
-          <Label htmlFor="quantity">Quantity *</Label>
-          <Input
-            id="quantity"
-            type="number"
-            min="1"
-            value={formData.quantity}
-            onChange={(e) =>
-              setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })
-            }
-            required
-          />
-        </div>
-      )}
+      {/* Notes */}
+      <div className="grid gap-2">
+        <Label htmlFor="notes">Notes</Label>
+        <textarea
+          id="notes"
+          className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          placeholder="Add custom notes: status updates, sizes, client instructions, meeting notes, etc."
+          value={formData.notes}
+          onChange={(e) =>
+            setFormData({ ...formData, notes: e.target.value })
+          }
+        />
+        <p className="text-xs text-gray-500">Optional: Store any custom information about this design</p>
+      </div>
 
       {/* Initial Status */}
       <div className="grid gap-2">
@@ -307,39 +345,6 @@ export function AddDesignForm() {
             ))}
           </SelectContent>
         </Select>
-      </div>
-
-      {/* Estimated Days per Process */}
-      <div className="space-y-4">
-        <Label>Estimated Days per Process</Label>
-        <div className="grid grid-cols-2 gap-4">
-          {PROCESS_STEPS.map((step) => {
-            const key = step.toLowerCase() as keyof typeof formData.estimated_days
-            return (
-              <div key={step} className="grid gap-2">
-                <Label htmlFor={key} className="text-sm">
-                  {step}
-                </Label>
-                <Input
-                  id={key}
-                  type="number"
-                  min="0"
-                  placeholder="Days"
-                  value={formData.estimated_days[key] || 0}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      estimated_days: {
-                        ...formData.estimated_days,
-                        [key]: parseInt(e.target.value) || 0,
-                      },
-                    })
-                  }
-                />
-              </div>
-            )
-          })}
-        </div>
       </div>
 
       {/* Calculated Timeline Preview */}
@@ -460,16 +465,8 @@ export function AddDesignForm() {
               title: "",
               type: "Sampling",
               quantity: 1,
-              status: "Sourcing",
-              estimated_days: {
-                sourcing: 0,
-                pattern: 0,
-                grading: 0,
-                cutting: 0,
-                stitching: 0,
-                photoshoot: 0,
-                dispatch: 0,
-              },
+              status: "Payment Received",
+              notes: "",
             })
             setImageFiles([])
             setImagePreviews([])
@@ -479,6 +476,48 @@ export function AddDesignForm() {
           Reset
         </Button>
       </div>
+
+      {/* Add Client Dialog */}
+      <Dialog open={showAddClient} onOpenChange={setShowAddClient}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Client</DialogTitle>
+            <DialogDescription>
+              Enter the client name to add them to your client list.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="clientName">Client Name *</Label>
+              <Input
+                id="clientName"
+                placeholder="e.g., ABC Fashion House"
+                value={newClientName}
+                onChange={(e) => setNewClientName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleAddNewClient()
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setShowAddClient(false)
+                setNewClientName("")
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleAddNewClient}>Add Client</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   )
 }

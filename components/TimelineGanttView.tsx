@@ -16,7 +16,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Calendar, Edit2, AlertCircle } from "lucide-react"
-import "frappe-gantt/dist/frappe-gantt.css"
 
 type DesignWithClient = Design & {
   client_name?: string
@@ -88,7 +87,20 @@ export function TimelineGanttView() {
 
     const tasks: GanttTask[] = designs.map((design) => {
       // Calculate progress based on current stage
-      const stageOrder = ["Sourcing", "Pattern", "Grading", "Cutting", "Stitching", "Photoshoot", "Dispatch"]
+      const stageOrder = [
+        "Payment Received",
+        "Pattern",
+        "Grading",
+        "Cutting",
+        "Stitching",
+        "Kaaj",
+        "Embroidery",
+        "Wash",
+        "Finishing",
+        "Photoshoot",
+        "Final Settlement",
+        "Dispatch"
+      ]
       const currentStageIndex = stageOrder.indexOf(design.status)
       const progress = currentStageIndex >= 0 ? ((currentStageIndex + 1) / stageOrder.length) * 100 : 0
 
@@ -121,7 +133,20 @@ export function TimelineGanttView() {
         custom_popup_html: function (task: GanttTask) {
           const design = task.design
           const totalDays = calculateDaysBetween(design.start_date!, design.end_date!)
-          const stageOrder = ["Sourcing", "Pattern", "Grading", "Cutting", "Stitching", "Photoshoot", "Dispatch"]
+          const stageOrder = [
+            "Payment Received",
+            "Pattern",
+            "Grading",
+            "Cutting",
+            "Stitching",
+            "Kaaj",
+            "Embroidery",
+            "Wash",
+            "Finishing",
+            "Photoshoot",
+            "Final Settlement",
+            "Dispatch"
+          ]
           const currentStageIndex = stageOrder.indexOf(design.status)
           const daysSinceStart = calculateDaysBetween(design.start_date!, new Date().toISOString().split("T")[0])
           
