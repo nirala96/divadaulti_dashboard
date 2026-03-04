@@ -130,7 +130,7 @@ export function TimelineGanttView() {
         padding: 18,
         view_modes: ["Day", "Week", "Month"],
         popup_trigger: "hover",
-        custom_popup_html: function (task: GanttTask) {
+        custom_popup_html: function (task: any) {
           const design = task.design
           const totalDays = calculateDaysBetween(design.start_date!, design.end_date!)
           const stageOrder = [
@@ -170,7 +170,7 @@ export function TimelineGanttView() {
             </div>
           `
         },
-        on_click: (task: GanttTask) => {
+        on_click: (task: any) => {
           openEditDialog(task.design)
         },
       })
