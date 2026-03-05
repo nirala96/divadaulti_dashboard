@@ -318,7 +318,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     }
   }
 
-  const calculateDaysSinceStart = (startDate: string | null): number => {
+  const calculateDaysSinceStart = (startDate: string | null | undefined): number => {
     if (!startDate) return 0
     const start = new Date(startDate)
     const now = new Date()
