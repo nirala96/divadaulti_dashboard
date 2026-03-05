@@ -6,7 +6,15 @@ import { formatDisplayDate } from "@/lib/timeline"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
-import { ChevronDown, ChevronRight, Calendar, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2 } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { ChevronDown, ChevronRight, Calendar, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Upload } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -74,6 +82,17 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [savingNotes, setSavingNotes] = useState(false)
   const [confirmComplete, setConfirmComplete] = useState<DesignWithClient | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<DesignWithClient | null>(null)
+  const [addingForClient, setAddingForClient] = useState<{ id: string, name: string } | null>(null)
+  const [newDesignForm, setNewDesignForm] = useState({
+    title: "",
+    type: "Sampling" as DesignType,
+    quantity: 1,
+    status: "Payment Received" as DesignStatus,
+    notes: "",
+  })
+  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [savingDesign, setSavingDesign] = useState(false)
 
   useEffect(() => {
     fetchDesigns()
@@ -332,6 +351,130 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     return daysSinceStart > 10
   }
 
+  const openAddDesignDialog = (clientId: string, clientName: string) => {
+    setAddingForClient({ id: clientId, name: clientName })
+    setNewDesignForm({
+      title: "",
+      type: "Sampling",
+      quantity: 1,
+      status: "Payment Received",
+      notes: "",
+    })
+    setImageFiles([])
+    setImagePreviews([])
+  }
+
+  const closeAddDesignDialog = () => {
+    setAddingForClient(null)
+    setNewDesignForm({
+      title: "",
+      type: "Sampling",
+      quantity: 1,
+      status: "Payment Received",
+      notes: "",
+    })
+    setImageFiles([])
+    setImagePreviews([])
+  }
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    setImageFiles(prev => [...prev, ...files])
+    
+    // Generate previews
+    files.forEach(file => {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreviews(prev => [...prev, reader.result as string])
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const removeImage = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index))
+    setImagePreviews(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const handleSaveNewDesign = async () => {
+    if (!addingForClient || !newDesignForm.title) {
+      alert("Please fill in all required fields")
+      return
+    }
+
+    setSavingDesign(true)
+    try {
+      // Upload images first if any
+      const imageUrls: string[] = []
+      for (const file of imageFiles) {
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${Math.random()}.${fileExt}`
+        const filePath = `design-images/${fileName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('design-images')
+          .upload(filePath, file)
+
+        if (uploadError) throw uploadError
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('design-images')
+          .getPublicUrl(filePath)
+
+        imageUrls.push(publicUrl)
+      }
+
+      // Calculate timeline
+      const { calculateTimeline } = await import("@/lib/timeline")
+      const timeline = await calculateTimeline(newDesignForm.quantity, newDesignForm.type)
+
+      // Initialize stage_status
+      const initialStageStatus: Record<DesignStatus, StageState> = {
+        'Payment Received': 'in-progress',
+        'Pattern': 'vacant',
+        'Grading': 'vacant',
+        'Cutting': 'vacant',
+        'Stitching': 'vacant',
+        'Kaaj': 'vacant',
+        'Embroidery': 'vacant',
+        'Wash': 'vacant',
+        'Finishing': 'vacant',
+        'Photoshoot': 'vacant',
+        'Final Settlement': 'vacant',
+        'Dispatch': 'vacant'
+      }
+
+      // Insert design
+      const { data, error } = await supabase
+        .from('designs')
+        .insert({
+          client_id: addingForClient.id,
+          title: newDesignForm.title,
+          type: newDesignForm.type,
+          quantity: newDesignForm.quantity,
+          status: newDesignForm.status,
+          notes: newDesignForm.notes,
+          images: imageUrls,
+          stage_status: initialStageStatus,
+          start_date: timeline.start_date,
+          end_date: timeline.end_date,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Refresh the designs list
+      await fetchDesigns()
+      closeAddDesignDialog()
+    } catch (error: any) {
+      console.error('Error saving design:', error)
+      alert('Failed to save design: ' + error.message)
+    } finally {
+      setSavingDesign(false)
+    }
+  }
+
   const getTotalDesigns = () => {
     return clientGroups.reduce((sum, group) => sum + group.designs.length, 0)
   }
@@ -453,6 +596,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     onTileClick={openNotesModal}
                     onCompleteClick={setConfirmComplete}
                     onDeleteClick={setConfirmDelete}
+                    onAddDesign={openAddDesignDialog}
                     isOverdue={isOverdue}
                   />
                 ))
@@ -601,6 +745,154 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Add Design Dialog */}
+      <Dialog open={!!addingForClient} onOpenChange={() => closeAddDesignDialog()}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-blue-600" />
+              Add New Design for {addingForClient?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Create a new design order for this client.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {/* Title */}
+            <div className="grid gap-2">
+              <Label htmlFor="design-title">Design Title *</Label>
+              <Input
+                id="design-title"
+                value={newDesignForm.title}
+                onChange={(e) => setNewDesignForm({ ...newDesignForm, title: e.target.value })}
+                placeholder="Enter design name"
+              />
+            </div>
+
+            {/* Type */}
+            <div className="grid gap-2">
+              <Label htmlFor="design-type">Type *</Label>
+              <Select
+                value={newDesignForm.type}
+                onValueChange={(value: DesignType) => setNewDesignForm({ ...newDesignForm, type: value })}
+              >
+                <SelectTrigger id="design-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Sampling">Sampling</SelectItem>
+                  <SelectItem value="Production">Production</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Quantity (only for Production) */}
+            {newDesignForm.type === 'Production' && (
+              <div className="grid gap-2">
+                <Label htmlFor="design-quantity">Quantity</Label>
+                <Input
+                  id="design-quantity"
+                  type="number"
+                  min="1"
+                  value={newDesignForm.quantity}
+                  onChange={(e) => setNewDesignForm({ ...newDesignForm, quantity: parseInt(e.target.value) || 1 })}
+                />
+              </div>
+            )}
+
+            {/* Initial Status */}
+            <div className="grid gap-2">
+              <Label htmlFor="design-status">Initial Status</Label>
+              <Select
+                value={newDesignForm.status}
+                onValueChange={(value: DesignStatus) => setNewDesignForm({ ...newDesignForm, status: value })}
+              >
+                <SelectTrigger id="design-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STAGES.map(stage => (
+                    <SelectItem key={stage} value={stage}>{stage}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Notes */}
+            <div className="grid gap-2">
+              <Label htmlFor="design-notes">Notes</Label>
+              <textarea
+                id="design-notes"
+                value={newDesignForm.notes}
+                onChange={(e) => setNewDesignForm({ ...newDesignForm, notes: e.target.value })}
+                className="min-h-[100px] w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Add status updates, sizes, measurements, client instructions, or any custom information..."
+              />
+            </div>
+
+            {/* Image Upload */}
+            <div className="grid gap-2">
+              <Label>Design Images</Label>
+              <div className="flex items-center gap-2">
+                <label className="cursor-pointer">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-300 rounded-md transition-colors">
+                    <Upload className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm text-blue-600">Upload Images</span>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleImageSelect}
+                  />
+                </label>
+                {imageFiles.length > 0 && (
+                  <span className="text-sm text-gray-600">{imageFiles.length} image{imageFiles.length !== 1 ? 's' : ''} selected</span>
+                )}
+              </div>
+
+              {/* Image Previews */}
+              {imagePreviews.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={preview}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-24 object-cover rounded border"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeAddDesignDialog}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveNewDesign}
+              disabled={savingDesign || !newDesignForm.title}
+            >
+              {savingDesign ? "Saving..." : "Add Design"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -614,25 +906,38 @@ interface ClientGroupRowProps {
   onTileClick: (design: DesignWithClient) => void
   onCompleteClick: (design: DesignWithClient) => void
   onDeleteClick: (design: DesignWithClient) => void
+  onAddDesign: (clientId: string, clientName: string) => void
   isOverdue: (design: DesignWithClient) => boolean
 }
 
-function ClientGroupRow({ group, onToggle, onUpdateStatus, onUpdateStageStatus, onImageClick, onTileClick, onCompleteClick, onDeleteClick, isOverdue }: ClientGroupRowProps) {
+function ClientGroupRow({ group, onToggle, onUpdateStatus, onUpdateStageStatus, onImageClick, onTileClick, onCompleteClick, onDeleteClick, onAddDesign, isOverdue }: ClientGroupRowProps) {
   return (
     <>
       {/* Client Header Row */}
-      <tr className="bg-gray-100 hover:bg-gray-200 cursor-pointer" onClick={onToggle}>
+      <tr className="bg-gray-100 hover:bg-gray-200 cursor-pointer">
         <td className="px-6 py-4 whitespace-nowrap">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" onClick={onToggle}>
             {group.isExpanded ? (
               <ChevronDown className="h-5 w-5 text-gray-500" />
             ) : (
               <ChevronRight className="h-5 w-5 text-gray-500" />
             )}
-            <div>
+            <div className="flex-1">
               <div className="text-sm font-bold text-gray-900">{group.client_name}</div>
               <div className="text-xs text-gray-500">{group.designs.length} product{group.designs.length !== 1 ? 's' : ''}</div>
             </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 w-7 p-0 hover:bg-blue-100"
+              onClick={(e) => {
+                e.stopPropagation()
+                onAddDesign(group.client_id, group.client_name)
+              }}
+              title="Add new design for this client"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
           </div>
         </td>
         {STAGES.map(stage => (
