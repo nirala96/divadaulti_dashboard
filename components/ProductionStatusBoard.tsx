@@ -6,7 +6,7 @@ import { formatDisplayDate } from "@/lib/timeline"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
-import { ChevronDown, ChevronRight, Calendar, Package2, X, ImageIcon, FileText } from "lucide-react"
+import { ChevronDown, ChevronRight, Calendar, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2 } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -72,6 +72,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [editingDesign, setEditingDesign] = useState<DesignWithClient | null>(null)
   const [notesValue, setNotesValue] = useState("")
   const [savingNotes, setSavingNotes] = useState(false)
+  const [confirmComplete, setConfirmComplete] = useState<DesignWithClient | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<DesignWithClient | null>(null)
 
   useEffect(() => {
     fetchDesigns()
@@ -239,6 +241,97 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     }
   }
 
+  const handleCompleteDesign = async () => {
+    if (!confirmComplete) return
+    
+    try {
+      // Mark all stages as completed
+      const completedStageStatus: Record<DesignStatus, StageState> = {
+        'Payment Received': 'completed',
+        'Pattern': 'completed',
+        'Grading': 'completed',
+        'Cutting': 'completed',
+        'Stitching': 'completed',
+        'Kaaj': 'completed',
+        'Embroidery': 'completed',
+        'Wash': 'completed',
+        'Finishing': 'completed',
+        'Photoshoot': 'completed',
+        'Final Settlement': 'completed',
+        'Dispatch': 'completed'
+      }
+
+      const { error } = await supabase
+        .from('designs')
+        .update({ 
+          stage_status: completedStageStatus,
+          status: 'Dispatch'
+        })
+        .eq('id', confirmComplete.id)
+
+      if (error) throw error
+
+      // Update local state
+      setClientGroups(prevGroups =>
+        prevGroups.map(group => ({
+          ...group,
+          designs: group.designs.map(d =>
+            d.id === confirmComplete.id
+              ? { ...d, stage_status: completedStageStatus, status: 'Dispatch' as DesignStatus }
+              : d
+          )
+        }))
+      )
+
+      setConfirmComplete(null)
+    } catch (error: any) {
+      console.error('Error completing design:', error)
+      alert('Failed to complete design: ' + error.message)
+    }
+  }
+
+  const handleDeleteDesign = async () => {
+    if (!confirmDelete) return
+    
+    try {
+      const { error } = await supabase
+        .from('designs')
+        .delete()
+        .eq('id', confirmDelete.id)
+
+      if (error) throw error
+
+      // Update local state - remove the design and filter out empty client groups
+      setClientGroups(prevGroups =>
+        prevGroups
+          .map(group => ({
+            ...group,
+            designs: group.designs.filter(d => d.id !== confirmDelete.id)
+          }))
+          .filter(group => group.designs.length > 0)
+      )
+
+      setConfirmDelete(null)
+    } catch (error: any) {
+      console.error('Error deleting design:', error)
+      alert('Failed to delete design: ' + error.message)
+    }
+  }
+
+  const calculateDaysSinceStart = (startDate: string | null): number => {
+    if (!startDate) return 0
+    const start = new Date(startDate)
+    const now = new Date()
+    const diffTime = now.getTime() - start.getTime()
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    return diffDays
+  }
+
+  const isOverdue = (design: DesignWithClient): boolean => {
+    const daysSinceStart = calculateDaysSinceStart(design.start_date)
+    return daysSinceStart > 10
+  }
+
   const getTotalDesigns = () => {
     return clientGroups.reduce((sum, group) => sum + group.designs.length, 0)
   }
@@ -336,12 +429,15 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
                   Timeline
                 </th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {clientGroups.length === 0 ? (
                 <tr>
-                  <td colSpan={STAGES.length + 2} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={STAGES.length + 3} className="px-6 py-12 text-center text-gray-500">
                     No designs found. Add a client and create your first design order!
                   </td>
                 </tr>
@@ -355,6 +451,9 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     onUpdateStageStatus={updateStageStatus}
                     onImageClick={setPreviewImage}
                     onTileClick={openNotesModal}
+                    onCompleteClick={setConfirmComplete}
+                    onDeleteClick={setConfirmDelete}
+                    isOverdue={isOverdue}
                   />
                 ))
               )}
@@ -428,6 +527,80 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Complete Confirmation Modal */}
+      <Dialog open={!!confirmComplete} onOpenChange={() => setConfirmComplete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              Mark as Completed
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to mark this design as completed? All stages will be marked as completed and the status will be set to Dispatch.
+            </DialogDescription>
+          </DialogHeader>
+          {confirmComplete && (
+            <div className="py-4 space-y-2 text-sm">
+              <div><strong>Design:</strong> {confirmComplete.title}</div>
+              <div><strong>Client:</strong> {confirmComplete.client_name}</div>
+              <div><strong>Type:</strong> {confirmComplete.type}</div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmComplete(null)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCompleteDesign}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              Mark as Completed
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-600" />
+              Remove Design
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove this design? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {confirmDelete && (
+            <div className="py-4 space-y-2 text-sm">
+              <div><strong>Design:</strong> {confirmDelete.title}</div>
+              <div><strong>Client:</strong> {confirmDelete.client_name}</div>
+              <div><strong>Type:</strong> {confirmDelete.type}</div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDeleteDesign}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Remove Design
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -439,9 +612,12 @@ interface ClientGroupRowProps {
   onUpdateStageStatus: (designId: string, stage: DesignStatus, state: StageState) => void
   onImageClick: (imageUrl: string) => void
   onTileClick: (design: DesignWithClient) => void
+  onCompleteClick: (design: DesignWithClient) => void
+  onDeleteClick: (design: DesignWithClient) => void
+  isOverdue: (design: DesignWithClient) => boolean
 }
 
-function ClientGroupRow({ group, onToggle, onUpdateStatus, onUpdateStageStatus, onImageClick, onTileClick }: ClientGroupRowProps) {
+function ClientGroupRow({ group, onToggle, onUpdateStatus, onUpdateStageStatus, onImageClick, onTileClick, onCompleteClick, onDeleteClick, isOverdue }: ClientGroupRowProps) {
   return (
     <>
       {/* Client Header Row */}
@@ -463,11 +639,21 @@ function ClientGroupRow({ group, onToggle, onUpdateStatus, onUpdateStageStatus, 
           <td key={stage} className="px-4 py-4"></td>
         ))}
         <td className="px-4 py-4"></td>
+        <td className="px-4 py-4"></td>
       </tr>
 
       {/* Product Rows (shown when expanded) */}
-      {group.isExpanded && group.designs.map(design => (
-        <tr key={design.id} className="hover:bg-gray-50 border-l-4 border-l-transparent hover:border-l-blue-500">
+      {group.isExpanded && group.designs.map(design => {
+        const overdueStatus = isOverdue(design)
+        return (
+        <tr 
+          key={design.id} 
+          className={`hover:bg-gray-50 border-l-4 ${
+            overdueStatus 
+              ? 'border-l-red-500 bg-red-50' 
+              : 'border-l-transparent hover:border-l-blue-500'
+          }`}
+        >
           <td className="px-6 py-4">
             <div className="flex items-center gap-3 pl-7">
               {/* Image Thumbnail */}
@@ -534,8 +720,31 @@ function ClientGroupRow({ group, onToggle, onUpdateStatus, onUpdateStageStatus, 
               </div>
             )}
           </td>
+          <td className="px-4 py-4">
+            <div className="flex items-center justify-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 px-2 bg-green-50 hover:bg-green-100 border-green-300 text-green-700"
+                onClick={() => onCompleteClick(design)}
+                title="Mark as completed"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 px-2 bg-red-50 hover:bg-red-100 border-red-300 text-red-700"
+                onClick={() => onDeleteClick(design)}
+                title="Remove design"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </td>
         </tr>
-      ))}
+        )
+      })}
     </>
   )
 }
