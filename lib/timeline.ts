@@ -40,7 +40,7 @@ export async function calculateTimeline(
       // Production orders: calculate based on quantity and capacity
       // Formula: (quantity / daily_capacity) * number_of_stages
       const daysPerStage = Math.ceil(quantity / dailyCapacity)
-      totalDays = daysPerStage * 12 // 12 stages in the new workflow
+      totalDays = daysPerStage * 15 // 15 stages in the new workflow
     }
 
     // Ensure minimum 1 day

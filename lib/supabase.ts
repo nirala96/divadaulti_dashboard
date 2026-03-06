@@ -15,13 +15,16 @@ export type Client = {
 
 export type DesignStatus = 
   | 'Payment Received'
+  | 'Fabric Finalize'
   | 'Pattern' 
   | 'Grading' 
   | 'Cutting' 
   | 'Stitching'
-  | 'Kaaj'
+  | 'Dye'
+  | 'Print'
   | 'Embroidery'
   | 'Wash'
+  | 'Kaaj'
   | 'Finishing'
   | 'Photoshoot'
   | 'Final Settlement'
@@ -29,7 +32,7 @@ export type DesignStatus =
 
 export type DesignType = 'Sampling' | 'Production'
 
-export type StageState = 'vacant' | 'in-progress' | 'completed'
+export type StageState = 'vacant' | 'not-needed' | 'in-progress' | 'completed'
 
 export type Design = {
   id: string

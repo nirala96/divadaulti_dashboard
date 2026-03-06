@@ -27,13 +27,16 @@ import { Upload, X, ImageIcon, Calendar, Clock, Plus } from "lucide-react"
 
 const PROCESS_STEPS: DesignStatus[] = [
   'Payment Received',
+  'Fabric Finalize',
   'Pattern',
   'Grading',
   'Cutting',
   'Stitching',
-  'Kaaj',
+  'Dye',
+  'Print',
   'Embroidery',
   'Wash',
+  'Kaaj',
   'Finishing',
   'Photoshoot',
   'Final Settlement',

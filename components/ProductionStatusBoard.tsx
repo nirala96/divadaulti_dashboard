@@ -27,13 +27,16 @@ import {
 
 const STAGES: DesignStatus[] = [
   'Payment Received',
+  'Fabric Finalize',
   'Pattern',
   'Grading',
   'Cutting',
   'Stitching',
-  'Kaaj',
+  'Dye',
+  'Print',
   'Embroidery',
   'Wash',
+  'Kaaj',
   'Finishing',
   'Photoshoot',
   'Final Settlement',
@@ -42,10 +45,13 @@ const STAGES: DesignStatus[] = [
 
 const STAGE_COLORS: Record<DesignStatus, string> = {
   'Payment Received': 'bg-green-100 text-green-800',
+  'Fabric Finalize': 'bg-slate-100 text-slate-800',
   'Pattern': 'bg-blue-100 text-blue-800',
   'Grading': 'bg-purple-100 text-purple-800',
   'Cutting': 'bg-orange-100 text-orange-800',
   'Stitching': 'bg-pink-100 text-pink-800',
+  'Dye': 'bg-rose-100 text-rose-800',
+  'Print': 'bg-lime-100 text-lime-800',
   'Kaaj': 'bg-indigo-100 text-indigo-800',
   'Embroidery': 'bg-violet-100 text-violet-800',
   'Wash': 'bg-cyan-100 text-cyan-800',
@@ -93,6 +99,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [savingDesign, setSavingDesign] = useState(false)
+  const [draggedClientId, setDraggedClientId] = useState<string | null>(null)
+  const [draggedDesignId, setDraggedDesignId] = useState<string | null>(null)
+  const [dragOverClientId, setDragOverClientId] = useState<string | null>(null)
+  const [dragOverDesignId, setDragOverDesignId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchDesigns()
@@ -267,13 +277,16 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       // Mark all stages as completed
       const completedStageStatus: Record<DesignStatus, StageState> = {
         'Payment Received': 'completed',
+        'Fabric Finalize': 'completed',
         'Pattern': 'completed',
         'Grading': 'completed',
         'Cutting': 'completed',
         'Stitching': 'completed',
-        'Kaaj': 'completed',
+        'Dye': 'completed',
+        'Print': 'completed',
         'Embroidery': 'completed',
         'Wash': 'completed',
+        'Kaaj': 'completed',
         'Finishing': 'completed',
         'Photoshoot': 'completed',
         'Final Settlement': 'completed',
@@ -431,13 +444,16 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       // Initialize stage_status
       const initialStageStatus: Record<DesignStatus, StageState> = {
         'Payment Received': 'in-progress',
+        'Fabric Finalize': 'vacant',
         'Pattern': 'vacant',
         'Grading': 'vacant',
         'Cutting': 'vacant',
         'Stitching': 'vacant',
-        'Kaaj': 'vacant',
+        'Dye': 'vacant',
+        'Print': 'vacant',
         'Embroidery': 'vacant',
         'Wash': 'vacant',
+        'Kaaj': 'vacant',
         'Finishing': 'vacant',
         'Photoshoot': 'vacant',
         'Final Settlement': 'vacant',
@@ -485,6 +501,95 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     } else {
       setActiveStageFilter(stage) // Set new stage filter
     }
+  }
+
+  // Drag and Drop Handlers for Clients
+  const handleClientDragStart = (clientId: string) => {
+    setDraggedClientId(clientId)
+  }
+
+  const handleClientDragOver = (e: React.DragEvent, clientId: string) => {
+    e.preventDefault()
+    setDragOverClientId(clientId)
+  }
+
+  const handleClientDrop = (e: React.DragEvent, targetClientId: string) => {
+    e.preventDefault()
+    
+    if (!draggedClientId || draggedClientId === targetClientId) {
+      setDraggedClientId(null)
+      setDragOverClientId(null)
+      return
+    }
+
+    // Reorder client groups
+    setClientGroups(prevGroups => {
+      const groups = [...prevGroups]
+      const draggedIndex = groups.findIndex(g => g.client_id === draggedClientId)
+      const targetIndex = groups.findIndex(g => g.client_id === targetClientId)
+      
+      if (draggedIndex === -1 || targetIndex === -1) return groups
+      
+      const [draggedItem] = groups.splice(draggedIndex, 1)
+      groups.splice(targetIndex, 0, draggedItem)
+      
+      return groups
+    })
+
+    setDraggedClientId(null)
+    setDragOverClientId(null)
+  }
+
+  const handleClientDragEnd = () => {
+    setDraggedClientId(null)
+    setDragOverClientId(null)
+  }
+
+  // Drag and Drop Handlers for Designs within a Client
+  const handleDesignDragStart = (designId: string) => {
+    setDraggedDesignId(designId)
+  }
+
+  const handleDesignDragOver = (e: React.DragEvent, designId: string) => {
+    e.preventDefault()
+    setDragOverDesignId(designId)
+  }
+
+  const handleDesignDrop = (e: React.DragEvent, targetDesignId: string, clientId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (!draggedDesignId || draggedDesignId === targetDesignId) {
+      setDraggedDesignId(null)
+      setDragOverDesignId(null)
+      return
+    }
+
+    // Reorder designs within the same client
+    setClientGroups(prevGroups => {
+      return prevGroups.map(group => {
+        if (group.client_id !== clientId) return group
+        
+        const designs = [...group.designs]
+        const draggedIndex = designs.findIndex(d => d.id === draggedDesignId)
+        const targetIndex = designs.findIndex(d => d.id === targetDesignId)
+        
+        if (draggedIndex === -1 || targetIndex === -1) return group
+        
+        const [draggedItem] = designs.splice(draggedIndex, 1)
+        designs.splice(targetIndex, 0, draggedItem)
+        
+        return { ...group, designs }
+      })
+    })
+
+    setDraggedDesignId(null)
+    setDragOverDesignId(null)
+  }
+
+  const handleDesignDragEnd = () => {
+    setDraggedDesignId(null)
+    setDragOverDesignId(null)
   }
 
   if (loading) {
@@ -598,6 +703,18 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     onDeleteClick={setConfirmDelete}
                     onAddDesign={openAddDesignDialog}
                     isOverdue={isOverdue}
+                    onClientDragStart={handleClientDragStart}
+                    onClientDragOver={handleClientDragOver}
+                    onClientDrop={handleClientDrop}
+                    onClientDragEnd={handleClientDragEnd}
+                    onDesignDragStart={handleDesignDragStart}
+                    onDesignDragOver={handleDesignDragOver}
+                    onDesignDrop={handleDesignDrop}
+                    onDesignDragEnd={handleDesignDragEnd}
+                    draggedClientId={draggedClientId}
+                    dragOverClientId={dragOverClientId}
+                    draggedDesignId={draggedDesignId}
+                    dragOverDesignId={dragOverDesignId}
                   />
                 ))
               )}
@@ -908,21 +1025,72 @@ interface ClientGroupRowProps {
   onDeleteClick: (design: DesignWithClient) => void
   onAddDesign: (clientId: string, clientName: string) => void
   isOverdue: (design: DesignWithClient) => boolean
+  onClientDragStart: (clientId: string) => void
+  onClientDragOver: (e: React.DragEvent, clientId: string) => void
+  onClientDrop: (e: React.DragEvent, clientId: string) => void
+  onClientDragEnd: () => void
+  onDesignDragStart: (designId: string) => void
+  onDesignDragOver: (e: React.DragEvent, designId: string) => void
+  onDesignDrop: (e: React.DragEvent, designId: string, clientId: string) => void
+  onDesignDragEnd: () => void
+  draggedClientId: string | null
+  dragOverClientId: string | null
+  draggedDesignId: string | null
+  dragOverDesignId: string | null
 }
 
-function ClientGroupRow({ group, onToggle, onUpdateStatus, onUpdateStageStatus, onImageClick, onTileClick, onCompleteClick, onDeleteClick, onAddDesign, isOverdue }: ClientGroupRowProps) {
+function ClientGroupRow({ 
+  group, 
+  onToggle, 
+  onUpdateStatus, 
+  onUpdateStageStatus, 
+  onImageClick, 
+  onTileClick, 
+  onCompleteClick, 
+  onDeleteClick, 
+  onAddDesign, 
+  isOverdue,
+  onClientDragStart,
+  onClientDragOver,
+  onClientDrop,
+  onClientDragEnd,
+  onDesignDragStart,
+  onDesignDragOver,
+  onDesignDrop,
+  onDesignDragEnd,
+  draggedClientId,
+  dragOverClientId,
+  draggedDesignId,
+  dragOverDesignId
+}: ClientGroupRowProps) {
+  const isDraggingClient = draggedClientId === group.client_id
+  const isOverClient = dragOverClientId === group.client_id
   return (
     <>
       {/* Client Header Row */}
-      <tr className="bg-gray-100 hover:bg-gray-200 cursor-pointer">
+      <tr 
+        className={`bg-gray-100 hover:bg-gray-200 cursor-move transition-all ${
+          isDraggingClient ? 'opacity-50' : ''
+        } ${isOverClient ? 'border-t-4 border-t-blue-500' : ''}`}
+        draggable
+        onDragStart={() => onClientDragStart(group.client_id)}
+        onDragOver={(e) => onClientDragOver(e, group.client_id)}
+        onDrop={(e) => onClientDrop(e, group.client_id)}
+        onDragEnd={onClientDragEnd}
+      >
         <td className="px-6 py-4 whitespace-nowrap">
-          <div className="flex items-center gap-2" onClick={onToggle}>
-            {group.isExpanded ? (
-              <ChevronDown className="h-5 w-5 text-gray-500" />
-            ) : (
-              <ChevronRight className="h-5 w-5 text-gray-500" />
-            )}
-            <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <span 
+              className="cursor-pointer"
+              onClick={onToggle}
+            >
+              {group.isExpanded ? (
+                <ChevronDown className="h-5 w-5 text-gray-500" />
+              ) : (
+                <ChevronRight className="h-5 w-5 text-gray-500" />
+              )}
+            </span>
+            <div className="flex-1" onClick={onToggle}>
               <div className="text-sm font-bold text-gray-900">{group.client_name}</div>
               <div className="text-xs text-gray-500">{group.designs.length} product{group.designs.length !== 1 ? 's' : ''}</div>
             </div>
@@ -950,14 +1118,30 @@ function ClientGroupRow({ group, onToggle, onUpdateStatus, onUpdateStageStatus, 
       {/* Product Rows (shown when expanded) */}
       {group.isExpanded && group.designs.map(design => {
         const overdueStatus = isOverdue(design)
+        const isDraggingDesign = draggedDesignId === design.id
+        const isOverDesign = dragOverDesignId === design.id
         return (
         <tr 
           key={design.id} 
-          className={`hover:bg-gray-50 border-l-4 ${
+          className={`hover:bg-gray-50 border-l-4 cursor-move transition-all ${
             overdueStatus 
               ? 'border-l-red-500 bg-red-50' 
               : 'border-l-transparent hover:border-l-blue-500'
-          }`}
+          } ${isDraggingDesign ? 'opacity-50' : ''} ${isOverDesign ? 'border-t-2 border-t-blue-400' : ''}`}
+          draggable
+          onDragStart={(e) => {
+            e.stopPropagation()
+            onDesignDragStart(design.id)
+          }}
+          onDragOver={(e) => {
+            e.stopPropagation()
+            onDesignDragOver(e, design.id)
+          }}
+          onDrop={(e) => {
+            e.stopPropagation()
+            onDesignDrop(e, design.id, group.client_id)
+          }}
+          onDragEnd={onDesignDragEnd}
         >
           <td className="px-6 py-4">
             <div className="flex items-center gap-3 pl-7">
@@ -1064,10 +1248,12 @@ function StatusIndicator({ design, stage, onUpdateStageStatus }: StatusIndicator
   // Get the current state of this stage from stage_status
   const stageState: StageState = design.stage_status?.[stage] || 'vacant'
   
-  // Define the cycle: vacant → in-progress → completed → vacant
+  // Define the cycle: vacant → not-needed → in-progress → completed → vacant
   const getNextState = (current: StageState): StageState => {
     switch (current) {
       case 'vacant':
+        return 'not-needed'
+      case 'not-needed':
         return 'in-progress'
       case 'in-progress':
         return 'completed'
@@ -1108,12 +1294,24 @@ function StatusIndicator({ design, stage, onUpdateStageStatus }: StatusIndicator
     )
   }
 
+  if (stageState === 'not-needed') {
+    return (
+      <button
+        onClick={handleClick}
+        className="inline-flex items-center justify-center w-8 h-8 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors cursor-pointer"
+        title="Not Needed. Click to mark in progress."
+      >
+        <span className="text-gray-600 font-bold text-xl">−</span>
+      </button>
+    )
+  }
+
   // vacant state
   return (
     <button
       onClick={handleClick}
       className="inline-flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
-      title="Not started. Click to mark in progress."
+      title="Not started. Click to mark not needed."
     >
       <span className="text-gray-400 text-lg">○</span>
     </button>
