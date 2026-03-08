@@ -653,11 +653,11 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
 
       {/* CRM-Style Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[calc(100vh-300px)] overflow-y-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0 z-10">
+            <thead className="bg-gray-50 sticky top-0 z-20">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64 bg-gray-50">
                   Client / Product
                 </th>
                 {STAGES.map(stage => (
@@ -665,8 +665,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     key={stage} 
                     className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider cursor-pointer transition-colors ${
                       activeStageFilter === stage 
-                        ? 'bg-blue-100 text-blue-700 font-bold' 
-                        : 'text-gray-500 hover:bg-gray-100'
+                        ? 'bg-blue-100 text-blue-700 font-bold sticky top-0' 
+                        : 'text-gray-500 hover:bg-gray-100 bg-gray-50 sticky top-0'
                     }`}
                     onClick={() => toggleStageFilter(stage)}
                     title={`Click to filter designs with incomplete ${stage}`}
@@ -674,10 +674,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     {stage}
                   </th>
                 ))}
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32 bg-gray-50">
                   Timeline
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32 bg-gray-50">
                   Actions
                 </th>
               </tr>
