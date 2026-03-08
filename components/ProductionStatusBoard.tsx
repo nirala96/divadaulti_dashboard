@@ -653,7 +653,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
 
       {/* CRM-Style Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto max-h-[calc(100vh-300px)] overflow-y-auto">
+        <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50 sticky top-0 z-20">
               <tr>
