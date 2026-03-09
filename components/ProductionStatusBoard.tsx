@@ -71,6 +71,7 @@ type ClientGroup = {
   client_name: string
   designs: DesignWithClient[]
   isExpanded: boolean
+  display_order: number | null
 }
 
 interface ProductionStatusBoardProps {
@@ -111,11 +112,12 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const fetchDesigns = async () => {
     setLoading(true)
     try {
-      // Fetch designs with client information
+      // Fetch designs with client information - ordered by display_order (manual priority) then created_at
       const { data: designsData, error } = await supabase
         .from('designs')
-        .select('*, clients(name, id)')
-        .order('created_at', { ascending: false })
+        .select('*, clients(name, id, display_order)')
+        .order('display_order', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: true })
 
       if (error) throw error
 
@@ -140,22 +142,36 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       }
 
       // Group by client
-      const groupedByClient: Record<string, DesignWithClient[]> = {}
+      const groupedByClient: Record<string, { designs: DesignWithClient[], clientDisplayOrder: number | null }> = {}
       filteredDesigns.forEach(design => {
         const clientId = design.client_id || 'unknown'
         if (!groupedByClient[clientId]) {
-          groupedByClient[clientId] = []
+          groupedByClient[clientId] = {
+            designs: [],
+            clientDisplayOrder: (design as any).clients?.display_order ?? null
+          }
         }
-        groupedByClient[clientId].push(design)
+        groupedByClient[clientId].designs.push(design)
       })
 
-      // Create client groups with all expanded by default
-      const groups: ClientGroup[] = Object.entries(groupedByClient).map(([clientId, designs]) => ({
-        client_id: clientId,
-        client_name: designs[0]?.client_name || 'Unknown Client',
-        designs: designs,
-        isExpanded: true // All expanded by default
-      }))
+      // Create client groups with all expanded by default, sorted by client display_order
+      const groups: ClientGroup[] = Object.entries(groupedByClient)
+        .map(([clientId, data]) => ({
+          client_id: clientId,
+          client_name: data.designs[0]?.client_name || 'Unknown Client',
+          designs: data.designs,
+          isExpanded: true, // All expanded by default
+          display_order: data.clientDisplayOrder
+        }))
+        .sort((a, b) => {
+          // Sort by display_order if available, otherwise maintain current order
+          if (a.display_order !== null && b.display_order !== null) {
+            return a.display_order - b.display_order
+          }
+          if (a.display_order !== null) return -1
+          if (b.display_order !== null) return 1
+          return 0
+        })
 
       setClientGroups(groups)
     } catch (error) {
@@ -460,6 +476,16 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         'Dispatch': 'vacant'
       }
 
+      // Get max display_order to append new design at the end
+      const { data: maxOrderData } = await supabase
+        .from('designs')
+        .select('display_order')
+        .order('display_order', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .single()
+      
+      const nextDisplayOrder = (maxOrderData?.display_order ?? -1) + 1
+
       // Insert design
       const { data, error } = await supabase
         .from('designs')
@@ -474,6 +500,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           stage_status: initialStageStatus,
           start_date: timeline.start_date,
           end_date: timeline.end_date,
+          display_order: nextDisplayOrder,
         })
         .select()
         .single()
@@ -513,7 +540,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     setDragOverClientId(clientId)
   }
 
-  const handleClientDrop = (e: React.DragEvent, targetClientId: string) => {
+  const handleClientDrop = async (e: React.DragEvent, targetClientId: string) => {
     e.preventDefault()
     
     if (!draggedClientId || draggedClientId === targetClientId) {
@@ -522,19 +549,34 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       return
     }
 
-    // Reorder client groups
-    setClientGroups(prevGroups => {
-      const groups = [...prevGroups]
-      const draggedIndex = groups.findIndex(g => g.client_id === draggedClientId)
-      const targetIndex = groups.findIndex(g => g.client_id === targetClientId)
-      
-      if (draggedIndex === -1 || targetIndex === -1) return groups
-      
-      const [draggedItem] = groups.splice(draggedIndex, 1)
-      groups.splice(targetIndex, 0, draggedItem)
-      
-      return groups
-    })
+    // Reorder client groups in UI
+    const reorderedGroups = [...clientGroups]
+    const draggedIndex = reorderedGroups.findIndex(g => g.client_id === draggedClientId)
+    const targetIndex = reorderedGroups.findIndex(g => g.client_id === targetClientId)
+    
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedClientId(null)
+      setDragOverClientId(null)
+      return
+    }
+    
+    const [draggedItem] = reorderedGroups.splice(draggedIndex, 1)
+    reorderedGroups.splice(targetIndex, 0, draggedItem)
+    
+    setClientGroups(reorderedGroups)
+
+    // Persist new order to database
+    try {
+      const updates = reorderedGroups.map((group, index) => 
+        supabase
+          .from('clients')
+          .update({ display_order: index })
+          .eq('id', group.client_id)
+      )
+      await Promise.all(updates)
+    } catch (error) {
+      console.error('Error updating client order:', error)
+    }
 
     setDraggedClientId(null)
     setDragOverClientId(null)
@@ -555,7 +597,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     setDragOverDesignId(designId)
   }
 
-  const handleDesignDrop = (e: React.DragEvent, targetDesignId: string, clientId: string) => {
+  const handleDesignDrop = async (e: React.DragEvent, targetDesignId: string, clientId: string) => {
     e.preventDefault()
     e.stopPropagation()
     
@@ -565,23 +607,40 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       return
     }
 
-    // Reorder designs within the same client
-    setClientGroups(prevGroups => {
-      return prevGroups.map(group => {
-        if (group.client_id !== clientId) return group
-        
-        const designs = [...group.designs]
-        const draggedIndex = designs.findIndex(d => d.id === draggedDesignId)
-        const targetIndex = designs.findIndex(d => d.id === targetDesignId)
-        
-        if (draggedIndex === -1 || targetIndex === -1) return group
-        
-        const [draggedItem] = designs.splice(draggedIndex, 1)
-        designs.splice(targetIndex, 0, draggedItem)
-        
-        return { ...group, designs }
-      })
+    // Reorder designs within the same client in UI
+    let reorderedDesigns: DesignWithClient[] = []
+    const updatedGroups = clientGroups.map(group => {
+      if (group.client_id !== clientId) return group
+      
+      const designs = [...group.designs]
+      const draggedIndex = designs.findIndex(d => d.id === draggedDesignId)
+      const targetIndex = designs.findIndex(d => d.id === targetDesignId)
+      
+      if (draggedIndex === -1 || targetIndex === -1) return group
+      
+      const [draggedItem] = designs.splice(draggedIndex, 1)
+      designs.splice(targetIndex, 0, draggedItem)
+      
+      reorderedDesigns = designs
+      return { ...group, designs }
     })
+    
+    setClientGroups(updatedGroups)
+
+    // Persist new order to database
+    if (reorderedDesigns.length > 0) {
+      try {
+        const updates = reorderedDesigns.map((design, index) => 
+          supabase
+            .from('designs')
+            .update({ display_order: index })
+            .eq('id', design.id)
+        )
+        await Promise.all(updates)
+      } catch (error) {
+        console.error('Error updating design order:', error)
+      }
+    }
 
     setDraggedDesignId(null)
     setDragOverDesignId(null)
