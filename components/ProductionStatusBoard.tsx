@@ -159,35 +159,45 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       }
 
       // Group by client
-      const groupedByClient: Record<string, { designs: DesignWithClient[], clientDisplayOrder: number | null }> = {}
+      const groupedByClient: Record<string, DesignWithClient[]> = {}
       filteredDesigns.forEach(design => {
         const clientId = design.client_id || 'unknown'
         if (!groupedByClient[clientId]) {
-          const clientInfo = clientsData?.find(c => c.id === clientId)
-          groupedByClient[clientId] = {
-            designs: [],
-            clientDisplayOrder: clientInfo?.display_order ?? null
-          }
+          groupedByClient[clientId] = []
         }
-        groupedByClient[clientId].designs.push(design)
+        groupedByClient[clientId].push(design)
       })
 
-      // Create client groups with all expanded by default, sorted by client display_order
-      const groups: ClientGroup[] = Object.entries(groupedByClient)
-        .map(([clientId, data]) => ({
-          client_id: clientId,
-          client_name: data.designs[0]?.client_name || 'Unknown Client',
-          designs: data.designs, // Already sorted by display_order from query
-          isExpanded: true,
-          display_order: data.clientDisplayOrder
-        }))
-        .sort((a, b) => {
-          // Sort by display_order, nulls last
-          if (a.display_order === null && b.display_order === null) return 0
-          if (a.display_order === null) return 1
-          if (b.display_order === null) return -1
-          return a.display_order - b.display_order
-        })
+      // Create client groups using the sorted clients list (maintains display_order)
+      const groups: ClientGroup[] = []
+      
+      // First, add clients that have designs (in their display_order)
+      clientsData?.forEach(client => {
+        if (groupedByClient[client.id]) {
+          groups.push({
+            client_id: client.id,
+            client_name: client.name,
+            designs: groupedByClient[client.id],
+            isExpanded: true,
+            display_order: client.display_order
+          })
+        }
+      })
+      
+      // Then add any clients not in the clients table (shouldn't happen normally)
+      Object.entries(groupedByClient).forEach(([clientId, designs]) => {
+        if (!clientsData?.find(c => c.id === clientId)) {
+          groups.push({
+            client_id: clientId,
+            client_name: designs[0]?.client_name || 'Unknown Client',
+            designs: designs,
+            isExpanded: true,
+            display_order: null
+          })
+        }
+      })
+
+      console.log('Client groups order:', groups.map(g => ({ name: g.client_name, order: g.display_order })))
 
       setClientGroups(groups)
     } catch (error) {
