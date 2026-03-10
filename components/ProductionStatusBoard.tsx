@@ -106,6 +106,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [dragOverDesignId, setDragOverDesignId] = useState<string | null>(null)
 
   useEffect(() => {
+    console.log('🔄 ProductionStatusBoard mounted - fetching designs...')
     fetchDesigns()
   }, [activeFilter, activeStageFilter])
 
@@ -129,11 +130,13 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       if (error) throw error
 
       // Debug: Log the first few designs with their display_order
-      console.log('Fetched designs order:', designsData?.slice(0, 5).map(d => ({ 
+      const designOrders = designsData?.slice(0, 10).map(d => ({ 
         id: d.id, 
         title: d.title, 
         display_order: d.display_order 
-      })))
+      }))
+      console.log('=== FETCHED DESIGNS ORDER ===', designOrders)
+      console.log('Total designs:', designsData?.length)
 
       // Transform data to include client name and id
       const designsWithClients: DesignWithClient[] = (designsData || []).map((design: any) => ({
@@ -580,15 +583,19 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     setClientGroups(reorderedGroups)
 
     // Save to database in background (don't block UI)
-    console.log('Saving client order:', reorderedGroups.map((g, i) => ({ name: g.client_name, order: i })))
+    const orderInfo = reorderedGroups.map((g, i) => ({ name: g.client_name, order: i }))
+    console.log('=== SAVING CLIENT ORDER ===', orderInfo)
     reorderedGroups.forEach((group, index) => {
       supabase
         .from('clients')
         .update({ display_order: index })
         .eq('id', group.client_id)
-        .then(({ error }) => {
-          if (error) console.error('Error saving client order:', error)
-          else console.log(`Saved client ${group.client_name} with order ${index}`)
+        .then(({ error, data }) => {
+          if (error) {
+            console.error('❌ Error saving client order:', error)
+          } else {
+            console.log(`✅ Saved client "${group.client_name}" with order ${index}`)
+          }
         })
     })
 
@@ -659,15 +666,19 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     setClientGroups(updatedGroups)
 
     // Save to database in background (don't block UI)
-    console.log('Saving design order:', allDesigns.map((d, i) => ({ title: d.title, order: i })))
+    const orderInfo = allDesigns.map((d, i) => ({ title: d.title, order: i }))
+    console.log('=== SAVING DESIGN ORDER ===', orderInfo)
     allDesigns.forEach((design, index) => {
       supabase
         .from('designs')
         .update({ display_order: index })
         .eq('id', design.id)
-        .then(({ error }) => {
-          if (error) console.error('Error saving design order:', error)
-          else console.log(`Saved design ${design.title} with order ${index}`)
+        .then(({ error, data }) => {
+          if (error) {
+            console.error('❌ Error saving design order:', error)
+          } else {
+            console.log(`✅ Saved design "${design.title}" with order ${index}`)
+          }
         })
     })
 
