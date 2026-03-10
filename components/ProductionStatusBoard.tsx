@@ -116,17 +116,24 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       const { data: clientsData } = await supabase
         .from('clients')
         .select('id, name, display_order')
-        .order('display_order', { ascending: true, nullsFirst: false })
+        .order('display_order', { ascending: true, nullsLast: true })
         .order('id', { ascending: true })
 
       // Fetch designs with client information, ordered by display_order (manual priority) then created_at
       const { data: designsData, error } = await supabase
         .from('designs')
         .select('*, clients(name, id)')
-        .order('display_order', { ascending: true, nullsFirst: false })
+        .order('display_order', { ascending: true, nullsLast: true })
         .order('created_at', { ascending: true })
 
       if (error) throw error
+
+      // Debug: Log the first few designs with their display_order
+      console.log('Fetched designs order:', designsData?.slice(0, 5).map(d => ({ 
+        id: d.id, 
+        title: d.title, 
+        display_order: d.display_order 
+      })))
 
       // Transform data to include client name and id
       const designsWithClients: DesignWithClient[] = (designsData || []).map((design: any) => ({
@@ -573,6 +580,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     setClientGroups(reorderedGroups)
 
     // Save to database in background (don't block UI)
+    console.log('Saving client order:', reorderedGroups.map((g, i) => ({ name: g.client_name, order: i })))
     reorderedGroups.forEach((group, index) => {
       supabase
         .from('clients')
@@ -580,6 +588,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         .eq('id', group.client_id)
         .then(({ error }) => {
           if (error) console.error('Error saving client order:', error)
+          else console.log(`Saved client ${group.client_name} with order ${index}`)
         })
     })
 
@@ -650,6 +659,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     setClientGroups(updatedGroups)
 
     // Save to database in background (don't block UI)
+    console.log('Saving design order:', allDesigns.map((d, i) => ({ title: d.title, order: i })))
     allDesigns.forEach((design, index) => {
       supabase
         .from('designs')
@@ -657,6 +667,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         .eq('id', design.id)
         .then(({ error }) => {
           if (error) console.error('Error saving design order:', error)
+          else console.log(`Saved design ${design.title} with order ${index}`)
         })
     })
 
