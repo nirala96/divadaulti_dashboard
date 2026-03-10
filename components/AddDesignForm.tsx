@@ -198,6 +198,16 @@ export function AddDesignForm() {
         initialStageStatus[step] = step === formData.status ? 'in-progress' : 'vacant'
       })
 
+      // Get max display_order to append new design at the end
+      const { data: maxOrderData } = await supabase
+        .from('designs')
+        .select('display_order')
+        .order('display_order', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .single()
+      
+      const nextDisplayOrder = (maxOrderData?.display_order ?? -1) + 1
+
       // Insert design with calculated timeline (display_order will be added after running migration)
       const { data, error } = await supabase
         .from("designs")
@@ -207,6 +217,7 @@ export function AddDesignForm() {
           stage_status: initialStageStatus,
           start_date: timeline.start_date,
           end_date: timeline.end_date,
+          display_order: nextDisplayOrder,
         }])
         .select()
 
