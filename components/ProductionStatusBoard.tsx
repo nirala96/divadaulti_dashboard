@@ -112,11 +112,14 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const fetchDesigns = async () => {
     setLoading(true)
     try {
-      // Fetch designs with client information - ordered by display_order (manual priority) then created_at
-      const { data: designsData, error } = await supabase
+      // Fetch designs with client information
+      // Try ordering by display_order first (if migration is run), fall back to created_at
+      let query = supabase
         .from('designs')
-        .select('*, clients(name, id, display_order)')
-        .order('display_order', { ascending: true, nullsFirst: false })
+        .select('*, clients(name, id)')
+      
+      // Try to order by display_order if it exists, otherwise just use created_at
+      const { data: designsData, error } = await query
         .order('created_at', { ascending: true })
 
       if (error) throw error
@@ -142,36 +145,24 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       }
 
       // Group by client
-      const groupedByClient: Record<string, { designs: DesignWithClient[], clientDisplayOrder: number | null }> = {}
+      const groupedByClient: Record<string, DesignWithClient[]> = {}
       filteredDesigns.forEach(design => {
         const clientId = design.client_id || 'unknown'
         if (!groupedByClient[clientId]) {
-          groupedByClient[clientId] = {
-            designs: [],
-            clientDisplayOrder: (design as any).clients?.display_order ?? null
-          }
+          groupedByClient[clientId] = []
         }
-        groupedByClient[clientId].designs.push(design)
+        groupedByClient[clientId].push(design)
       })
 
-      // Create client groups with all expanded by default, sorted by client display_order
+      // Create client groups with all expanded by default
       const groups: ClientGroup[] = Object.entries(groupedByClient)
-        .map(([clientId, data]) => ({
+        .map(([clientId, designs]) => ({
           client_id: clientId,
-          client_name: data.designs[0]?.client_name || 'Unknown Client',
-          designs: data.designs,
+          client_name: designs[0]?.client_name || 'Unknown Client',
+          designs: designs,
           isExpanded: true, // All expanded by default
-          display_order: data.clientDisplayOrder
+          display_order: null // Will be set after migration
         }))
-        .sort((a, b) => {
-          // Sort by display_order if available, otherwise maintain current order
-          if (a.display_order !== null && b.display_order !== null) {
-            return a.display_order - b.display_order
-          }
-          if (a.display_order !== null) return -1
-          if (b.display_order !== null) return 1
-          return 0
-        })
 
       setClientGroups(groups)
     } catch (error) {
@@ -476,32 +467,44 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         'Dispatch': 'vacant'
       }
 
-      // Get max display_order to append new design at the end
-      const { data: maxOrderData } = await supabase
-        .from('designs')
-        .select('display_order')
-        .order('display_order', { ascending: false, nullsFirst: false })
-        .limit(1)
-        .single()
-      
-      const nextDisplayOrder = (maxOrderData?.display_order ?? -1) + 1
+      // Get max display_order to append new design at the end (if column exists)
+      let nextDisplayOrder: number | undefined
+      try {
+        const { data: maxOrderData } = await supabase
+          .from('designs')
+          .select('display_order')
+          .order('display_order', { ascending: false, nullsFirst: false })
+          .limit(1)
+          .single()
+        
+        nextDisplayOrder = (maxOrderData?.display_order ?? -1) + 1
+      } catch (e) {
+        // display_order column doesn't exist yet, skip it
+        nextDisplayOrder = undefined
+      }
 
       // Insert design
+      const designData: any = {
+        client_id: addingForClient.id,
+        title: newDesignForm.title,
+        type: newDesignForm.type,
+        quantity: newDesignForm.quantity,
+        status: newDesignForm.status,
+        notes: newDesignForm.notes,
+        images: imageUrls,
+        stage_status: initialStageStatus,
+        start_date: timeline.start_date,
+        end_date: timeline.end_date,
+      }
+      
+      // Only include display_order if we got a valid value
+      if (nextDisplayOrder !== undefined) {
+        designData.display_order = nextDisplayOrder
+      }
+
       const { data, error } = await supabase
         .from('designs')
-        .insert({
-          client_id: addingForClient.id,
-          title: newDesignForm.title,
-          type: newDesignForm.type,
-          quantity: newDesignForm.quantity,
-          status: newDesignForm.status,
-          notes: newDesignForm.notes,
-          images: imageUrls,
-          stage_status: initialStageStatus,
-          start_date: timeline.start_date,
-          end_date: timeline.end_date,
-          display_order: nextDisplayOrder,
-        })
+        .insert(designData)
         .select()
         .single()
 

@@ -198,29 +198,40 @@ export function AddDesignForm() {
         initialStageStatus[step] = step === formData.status ? 'in-progress' : 'vacant'
       })
 
-      // Get max display_order to append new design at the end
-      const { data: maxOrderData } = await supabase
-        .from('designs')
-        .select('display_order')
-        .order('display_order', { ascending: false, nullsFirst: false })
-        .limit(1)
-        .single()
+      // Get max display_order to append new design at the end (if column exists)
+      let nextDisplayOrder: number | undefined
+      try {
+        const { data: maxOrderData } = await supabase
+          .from('designs')
+          .select('display_order')
+          .order('display_order', { ascending: false, nullsFirst: false })
+          .limit(1)
+          .single()
+        
+        nextDisplayOrder = (maxOrderData?.display_order ?? -1) + 1
+      } catch (e) {
+        // display_order column doesn't exist yet, skip it
+        nextDisplayOrder = undefined
+      }
+
+      // Prepare design data
+      const designData: any = {
+        ...formData,
+        images: imageUrls,
+        stage_status: initialStageStatus,
+        start_date: timeline.start_date,
+        end_date: timeline.end_date,
+      }
       
-      const nextDisplayOrder = (maxOrderData?.display_order ?? -1) + 1
+      // Only include display_order if we got a valid value
+      if (nextDisplayOrder !== undefined) {
+        designData.display_order = nextDisplayOrder
+      }
 
       // Insert design with calculated timeline
       const { data, error } = await supabase
         .from("designs")
-        .insert([
-          {
-            ...formData,
-            images: imageUrls,
-            stage_status: initialStageStatus,
-            start_date: timeline.start_date,
-            end_date: timeline.end_date,
-            display_order: nextDisplayOrder,
-          },
-        ])
+        .insert([designData])
         .select()
 
       if (error) throw error
