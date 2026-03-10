@@ -570,19 +570,29 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     reorderedGroups.splice(targetIndex, 0, draggedItem)
 
     // Persist new order to database
+    console.log('Updating client order...', reorderedGroups.length, 'clients')
     try {
-      const updates = reorderedGroups.map((group, index) => 
+      const updatePromises = reorderedGroups.map((group, index) => 
         supabase
           .from('clients')
           .update({ display_order: index })
           .eq('id', group.client_id)
       )
-      await Promise.all(updates)
+      const results = await Promise.all(updatePromises)
+      
+      // Check for errors
+      const errors = results.filter(r => r.error)
+      if (errors.length > 0) {
+        console.error('Some client updates failed:', errors)
+      } else {
+        console.log('All client orders updated successfully')
+      }
       
       // Refresh data to reflect new order
       await fetchDesigns()
     } catch (error) {
       console.error('Error updating client order:', error)
+      alert('Failed to save client order. Please try again.')
     }
 
     setDraggedClientId(null)
@@ -635,19 +645,29 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     allDesigns.splice(targetIndex, 0, draggedItem)
 
     // Update display_order for all designs to maintain sequential order
+    console.log('Updating design order...', allDesigns.length, 'designs')
     try {
-      const updates = allDesigns.map((design, index) => 
+      const updatePromises = allDesigns.map((design, index) => 
         supabase
           .from('designs')
           .update({ display_order: index })
           .eq('id', design.id)
       )
-      await Promise.all(updates)
+      const results = await Promise.all(updatePromises)
+      
+      // Check for errors
+      const errors = results.filter(r => r.error)
+      if (errors.length > 0) {
+        console.error('Some updates failed:', errors)
+      } else {
+        console.log('All design orders updated successfully')
+      }
       
       // Refresh data to reflect new order
       await fetchDesigns()
     } catch (error) {
       console.error('Error updating design order:', error)
+      alert('Failed to save order. Please try again.')
     }
 
     setDraggedDesignId(null)
