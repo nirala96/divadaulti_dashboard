@@ -555,7 +555,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       return
     }
 
-    // Reorder client groups in UI
+    // Reorder client groups in UI immediately
     const reorderedGroups = [...clientGroups]
     const draggedIndex = reorderedGroups.findIndex(g => g.client_id === draggedClientId)
     const targetIndex = reorderedGroups.findIndex(g => g.client_id === targetClientId)
@@ -568,32 +568,20 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     
     const [draggedItem] = reorderedGroups.splice(draggedIndex, 1)
     reorderedGroups.splice(targetIndex, 0, draggedItem)
+    
+    // Update UI immediately
+    setClientGroups(reorderedGroups)
 
-    // Persist new order to database
-    console.log('Updating client order...', reorderedGroups.length, 'clients')
-    try {
-      const updatePromises = reorderedGroups.map((group, index) => 
-        supabase
-          .from('clients')
-          .update({ display_order: index })
-          .eq('id', group.client_id)
-      )
-      const results = await Promise.all(updatePromises)
-      
-      // Check for errors
-      const errors = results.filter(r => r.error)
-      if (errors.length > 0) {
-        console.error('Some client updates failed:', errors)
-      } else {
-        console.log('All client orders updated successfully')
-      }
-      
-      // Refresh data to reflect new order
-      await fetchDesigns()
-    } catch (error) {
-      console.error('Error updating client order:', error)
-      alert('Failed to save client order. Please try again.')
-    }
+    // Save to database in background (don't block UI)
+    reorderedGroups.forEach((group, index) => {
+      supabase
+        .from('clients')
+        .update({ display_order: index })
+        .eq('id', group.client_id)
+        .then(({ error }) => {
+          if (error) console.error('Error saving client order:', error)
+        })
+    })
 
     setDraggedClientId(null)
     setDragOverClientId(null)
@@ -644,31 +632,33 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     const [draggedItem] = allDesigns.splice(draggedIndex, 1)
     allDesigns.splice(targetIndex, 0, draggedItem)
 
-    // Update display_order for all designs to maintain sequential order
-    console.log('Updating design order...', allDesigns.length, 'designs')
-    try {
-      const updatePromises = allDesigns.map((design, index) => 
-        supabase
-          .from('designs')
-          .update({ display_order: index })
-          .eq('id', design.id)
-      )
-      const results = await Promise.all(updatePromises)
-      
-      // Check for errors
-      const errors = results.filter(r => r.error)
-      if (errors.length > 0) {
-        console.error('Some updates failed:', errors)
-      } else {
-        console.log('All design orders updated successfully')
+    // Update UI immediately - reorganize designs into client groups
+    const updatedGroupedByClient: Record<string, DesignWithClient[]> = {}
+    allDesigns.forEach(design => {
+      const cid = design.client_id || 'unknown'
+      if (!updatedGroupedByClient[cid]) {
+        updatedGroupedByClient[cid] = []
       }
-      
-      // Refresh data to reflect new order
-      await fetchDesigns()
-    } catch (error) {
-      console.error('Error updating design order:', error)
-      alert('Failed to save order. Please try again.')
-    }
+      updatedGroupedByClient[cid].push(design)
+    })
+
+    const updatedGroups = clientGroups.map(group => ({
+      ...group,
+      designs: updatedGroupedByClient[group.client_id] || []
+    }))
+    
+    setClientGroups(updatedGroups)
+
+    // Save to database in background (don't block UI)
+    allDesigns.forEach((design, index) => {
+      supabase
+        .from('designs')
+        .update({ display_order: index })
+        .eq('id', design.id)
+        .then(({ error }) => {
+          if (error) console.error('Error saving design order:', error)
+        })
+    })
 
     setDraggedDesignId(null)
     setDragOverDesignId(null)
