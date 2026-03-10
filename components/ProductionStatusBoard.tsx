@@ -467,44 +467,21 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         'Dispatch': 'vacant'
       }
 
-      // Get max display_order to append new design at the end (if column exists)
-      let nextDisplayOrder: number | undefined
-      try {
-        const { data: maxOrderData } = await supabase
-          .from('designs')
-          .select('display_order')
-          .order('display_order', { ascending: false, nullsFirst: false })
-          .limit(1)
-          .single()
-        
-        nextDisplayOrder = (maxOrderData?.display_order ?? -1) + 1
-      } catch (e) {
-        // display_order column doesn't exist yet, skip it
-        nextDisplayOrder = undefined
-      }
-
-      // Insert design
-      const designData: any = {
-        client_id: addingForClient.id,
-        title: newDesignForm.title,
-        type: newDesignForm.type,
-        quantity: newDesignForm.quantity,
-        status: newDesignForm.status,
-        notes: newDesignForm.notes,
-        images: imageUrls,
-        stage_status: initialStageStatus,
-        start_date: timeline.start_date,
-        end_date: timeline.end_date,
-      }
-      
-      // Only include display_order if we got a valid value
-      if (nextDisplayOrder !== undefined) {
-        designData.display_order = nextDisplayOrder
-      }
-
+      // Insert design (display_order will be added after running migration)
       const { data, error } = await supabase
         .from('designs')
-        .insert(designData)
+        .insert({
+          client_id: addingForClient.id,
+          title: newDesignForm.title,
+          type: newDesignForm.type,
+          quantity: newDesignForm.quantity,
+          status: newDesignForm.status,
+          notes: newDesignForm.notes,
+          images: imageUrls,
+          stage_status: initialStageStatus,
+          start_date: timeline.start_date,
+          end_date: timeline.end_date,
+        })
         .select()
         .single()
 
@@ -568,7 +545,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     
     setClientGroups(reorderedGroups)
 
-    // Persist new order to database
+    // Note: Order persistence disabled until migration is run
+    // To enable: Run supabase_migration_v6_display_order.sql in Supabase SQL Editor
+    // Uncomment the code below after running migration:
+    /*
     try {
       const updates = reorderedGroups.map((group, index) => 
         supabase
@@ -580,6 +560,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     } catch (error) {
       console.error('Error updating client order:', error)
     }
+    */
 
     setDraggedClientId(null)
     setDragOverClientId(null)
@@ -630,7 +611,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     
     setClientGroups(updatedGroups)
 
-    // Persist new order to database
+    // Note: Order persistence disabled until migration is run
+    // To enable: Run supabase_migration_v6_display_order.sql in Supabase SQL Editor
+    // Uncomment the code below after running migration:
+    /*
     if (reorderedDesigns.length > 0) {
       try {
         const updates = reorderedDesigns.map((design, index) => 
@@ -644,6 +628,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         console.error('Error updating design order:', error)
       }
     }
+    */
 
     setDraggedDesignId(null)
     setDragOverDesignId(null)
