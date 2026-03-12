@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Plus, GripVertical, Check, Trash2 } from 'lucide-react'
+import { Plus, GripVertical, Check, Trash2, Image as ImageIcon } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -30,6 +30,7 @@ interface Task {
   assigned_to: 'Arun' | 'Allish' | 'Nirjara' | null
   completed: boolean
   completed_at: string | null
+  images: string[] | null
   display_order: number
   created_at: string
 }
@@ -49,6 +50,8 @@ export default function WorkPoints() {
     description: '',
     assigned_to: '' as '' | 'Arun' | 'Allish' | 'Nirjara',
   })
+  const [uploadedImages, setUploadedImages] = useState<string[]>([])
+  const [isUploading, setIsUploading] = useState(false)
 
   useEffect(() => {
     fetchTasks()
@@ -71,6 +74,86 @@ export default function WorkPoints() {
     }
   }
 
+  const uploadImage = async (file: File): Promise<string | null> => {
+    try {
+      setIsUploading(true)
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`
+      const filePath = `task-images/${fileName}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('designs')
+        .upload(filePath, file)
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('designs')
+        .getPublicUrl(filePath)
+
+      return publicUrl
+    } catch (error) {
+      console.error('Error uploading image:', error)
+      alert('Failed to upload image')
+      return null
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleImageUpload = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files)
+    const imageFiles = fileArray.filter(file => file.type.startsWith('image/'))
+
+    if (imageFiles.length === 0) {
+      alert('Please select image files only')
+      return
+    }
+
+    const uploadPromises = imageFiles.map(file => uploadImage(file))
+    const urls = await Promise.all(uploadPromises)
+    const validUrls = urls.filter((url): url is string => url !== null)
+
+    setUploadedImages([...uploadedImages, ...validUrls])
+  }
+
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+
+    const files: File[] = []
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        const file = items[i].getAsFile()
+        if (file) files.push(file)
+      }
+    }
+
+    if (files.length > 0) {
+      e.preventDefault()
+      await handleImageUpload(files)
+    }
+  }
+
+  const handleDragDropImage = async (e: React.DragEvent) => {
+    e.preventDefault()
+    const files = e.dataTransfer?.files
+    if (files && files.length > 0) {
+      await handleImageUpload(files)
+    }
+  }
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      await handleImageUpload(files)
+    }
+  }
+
+  const removeUploadedImage = (index: number) => {
+    setUploadedImages(uploadedImages.filter((_, i) => i !== index))
+  }
+
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -89,6 +172,7 @@ export default function WorkPoints() {
             title: newTask.title,
             description: newTask.description || null,
             assigned_to: newTask.assigned_to || null,
+            images: uploadedImages.length > 0 ? uploadedImages : null,
             display_order: maxOrder + 1,
             completed: false,
           },
@@ -100,6 +184,7 @@ export default function WorkPoints() {
 
       setTasks([...tasks, data])
       setNewTask({ title: '', description: '', assigned_to: '' })
+      setUploadedImages([])
       setIsAddDialogOpen(false)
     } catch (error) {
       console.error('Error adding task:', error)
@@ -301,6 +386,63 @@ export default function WorkPoints() {
                 </Select>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Images (Optional)
+                </label>
+                <div
+                  className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center hover:border-gray-400 transition-colors cursor-pointer"
+                  onPaste={handlePaste}
+                  onDrop={handleDragDropImage}
+                  onDragOver={(e) => e.preventDefault()}
+                  onClick={() => document.getElementById('task-image-upload')?.click()}
+                >
+                  <input
+                    id="task-image-upload"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                  <ImageIcon className="mx-auto h-10 w-10 text-gray-400 mb-2" />
+                  <p className="text-sm text-gray-600 mb-1 font-medium">
+                    Click to upload, drag & drop, or paste images
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    Supports: JPG, PNG, GIF, WEBP
+                  </p>
+                </div>
+
+                {isUploading && (
+                  <p className="text-sm text-blue-600 mt-2">Uploading images...</p>
+                )}
+
+                {uploadedImages.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mt-3">
+                    {uploadedImages.map((url, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={url}
+                          alt={`Upload ${index + 1}`}
+                          className="w-full h-24 object-cover rounded border"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removeUploadedImage(index)
+                          }}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end gap-2 pt-4">
                 <Button 
                   type="button" 
@@ -408,6 +550,19 @@ export default function WorkPoints() {
                           </span>
                         </div>
                       )}
+                      {task.images && task.images.length > 0 && (
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                          {task.images.map((url, index) => (
+                            <img
+                              key={index}
+                              src={url}
+                              alt={`Task image ${index + 1}`}
+                              className="w-full h-24 object-cover rounded border hover:opacity-75 transition-opacity cursor-pointer"
+                              onClick={() => window.open(url, '_blank')}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 flex-shrink-0">
@@ -471,6 +626,19 @@ export default function WorkPoints() {
                           </span>
                         )}
                       </div>
+                      {task.images && task.images.length > 0 && (
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                          {task.images.map((url, index) => (
+                            <img
+                              key={index}
+                              src={url}
+                              alt={`Task image ${index + 1}`}
+                              className="w-full h-24 object-cover rounded border opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+                              onClick={() => window.open(url, '_blank')}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 flex-shrink-0">

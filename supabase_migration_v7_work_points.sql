@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   assigned_to TEXT CHECK (assigned_to IN ('Arun', 'Allish', 'Nirjara')),
   completed BOOLEAN DEFAULT FALSE,
   completed_at TIMESTAMPTZ,
+  images TEXT[], -- Array of image URLs
   display_order INTEGER,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
