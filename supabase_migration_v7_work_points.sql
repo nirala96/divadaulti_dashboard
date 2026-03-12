@@ -15,9 +15,17 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 
 -- Initialize display_order for any existing tasks (in case table already exists)
-UPDATE tasks 
-SET display_order = ROW_NUMBER() OVER (ORDER BY created_at ASC)
-WHERE display_order IS NULL;
+WITH numbered_tasks AS (
+  SELECT 
+    id,
+    ROW_NUMBER() OVER (ORDER BY created_at ASC) - 1 as new_order
+  FROM tasks
+  WHERE display_order IS NULL
+)
+UPDATE tasks t
+SET display_order = nt.new_order
+FROM numbered_tasks nt
+WHERE t.id = nt.id;
 
 -- Create index for faster ordering queries
 CREATE INDEX IF NOT EXISTS idx_tasks_display_order ON tasks(display_order);
