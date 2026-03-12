@@ -117,14 +117,14 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       const { data: clientsData } = await supabase
         .from('clients')
         .select('id, name, display_order')
-        .order('display_order', { ascending: true, nullsLast: true })
+        .order('display_order', { ascending: true, nullsFirst: false })
         .order('id', { ascending: true })
 
       // Fetch designs with client information, ordered by display_order (manual priority) then created_at
       const { data: designsData, error } = await supabase
         .from('designs')
         .select('*, clients(name, id)')
-        .order('display_order', { ascending: true, nullsLast: true })
+        .order('display_order', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true })
 
       if (error) throw error
