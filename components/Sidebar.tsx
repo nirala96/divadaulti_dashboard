@@ -2,13 +2,14 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Users, Package, Calendar } from "lucide-react"
+import { LayoutDashboard, Users, Package, Calendar, ClipboardList } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
   { name: "Orders", href: "/orders", icon: Package },
   { name: "Timeline", href: "/timeline", icon: Calendar },
+  { name: "Work Points", href: "/work-points", icon: ClipboardList },
 ]
 
 export function Sidebar() {
