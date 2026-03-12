@@ -46,29 +46,29 @@ export async function calculateTimeline(
     // Ensure minimum 1 day
     if (totalDays < 1) totalDays = 1
 
-    // 3. Find the latest end_date from existing designs (FIFO logic)
-    const { data: latestDesign, error: latestError } = await supabase
+    // 3. Find queue position based on capacity (parallel scheduling)
+    // Count how many designs are already in the queue
+    const { count: queueCount, error: countError } = await supabase
       .from('designs')
-      .select('end_date')
-      .order('end_date', { ascending: false, nullsFirst: false })
-      .limit(1)
-      .maybeSingle()
+      .select('*', { count: 'exact', head: true })
 
-    if (latestError) {
-      console.error('Error fetching latest design:', latestError)
+    if (countError) {
+      console.error('Error counting designs:', countError)
     }
 
-    // 4. Calculate start_date and end_date
+    // 4. Calculate start_date based on queue position and capacity
+    // Formula: Math.floor(queuePosition / dailyCapacity) = days to wait
+    // Example: If 23 orders exist and capacity is 9/day
+    //   - Orders 0-8 start on day 0
+    //   - Orders 9-17 start on day 1  
+    //   - Orders 18-26 start on day 2
+    //   - Order 23 (this new one) starts on day 2
     let startDate: Date
-
-    if (latestDesign?.end_date) {
-      // Start after the last order ends
-      startDate = new Date(latestDesign.end_date)
-      startDate.setDate(startDate.getDate() + 1) // Start the next day
-    } else {
-      // No previous orders, start today
-      startDate = new Date()
-    }
+    const currentQueuePosition = queueCount || 0
+    const daysToWait = Math.floor(currentQueuePosition / dailyCapacity)
+    
+    startDate = new Date()
+    startDate.setDate(startDate.getDate() + daysToWait)
 
     // Calculate end_date
     const endDate = new Date(startDate)
