@@ -41,6 +41,7 @@ export default function WorkPoints() {
   const [loading, setLoading] = useState(true)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
+  const [selectedFilter, setSelectedFilter] = useState<'All' | 'Arun' | 'Allish' | 'Nirjara'>('All')
 
   // Form state
   const [newTask, setNewTask] = useState({
@@ -215,8 +216,18 @@ export default function WorkPoints() {
     return <div className="p-8">Loading work points...</div>
   }
 
-  const activeTasks = tasks.filter(t => !t.completed)
-  const completedTasks = tasks.filter(t => t.completed)
+  // Filter tasks based on selected employee
+  const filteredTasks = selectedFilter === 'All' 
+    ? tasks 
+    : tasks.filter(t => t.assigned_to === selectedFilter)
+
+  const activeTasks = filteredTasks.filter(t => !t.completed)
+  const completedTasks = filteredTasks.filter(t => t.completed)
+
+  // Get task counts per employee
+  const getEmployeeTaskCount = (employee: 'Arun' | 'Allish' | 'Nirjara') => {
+    return tasks.filter(t => t.assigned_to === employee && !t.completed).length
+  }
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -305,16 +316,66 @@ export default function WorkPoints() {
         </Dialog>
       </div>
 
+      {/* Employee Filter Tags */}
+      <div className="mb-6 flex flex-wrap gap-2">
+        <Button
+          variant={selectedFilter === 'All' ? 'default' : 'outline'}
+          onClick={() => setSelectedFilter('All')}
+          className="rounded-full"
+        >
+          All Tasks ({tasks.filter(t => !t.completed).length})
+        </Button>
+        <Button
+          variant={selectedFilter === 'Arun' ? 'default' : 'outline'}
+          onClick={() => setSelectedFilter('Arun')}
+          className={`rounded-full ${
+            selectedFilter === 'Arun' 
+              ? 'bg-blue-600 hover:bg-blue-700' 
+              : 'border-blue-300 text-blue-700 hover:bg-blue-50'
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-blue-600 mr-2"></span>
+          Arun ({getEmployeeTaskCount('Arun')})
+        </Button>
+        <Button
+          variant={selectedFilter === 'Allish' ? 'default' : 'outline'}
+          onClick={() => setSelectedFilter('Allish')}
+          className={`rounded-full ${
+            selectedFilter === 'Allish' 
+              ? 'bg-green-600 hover:bg-green-700' 
+              : 'border-green-300 text-green-700 hover:bg-green-50'
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-green-600 mr-2"></span>
+          Allish ({getEmployeeTaskCount('Allish')})
+        </Button>
+        <Button
+          variant={selectedFilter === 'Nirjara' ? 'default' : 'outline'}
+          onClick={() => setSelectedFilter('Nirjara')}
+          className={`rounded-full ${
+            selectedFilter === 'Nirjara' 
+              ? 'bg-purple-600 hover:bg-purple-700' 
+              : 'border-purple-300 text-purple-700 hover:bg-purple-50'
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-purple-600 mr-2"></span>
+          Nirjara ({getEmployeeTaskCount('Nirjara')})
+        </Button>
+      </div>
+
       {/* Active Tasks */}
       <div className="mb-8">
         <h2 className="text-xl font-semibold mb-4">
-          Active Tasks ({activeTasks.length})
+          {selectedFilter === 'All' ? 'Active Tasks' : `${selectedFilter}'s Active Tasks`} ({activeTasks.length})
         </h2>
         <div className="space-y-3">
           {activeTasks.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-gray-500">
-                No active tasks. Click "Add Task" to create one.
+                {selectedFilter === 'All' 
+                  ? 'No active tasks. Click "Add Task" to create one.' 
+                  : `No active tasks for ${selectedFilter}.`
+                }
               </CardContent>
             </Card>
           ) : (
@@ -380,7 +441,7 @@ export default function WorkPoints() {
       {completedTasks.length > 0 && (
         <div>
           <h2 className="text-xl font-semibold mb-4 text-gray-600">
-            Completed Tasks ({completedTasks.length})
+            {selectedFilter === 'All' ? 'Completed Tasks' : `${selectedFilter}'s Completed Tasks`} ({completedTasks.length})
           </h2>
           <div className="space-y-3">
             {completedTasks.map((task) => (
