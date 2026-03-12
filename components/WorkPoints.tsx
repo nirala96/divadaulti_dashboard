@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Plus, GripVertical, Check, Trash2, Image as ImageIcon } from 'lucide-react'
+import { Plus, GripVertical, Check, Trash2, Image as ImageIcon, Pencil } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -41,6 +41,8 @@ export default function WorkPoints() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [loading, setLoading] = useState(true)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   const [selectedFilter, setSelectedFilter] = useState<'All' | 'Arun' | 'Allish' | 'Nirjara'>('All')
 
@@ -189,6 +191,58 @@ export default function WorkPoints() {
     } catch (error) {
       console.error('Error adding task:', error)
       alert('Failed to add task')
+    }
+  }
+
+  const handleOpenEditDialog = (task: Task) => {
+    setEditingTask(task)
+    setNewTask({
+      title: task.title,
+      description: task.description || '',
+      assigned_to: task.assigned_to || '',
+    })
+    setUploadedImages(task.images || [])
+    setIsEditDialogOpen(true)
+  }
+
+  const handleEditTask = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!editingTask || !newTask.title.trim()) return
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({
+          title: newTask.title,
+          description: newTask.description || null,
+          assigned_to: newTask.assigned_to || null,
+          images: uploadedImages.length > 0 ? uploadedImages : null,
+        })
+        .eq('id', editingTask.id)
+
+      if (error) throw error
+
+      // Update local state
+      setTasks(tasks.map(t => 
+        t.id === editingTask.id 
+          ? { 
+              ...t, 
+              title: newTask.title, 
+              description: newTask.description || null, 
+              assigned_to: newTask.assigned_to || null,
+              images: uploadedImages.length > 0 ? uploadedImages : null
+            }
+          : t
+      ))
+
+      setNewTask({ title: '', description: '', assigned_to: '' })
+      setUploadedImages([])
+      setEditingTask(null)
+      setIsEditDialogOpen(false)
+    } catch (error) {
+      console.error('Error updating task:', error)
+      alert('Failed to update task')
     }
   }
 
@@ -458,6 +512,139 @@ export default function WorkPoints() {
         </Dialog>
       </div>
 
+      {/* Edit Task Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+            <DialogDescription>
+              Update task details and save changes
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditTask} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Task Title *
+              </label>
+              <Input
+                value={newTask.title}
+                onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                placeholder="Enter task title"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Description
+              </label>
+              <Textarea
+                value={newTask.description}
+                onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                placeholder="Enter task description (optional)"
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Assign To
+              </label>
+              <Select
+                value={newTask.assigned_to}
+                onValueChange={(value) => 
+                  setNewTask({ ...newTask, assigned_to: value as 'Arun' | 'Allish' | 'Nirjara' })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select employee" />
+                </SelectTrigger>
+                <SelectContent>
+                  {EMPLOYEES.map(emp => (
+                    <SelectItem key={emp} value={emp}>
+                      {emp}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Images (Optional)
+              </label>
+              <div
+                className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center hover:border-gray-400 transition-colors cursor-pointer"
+                onPaste={handlePaste}
+                onDrop={handleDragDropImage}
+                onDragOver={(e) => e.preventDefault()}
+                onClick={() => document.getElementById('edit-task-image-upload')?.click()}
+              >
+                <input
+                  id="edit-task-image-upload"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+                <ImageIcon className="mx-auto h-10 w-10 text-gray-400 mb-2" />
+                <p className="text-sm text-gray-600 mb-1 font-medium">
+                  Click to upload, drag & drop, or paste images
+                </p>
+                <p className="text-xs text-gray-500">
+                  Supports: JPG, PNG, GIF, WEBP
+                </p>
+              </div>
+
+              {isUploading && (
+                <p className="text-sm text-blue-600 mt-2">Uploading images...</p>
+              )}
+
+              {uploadedImages.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mt-3">
+                  {uploadedImages.map((url, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={url}
+                        alt={`Upload ${index + 1}`}
+                        className="w-full h-24 object-cover rounded border"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeUploadedImage(index)
+                        }}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button 
+                type="button" 
+                variant="outline"
+                onClick={() => {
+                  setIsEditDialogOpen(false)
+                  setEditingTask(null)
+                  setNewTask({ title: '', description: '', assigned_to: '' })
+                  setUploadedImages([])
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Save Changes</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Employee Filter Tags */}
       <div className="mb-6 flex flex-wrap gap-2">
         <Button
@@ -569,6 +756,15 @@ export default function WorkPoints() {
                       <Button
                         size="sm"
                         variant="outline"
+                        onClick={() => handleOpenEditDialog(task)}
+                        className="bg-blue-50 hover:bg-blue-100 text-blue-700"
+                      >
+                        <Pencil className="w-4 h-4 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
                         onClick={() => handleToggleComplete(task)}
                         className="bg-green-50 hover:bg-green-100 text-green-700"
                       >
@@ -642,6 +838,15 @@ export default function WorkPoints() {
                     </div>
 
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenEditDialog(task)}
+                        className="bg-blue-50 hover:bg-blue-100 text-blue-700"
+                      >
+                        <Pencil className="w-4 h-4 mr-1" />
+                        Edit
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
