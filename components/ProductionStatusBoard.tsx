@@ -1252,6 +1252,13 @@ function ClientGroupRow({
         >
           <td className="px-6 py-4">
             <div className="flex items-center gap-3 pl-7">
+              {/* Priority Number Badge */}
+              <div 
+                className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-full flex items-center justify-center font-bold text-sm shadow-sm border-2 border-blue-500"
+                title={`Priority #${(design.display_order ?? 0) + 1} - Drag to reorder`}
+              >
+                {(design.display_order ?? 0) + 1}
+              </div>
               {/* Image Thumbnail */}
               {design.images && design.images.length > 0 ? (
                 <div 
