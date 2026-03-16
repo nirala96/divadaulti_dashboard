@@ -168,6 +168,15 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         groupedByClient[clientId].push(design)
       })
 
+      // Sort designs within each client group by display_order
+      Object.keys(groupedByClient).forEach(clientId => {
+        groupedByClient[clientId].sort((a, b) => {
+          const orderA = a.display_order ?? 999999
+          const orderB = b.display_order ?? 999999
+          return orderA - orderB
+        })
+      })
+
       // Create client groups using the sorted clients list (maintains display_order)
       const groups: ClientGroup[] = []
       
@@ -657,6 +666,11 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     // Reorder in global list
     const [draggedItem] = allDesigns.splice(draggedIndex, 1)
     allDesigns.splice(targetIndex, 0, draggedItem)
+
+    // Update display_order in the design objects themselves
+    allDesigns.forEach((design, index) => {
+      design.display_order = index
+    })
 
     // Update UI immediately - reorganize designs into client groups
     const updatedGroupedByClient: Record<string, DesignWithClient[]> = {}
