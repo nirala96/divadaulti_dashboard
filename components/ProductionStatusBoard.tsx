@@ -103,6 +103,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [confirmComplete, setConfirmComplete] = useState<DesignWithClient | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<DesignWithClient | null>(null)
   const [addingForClient, setAddingForClient] = useState<{ id: string, name: string } | null>(null)
+  const [reindexingClients, setReindexingClients] = useState(false)
   const [newDesignForm, setNewDesignForm] = useState({
     title: "",
     type: "Sampling" as DesignType,
@@ -597,6 +598,34 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     }
   }
 
+  const normalizeClientOrder = async () => {
+    if (reindexingClients) return
+    if (!confirm('Reindex client order based on the current visible order? This will overwrite existing priorities.')) {
+      return
+    }
+
+    setReindexingClients(true)
+    try {
+      const orderedGroups = [...clientGroups]
+      const updates = orderedGroups.map((group, index) =>
+        supabase
+          .from('clients')
+          .update({ display_order: index })
+          .eq('id', group.client_id)
+      )
+      const results = await Promise.all(updates)
+      const firstError = results.find(r => r.error)?.error
+      if (firstError) throw firstError
+
+      setClientGroups(orderedGroups.map((group, index) => ({ ...group, display_order: index })))
+    } catch (error) {
+      console.error('❌ Error reindexing client order:', error)
+      alert('Failed to reindex client order. Please try again.')
+    } finally {
+      setReindexingClients(false)
+    }
+  }
+
   // Drag and Drop Handlers for Clients
   const handleClientDragStart = (clientId: string) => {
     setDraggedClientId(clientId)
@@ -812,6 +841,15 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           </div>
         </div>
         <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={normalizeClientOrder}
+            disabled={reindexingClients || clientGroups.length === 0}
+            title="Normalize client order so each client has a unique priority"
+          >
+            {reindexingClients ? 'Reindexing...' : 'Reindex Client Order'}
+          </Button>
           {activeStageFilter && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-md border border-blue-200">
               <span className="text-sm text-blue-700">
