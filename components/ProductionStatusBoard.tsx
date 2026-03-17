@@ -625,14 +625,15 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     const orderInfo = reorderedGroups.map((g, i) => ({ name: g.client_name, order: i }))
     console.log('=== SAVING CLIENT ORDER ===', orderInfo)
     try {
-      const updates = reorderedGroups.map((group, index) => ({
-        id: group.client_id,
-        display_order: index,
-      }))
-      const { error } = await supabase
-        .from('clients')
-        .upsert(updates, { onConflict: 'id' })
-      if (error) throw error
+      const updates = reorderedGroups.map((group, index) =>
+        supabase
+          .from('clients')
+          .update({ display_order: index })
+          .eq('id', group.client_id)
+      )
+      const results = await Promise.all(updates)
+      const firstError = results.find(r => r.error)?.error
+      if (firstError) throw firstError
     } catch (error) {
       console.error('❌ Error saving client order:', error)
       alert('Failed to save client order. Please refresh and try again.')
@@ -724,14 +725,15 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     const orderInfo = allDesigns.map((d, i) => ({ title: d.title, order: i }))
     console.log('=== SAVING DESIGN ORDER ===', orderInfo)
     try {
-      const updates = allDesigns.map((design, index) => ({
-        id: design.id,
-        display_order: index,
-      }))
-      const { error } = await supabase
-        .from('designs')
-        .upsert(updates, { onConflict: 'id' })
-      if (error) throw error
+      const updates = allDesigns.map((design, index) =>
+        supabase
+          .from('designs')
+          .update({ display_order: index })
+          .eq('id', design.id)
+      )
+      const results = await Promise.all(updates)
+      const firstError = results.find(r => r.error)?.error
+      if (firstError) throw firstError
 
       if (priorityChanged) {
         const { error: priorityError } = await supabase
