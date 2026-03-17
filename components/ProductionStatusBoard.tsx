@@ -624,19 +624,19 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     // Save to database in background (don't block UI)
     const orderInfo = reorderedGroups.map((g, i) => ({ name: g.client_name, order: i }))
     console.log('=== SAVING CLIENT ORDER ===', orderInfo)
-    reorderedGroups.forEach((group, index) => {
-      supabase
+    try {
+      const updates = reorderedGroups.map((group, index) => ({
+        id: group.client_id,
+        display_order: index,
+      }))
+      const { error } = await supabase
         .from('clients')
-        .update({ display_order: index })
-        .eq('id', group.client_id)
-        .then(({ error, data }) => {
-          if (error) {
-            console.error('❌ Error saving client order:', error)
-          } else {
-            console.log(`✅ Saved client "${group.client_name}" with order ${index}`)
-          }
-        })
-    })
+        .upsert(updates, { onConflict: 'id' })
+      if (error) throw error
+    } catch (error) {
+      console.error('❌ Error saving client order:', error)
+      alert('Failed to save client order. Please refresh and try again.')
+    }
 
     setDraggedClientId(null)
     setDragOverClientId(null)
@@ -683,9 +683,20 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       return
     }
 
+    const targetDesign = allDesigns[targetIndex]
+    const draggedDesign = allDesigns[draggedIndex]
+
     // Reorder in global list
     const [draggedItem] = allDesigns.splice(draggedIndex, 1)
     allDesigns.splice(targetIndex, 0, draggedItem)
+
+    // If user drops onto a priority item, make dragged item priority (and vice versa)
+    const shouldBePriority = targetDesign?.is_priority ?? false
+    const wasPriority = draggedDesign?.is_priority ?? false
+    const priorityChanged = shouldBePriority !== wasPriority
+    if (priorityChanged) {
+      draggedItem.is_priority = shouldBePriority
+    }
 
     // Update display_order in the design objects themselves
     allDesigns.forEach((design, index) => {
@@ -712,19 +723,28 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     // Save to database in background (don't block UI)
     const orderInfo = allDesigns.map((d, i) => ({ title: d.title, order: i }))
     console.log('=== SAVING DESIGN ORDER ===', orderInfo)
-    allDesigns.forEach((design, index) => {
-      supabase
+    try {
+      const updates = allDesigns.map((design, index) => ({
+        id: design.id,
+        display_order: index,
+      }))
+      const { error } = await supabase
         .from('designs')
-        .update({ display_order: index })
-        .eq('id', design.id)
-        .then(({ error, data }) => {
-          if (error) {
-            console.error('❌ Error saving design order:', error)
-          } else {
-            console.log(`✅ Saved design "${design.title}" with order ${index}`)
-          }
-        })
-    })
+        .upsert(updates, { onConflict: 'id' })
+      if (error) throw error
+
+      if (priorityChanged) {
+        const { error: priorityError } = await supabase
+          .from('designs')
+          .update({ is_priority: shouldBePriority })
+          .eq('id', draggedItem.id)
+        if (priorityError) throw priorityError
+      }
+    } catch (error) {
+      console.error('❌ Error saving design order:', error)
+      alert('Failed to save design order. Please refresh and try again.')
+      fetchDesigns()
+    }
 
     setDraggedDesignId(null)
     setDragOverDesignId(null)
