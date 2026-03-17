@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ChevronDown, ChevronRight, Calendar, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Upload } from "lucide-react"
+import { ChevronDown, ChevronRight, Calendar, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Upload, Star } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -120,10 +120,11 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         .order('display_order', { ascending: true, nullsFirst: false })
         .order('id', { ascending: true })
 
-      // Fetch designs with client information, ordered by display_order (manual priority) then created_at
+      // Fetch designs with client information, ordered by priority first, then display_order, then created_at
       const { data: designsData, error } = await supabase
         .from('designs')
         .select('*, clients(name, id)')
+        .order('is_priority', { ascending: false, nullsFirst: false })
         .order('display_order', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true })
 
@@ -277,6 +278,25 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     } catch (error: any) {
       console.error('Error updating stage status:', error)
       alert('Failed to update stage status: ' + error.message)
+    }
+  }
+
+  const togglePriority = async (designId: string, currentPriority: boolean) => {
+    try {
+      const newPriority = !currentPriority
+
+      const { error } = await supabase
+        .from('designs')
+        .update({ is_priority: newPriority })
+        .eq('id', designId)
+
+      if (error) throw error
+
+      // Refresh to re-sort with priority designs at top
+      fetchDesigns()
+    } catch (error: any) {
+      console.error('Error toggling priority:', error)
+      alert('Failed to toggle priority: ' + error.message)
     }
   }
 
@@ -819,6 +839,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     onToggle={() => toggleClientExpansion(group.client_id)}
                     onUpdateStatus={updateDesignStatus}
                     onUpdateStageStatus={updateStageStatus}
+                    onTogglePriority={togglePriority}
                     onImageClick={setPreviewImage}
                     onTileClick={openNotesModal}
                     onCompleteClick={setConfirmComplete}
@@ -1140,6 +1161,7 @@ interface ClientGroupRowProps {
   onToggle: () => void
   onUpdateStatus: (designId: string, status: DesignStatus) => void
   onUpdateStageStatus: (designId: string, stage: DesignStatus, state: StageState) => void
+  onTogglePriority: (designId: string, currentPriority: boolean) => void
   onImageClick: (imageUrl: string) => void
   onTileClick: (design: DesignWithClient) => void
   onCompleteClick: (design: DesignWithClient) => void
@@ -1165,6 +1187,7 @@ function ClientGroupRow({
   onToggle, 
   onUpdateStatus, 
   onUpdateStageStatus, 
+  onTogglePriority,
   onImageClick, 
   onTileClick, 
   onCompleteClick, 
@@ -1266,13 +1289,23 @@ function ClientGroupRow({
         >
           <td className="px-6 py-4">
             <div className="flex items-center gap-3 pl-7">
-              {/* Priority Number Badge */}
-              <div 
-                className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-full flex items-center justify-center font-bold text-sm shadow-sm border-2 border-blue-500"
-                title={`Priority #${(design.display_order ?? 0) + 1} - Drag to reorder`}
+              {/* Priority Toggle Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onTogglePriority(design.id, design.is_priority || false)
+                }}
+                className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                  design.is_priority
+                    ? 'bg-yellow-400 hover:bg-yellow-500 text-yellow-900 shadow-md'
+                    : 'bg-gray-200 hover:bg-gray-300 text-gray-400'
+                }`}
+                title={design.is_priority ? 'Remove from priority' : 'Mark as priority'}
               >
-                {(design.display_order ?? 0) + 1}
-              </div>
+                <Star 
+                  className={`w-5 h-5 ${design.is_priority ? 'fill-yellow-900' : ''}`}
+                />
+              </button>
               {/* Image Thumbnail */}
               {design.images && design.images.length > 0 ? (
                 <div 

@@ -47,6 +47,8 @@ export type Design = {
   created_at: string
   start_date?: string | null
   end_date?: string | null
+  display_order?: number | null
+  is_priority?: boolean | null
 }
 
 export type WorkforceSettings = {
