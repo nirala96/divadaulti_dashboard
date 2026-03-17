@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { supabase, type Design, type DesignStatus, type DesignType, type StageState } from "@/lib/supabase"
 import { formatDisplayDate } from "@/lib/timeline"
 import { Button } from "@/components/ui/button"
@@ -104,6 +104,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [confirmDelete, setConfirmDelete] = useState<DesignWithClient | null>(null)
   const [addingForClient, setAddingForClient] = useState<{ id: string, name: string } | null>(null)
   const [reindexingClients, setReindexingClients] = useState(false)
+  const autoReindexedRef = useRef(false)
   const [newDesignForm, setNewDesignForm] = useState({
     title: "",
     type: "Sampling" as DesignType,
@@ -123,6 +124,46 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     console.log('🔄 ProductionStatusBoard mounted - fetching designs...')
     fetchDesigns()
   }, [activeFilter, activeStageFilter])
+
+  const needsClientReindex = (groups: ClientGroup[]) => {
+    const seen = new Set<number>()
+    for (const group of groups) {
+      if (group.display_order === null || Number.isNaN(group.display_order)) {
+        return true
+      }
+      if (seen.has(group.display_order)) {
+        return true
+      }
+      seen.add(group.display_order)
+    }
+    return false
+  }
+
+  const applyClientReindex = async (orderedGroups: ClientGroup[], silent: boolean) => {
+    if (reindexingClients) return null
+    setReindexingClients(true)
+    try {
+      const updates = orderedGroups.map((group, index) =>
+        supabase
+          .from('clients')
+          .update({ display_order: index })
+          .eq('id', group.client_id)
+      )
+      const results = await Promise.all(updates)
+      const firstError = results.find(r => r.error)?.error
+      if (firstError) throw firstError
+
+      return orderedGroups.map((group, index) => ({ ...group, display_order: index }))
+    } catch (error) {
+      console.error('❌ Error reindexing client order:', error)
+      if (!silent) {
+        alert('Failed to reindex client order. Please try again.')
+      }
+      return null
+    } finally {
+      setReindexingClients(false)
+    }
+  }
 
   const fetchDesigns = async () => {
     setLoading(true)
@@ -221,6 +262,20 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       })
 
       console.log('Client groups order:', groups.map(g => ({ name: g.client_name, order: g.display_order })))
+      const shouldAutoReindex =
+        !autoReindexedRef.current &&
+        activeFilter === 'All' &&
+        !activeStageFilter &&
+        needsClientReindex(groups)
+
+      if (shouldAutoReindex) {
+        autoReindexedRef.current = true
+        const updatedGroups = await applyClientReindex(groups, true)
+        if (updatedGroups) {
+          setClientGroups(updatedGroups)
+          return
+        }
+      }
 
       setClientGroups(groups)
     } catch (error) {
@@ -604,25 +659,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       return
     }
 
-    setReindexingClients(true)
-    try {
-      const orderedGroups = [...clientGroups]
-      const updates = orderedGroups.map((group, index) =>
-        supabase
-          .from('clients')
-          .update({ display_order: index })
-          .eq('id', group.client_id)
-      )
-      const results = await Promise.all(updates)
-      const firstError = results.find(r => r.error)?.error
-      if (firstError) throw firstError
-
-      setClientGroups(orderedGroups.map((group, index) => ({ ...group, display_order: index })))
-    } catch (error) {
-      console.error('❌ Error reindexing client order:', error)
-      alert('Failed to reindex client order. Please try again.')
-    } finally {
-      setReindexingClients(false)
+    const orderedGroups = [...clientGroups]
+    const updatedGroups = await applyClientReindex(orderedGroups, false)
+    if (updatedGroups) {
+      setClientGroups(updatedGroups)
     }
   }
 
