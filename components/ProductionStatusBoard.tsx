@@ -61,6 +61,19 @@ const STAGE_COLORS: Record<DesignStatus, string> = {
   'Dispatch': 'bg-emerald-100 text-emerald-800',
 }
 
+const computeMidpointPriority = (above: number | null, below: number | null) => {
+  if (above !== null && below !== null) {
+    return (above + below) / 2
+  }
+  if (above === null && below !== null) {
+    return below - 1
+  }
+  if (above !== null && below === null) {
+    return above + 1
+  }
+  return 0
+}
+
 type DesignWithClient = Design & {
   client_name?: string
   client_id?: string
@@ -616,6 +629,14 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     
     const [draggedItem] = reorderedGroups.splice(draggedIndex, 1)
     reorderedGroups.splice(targetIndex, 0, draggedItem)
+
+    const draggedNewIndex = reorderedGroups.findIndex(g => g.client_id === draggedItem.client_id)
+    const above = draggedNewIndex > 0 ? reorderedGroups[draggedNewIndex - 1]?.display_order ?? null : null
+    const below = draggedNewIndex < reorderedGroups.length - 1
+      ? reorderedGroups[draggedNewIndex + 1]?.display_order ?? null
+      : null
+    const newPriority = computeMidpointPriority(above, below)
+    draggedItem.display_order = newPriority
     
     // Update UI immediately
     setClientGroups(reorderedGroups)
@@ -624,15 +645,11 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     const orderInfo = reorderedGroups.map((g, i) => ({ name: g.client_name, order: i }))
     console.log('=== SAVING CLIENT ORDER ===', orderInfo)
     try {
-      const updates = reorderedGroups.map((group, index) =>
-        supabase
-          .from('clients')
-          .update({ display_order: index })
-          .eq('id', group.client_id)
-      )
-      const results = await Promise.all(updates)
-      const firstError = results.find(r => r.error)?.error
-      if (firstError) throw firstError
+      const { error } = await supabase
+        .from('clients')
+        .update({ display_order: newPriority })
+        .eq('id', draggedItem.client_id)
+      if (error) throw error
     } catch (error) {
       console.error('❌ Error saving client order:', error)
       alert('Failed to save client order. Please refresh and try again.')
