@@ -120,11 +120,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         .order('display_order', { ascending: true, nullsFirst: false })
         .order('id', { ascending: true })
 
-      // Fetch designs with client information, ordered by priority first, then display_order, then created_at
+      // Fetch designs with client information, ordered by display_order, then created_at
       const { data: designsData, error } = await supabase
         .from('designs')
         .select('*, clients(name, id)')
-        .order('is_priority', { ascending: false, nullsFirst: false })
         .order('display_order', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true })
 
