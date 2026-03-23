@@ -96,7 +96,6 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<DesignType | 'All'>(filter)
   const [activeStageFilter, setActiveStageFilter] = useState<DesignStatus | null>(null)
-  const [showCompleted, setShowCompleted] = useState(true)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [editingDesign, setEditingDesign] = useState<DesignWithClient | null>(null)
   const [notesValue, setNotesValue] = useState("")
@@ -124,7 +123,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   useEffect(() => {
     console.log('🔄 ProductionStatusBoard mounted - fetching designs...')
     fetchDesigns()
-  }, [activeFilter, activeStageFilter, showCompleted])
+  }, [activeFilter, activeStageFilter])
 
   const isDesignCompleted = (design: DesignWithClient): boolean => {
     if (!design.stage_status) return false
@@ -230,33 +229,22 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         groupedByClient[clientId].push(design)
       })
 
-      // Sort designs within each client group by priority, completion status, then display_order
+      // Sort designs within each client group by priority, then display_order
       Object.keys(groupedByClient).forEach(clientId => {
+        // Filter out completed designs - they now appear in separate Completed Orders page
+        groupedByClient[clientId] = groupedByClient[clientId].filter(d => !isDesignCompleted(d))
+        
         groupedByClient[clientId].sort((a, b) => {
-          // Check completion status
-          const aCompleted = isDesignCompleted(a)
-          const bCompleted = isDesignCompleted(b)
-          
           // Priority designs first
           const aPriority = a.is_priority ? 1 : 0
           const bPriority = b.is_priority ? 1 : 0
           if (aPriority !== bPriority) return bPriority - aPriority
-          
-          // Non-completed designs before completed ones
-          if (aCompleted !== bCompleted) {
-            return aCompleted ? 1 : -1
-          }
           
           // Then by display_order
           const orderA = a.display_order ?? 999999
           const orderB = b.display_order ?? 999999
           return orderA - orderB
         })
-        
-        // Filter out completed designs if showCompleted is false
-        if (!showCompleted) {
-          groupedByClient[clientId] = groupedByClient[clientId].filter(d => !isDesignCompleted(d))
-        }
       })
 
       // Create client groups using the sorted clients list (maintains display_order)
@@ -906,17 +894,6 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
             Production Only
           </Button>
           </div>
-          <div className="flex items-center gap-2 ml-4 pl-4 border-l border-gray-300">
-            <span className="text-sm font-medium text-gray-700">Show:</span>
-            <Button
-              variant={showCompleted ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setShowCompleted(!showCompleted)}
-              className={showCompleted ? '' : 'text-gray-500'}
-            >
-              {showCompleted ? 'Hide' : 'Show'} Completed
-            </Button>
-          </div>
         </div>
         <div className="flex items-center gap-4">
           <Button
@@ -1418,32 +1395,24 @@ function ClientGroupRow({
         const overdueStatus = isOverdue(design)
         const isDraggingDesign = draggedDesignId === design.id
         const isOverDesign = dragOverDesignId === design.id
-        const isCompleted = STAGES.every(stage => design.stage_status?.[stage] === 'completed')
         return (
         <tr 
           key={design.id} 
-          className={`transition-all ${
-            isCompleted
-              ? 'bg-gray-50 opacity-60 border-l-4 border-l-gray-300'
-              : `hover:bg-gray-50 border-l-4 cursor-move ${
-                  overdueStatus 
-                    ? 'border-l-red-500 bg-red-50' 
-                    : 'border-l-transparent hover:border-l-blue-500'
-                }`
+          className={`transition-all hover:bg-gray-50 border-l-4 cursor-move ${
+            overdueStatus 
+              ? 'border-l-red-500 bg-red-50' 
+              : 'border-l-transparent hover:border-l-blue-500'
           } ${isDraggingDesign ? 'opacity-50' : ''} ${isOverDesign ? 'border-t-2 border-t-blue-400' : ''}`}
-          draggable={!isCompleted}
+          draggable={true}
           onDragStart={(e) => {
-            if (isCompleted) return
             e.stopPropagation()
             onDesignDragStart(design.id)
           }}
           onDragOver={(e) => {
-            if (isCompleted) return
             e.stopPropagation()
             onDesignDragOver(e, design.id)
           }}
           onDrop={(e) => {
-            if (isCompleted) return
             e.stopPropagation()
             onDesignDrop(e, design.id, group.client_id)
           }}
@@ -1488,22 +1457,19 @@ function ClientGroupRow({
                 </div>
               )}  
               <div className="min-w-0 flex-1 cursor-pointer hover:text-blue-600" onClick={() => onTileClick(design)}>
-                <div className={`text-sm font-medium truncate hover:underline ${
-                  isCompleted ? 'text-gray-500 line-through' : 'text-gray-900'
-                }`}>
+                <div className="text-sm font-medium text-gray-900 truncate hover:underline">
                   {design.title}
-                  {isCompleted && <span className="ml-2 text-xs text-green-600 font-semibold no-underline">✓ COMPLETED</span>}
                 </div>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge 
                     variant={design.type === 'Sampling' ? 'secondary' : 'default'}
-                    className={`text-xs ${isCompleted ? 'opacity-60' : ''}`}
+                    className="text-xs"
                   >
                     {design.type}
                   </Badge>
                   {design.notes && design.notes.trim() && (
                     <span title="Has notes">
-                      <FileText className={`h-3 w-3 ${isCompleted ? 'text-gray-400' : 'text-blue-500'}`} />
+                      <FileText className="h-3 w-3 text-blue-500" />
                     </span>
                   )}
                 </div>
