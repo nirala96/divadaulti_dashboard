@@ -16,7 +16,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Plus } from "lucide-react"
 
-export function AddClientModal() {
+interface AddClientModalProps {
+  onClientAdded?: () => void
+}
+
+export function AddClientModal({ onClientAdded }: AddClientModalProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -40,6 +44,7 @@ export function AddClientModal() {
       alert("Client added successfully!")
       setFormData({ name: "", contact_person: "", email: "" })
       setOpen(false)
+      onClientAdded?.() // Call the callback to refresh the list
     } catch (error: any) {
       alert("Error adding client: " + error.message)
     } finally {

@@ -10,6 +10,8 @@ export type Client = {
   name: string
   contact_person?: string | null
   email?: string | null
+  phone?: string | null
+  display_order?: number | null
   created_at: string
 }
 
