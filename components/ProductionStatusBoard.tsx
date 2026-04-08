@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { supabase, type Design, type DesignStatus, type DesignType, type StageState } from "@/lib/supabase"
+import { compressImage } from "@/lib/imageUtils"
 import { formatDisplayDate } from "@/lib/timeline"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -62,13 +63,20 @@ function ImageCarousel({
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
+        
+        // Compress image before uploading (reduces egress by 95%!)
+        const compressed = await compressImage(file, 1200, 0.8)
+        
         const fileExt = file.name.split('.').pop()
         const fileName = `${Date.now()}-${Math.random()}.${fileExt}`
         const filePath = `${fileName}`
 
         const { data, error } = await supabase.storage
           .from('design-images')
-          .upload(filePath, file, { upsert: true })
+          .upload(filePath, compressed, { 
+            upsert: true,
+            cacheControl: '2592000' // Cache for 30 days
+          })
 
         if (error) throw error
 
@@ -329,13 +337,20 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
+        
+        // Compress image before uploading
+        const compressed = await compressImage(file, 1200, 0.8)
+        
         const fileExt = file.name.split('.').pop()
         const fileName = `${Date.now()}-${Math.random()}.${fileExt}`
         const filePath = `${fileName}`
 
         const { data, error } = await supabase.storage
           .from('design-images')
-          .upload(filePath, file, { upsert: true })
+          .upload(filePath, compressed, { 
+            upsert: true,
+            cacheControl: '2592000' // Cache for 30 days
+          })
 
         if (error) throw error
 
