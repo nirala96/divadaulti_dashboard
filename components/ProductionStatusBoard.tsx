@@ -25,6 +25,139 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
+// Image Carousel Component with Hover Cycling
+function ImageCarousel({ 
+  images, 
+  title, 
+  designId,
+  onImageClick,
+  onImagesUpdate 
+}: { 
+  images: string[]; 
+  title: string;
+  designId: string;
+  onImageClick: (url: string) => void;
+  onImagesUpdate: (newImages: string[]) => void;
+}) {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isHovering, setIsHovering] = useState(false)
+  const [imageError, setImageError] = useState(false)
+
+  useEffect(() => {
+    if (!isHovering || images.length <= 1) return
+
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % images.length)
+    }, 800) // Change image every 800ms on hover
+
+    return () => clearInterval(interval)
+  }, [isHovering, images.length])
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    try {
+      const uploadedUrls: string[] = []
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${Date.now()}-${Math.random()}.${fileExt}`
+        const filePath = `${fileName}`
+
+        const { data, error } = await supabase.storage
+          .from('design-images')
+          .upload(filePath, file, { upsert: true })
+
+        if (error) throw error
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('design-images')
+          .getPublicUrl(filePath)
+
+        uploadedUrls.push(publicUrl)
+      }
+
+      // Add new images to existing ones
+      const newImages = [...images, ...uploadedUrls]
+      onImagesUpdate(newImages)
+    } catch (error) {
+      console.error('Error uploading images:', error)
+      alert('Failed to upload images')
+    }
+  }
+
+  if (imageError) {
+    return (
+      <div className="relative group">
+        <div className="w-12 h-12 flex-shrink-0 bg-red-100 rounded flex items-center justify-center">
+          <ImageIcon className="h-5 w-5 text-red-400" />
+        </div>
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          id={`upload-replace-${designId}`}
+          onChange={handleImageUpload}
+        />
+        <label
+          htmlFor={`upload-replace-${designId}`}
+          className="absolute inset-0 flex items-center justify-center bg-blue-500 bg-opacity-0 group-hover:bg-opacity-80 transition-all cursor-pointer rounded"
+          title="Image unavailable - upload new"
+        >
+          <Upload className="h-5 w-5 text-white opacity-0 group-hover:opacity-100" />
+        </label>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative group">
+      <div 
+        className="relative w-12 h-12 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity rounded overflow-hidden"
+        onClick={() => onImageClick(images[currentIndex])}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => {
+          setIsHovering(false)
+          setCurrentIndex(0)
+        }}
+      >
+        <Image
+          src={images[currentIndex]}
+          alt={title}
+          fill
+          className="object-cover"
+          sizes="48px"
+          unoptimized
+          onError={() => setImageError(true)}
+        />
+        {images.length > 1 && (
+          <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-[10px] px-1 text-center">
+            {currentIndex + 1}/{images.length}
+          </div>
+        )}
+      </div>
+      <input
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        id={`upload-add-${designId}`}
+        onChange={handleImageUpload}
+      />
+      <label
+        htmlFor={`upload-add-${designId}`}
+        className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-blue-600 shadow-lg"
+        title="Add more images"
+      >
+        <Plus className="h-3 w-3 text-white" />
+      </label>
+    </div>
+  )
+}
+
 const STAGES: DesignStatus[] = [
   'Payment Received',
   'Fabric Finalize',
@@ -168,6 +301,64 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       return null
     } finally {
       setReindexingClients(false)
+    }
+  }
+
+  const handleUpdateDesignImages = async (designId: string, newImages: string[]) => {
+    try {
+      const { error } = await supabase
+        .from('designs')
+        .update({ images: newImages })
+        .eq('id', designId)
+
+      if (error) throw error
+
+      // Refresh designs to show updated images
+      await fetchDesigns()
+    } catch (error) {
+      console.error('Error updating design images:', error)
+      alert('Failed to update images')
+    }
+  }
+
+  const handleImageUploadForDesign = async (designId: string, files: FileList | null) => {
+    if (!files || files.length === 0) return
+
+    try {
+      const uploadedUrls: string[] = []
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${Date.now()}-${Math.random()}.${fileExt}`
+        const filePath = `${fileName}`
+
+        const { data, error } = await supabase.storage
+          .from('design-images')
+          .upload(filePath, file, { upsert: true })
+
+        if (error) throw error
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('design-images')
+          .getPublicUrl(filePath)
+
+        uploadedUrls.push(publicUrl)
+      }
+
+      // Update design with new images
+      const { error: updateError } = await supabase
+        .from('designs')
+        .update({ images: uploadedUrls })
+        .eq('id', designId)
+
+      if (updateError) throw updateError
+
+      // Refresh designs
+      await fetchDesigns()
+    } catch (error) {
+      console.error('Error uploading images:', error)
+      alert('Failed to upload images')
     }
   }
 
@@ -1437,23 +1628,34 @@ function ClientGroupRow({
                   className={`w-5 h-5 ${design.is_priority ? 'fill-yellow-900' : ''}`}
                 />
               </button>
-              {/* Image Thumbnail */}
+              {/* Image Thumbnail with Hover Cycling */}
               {design.images && design.images.length > 0 ? (
-                <div 
-                  className="relative w-12 h-12 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity rounded overflow-hidden"
-                  onClick={() => onImageClick(design.images[0])}
-                >
-                  <Image
-                    src={design.images[0]}
-                    alt={design.title}
-                    fill
-                    className="object-cover"
-                    sizes="48px"
-                  />
-                </div>
+                <ImageCarousel
+                  images={design.images}
+                  title={design.title}
+                  designId={design.id}
+                  onImageClick={onImageClick}
+                  onImagesUpdate={(newImages) => handleUpdateDesignImages(design.id, newImages)}
+                />
               ) : (
-                <div className="w-12 h-12 flex-shrink-0 bg-gray-100 rounded flex items-center justify-center">
-                  <ImageIcon className="h-5 w-5 text-gray-400" />
+                <div className="relative group">
+                  <div className="w-12 h-12 flex-shrink-0 bg-gray-100 rounded flex items-center justify-center">
+                    <ImageIcon className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    id={`upload-${design.id}`}
+                    onChange={(e) => handleImageUploadForDesign(design.id, e.target.files)}
+                  />
+                  <label
+                    htmlFor={`upload-${design.id}`}
+                    className="absolute inset-0 flex items-center justify-center bg-blue-500 bg-opacity-0 group-hover:bg-opacity-80 transition-all cursor-pointer rounded"
+                  >
+                    <Upload className="h-5 w-5 text-white opacity-0 group-hover:opacity-100" />
+                  </label>
                 </div>
               )}  
               <div className="min-w-0 flex-1 cursor-pointer hover:text-blue-600" onClick={() => onTileClick(design)}>
