@@ -686,12 +686,25 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     if (!confirmDelete) return
     
     try {
-      const { error } = await supabase
+      console.log('Attempting to delete design:', confirmDelete.id)
+      
+      const { data, error } = await supabase
         .from('designs')
         .delete()
         .eq('id', confirmDelete.id)
+        .select()
 
-      if (error) throw error
+      if (error) {
+        console.error('Delete error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        })
+        throw error
+      }
+
+      console.log('Delete successful:', data)
 
       // Update local state - remove the design and filter out empty client groups
       setClientGroups(prevGroups =>
@@ -704,9 +717,12 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       )
 
       setConfirmDelete(null)
+      
+      // Optionally refresh to ensure sync
+      await fetchDesigns()
     } catch (error: any) {
       console.error('Error deleting design:', error)
-      alert('Failed to delete design: ' + error.message)
+      alert(`Failed to delete design: ${error.message || 'Unknown error'}\n\nCheck browser console for details.`)
     }
   }
 
