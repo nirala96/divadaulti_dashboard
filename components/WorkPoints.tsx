@@ -79,21 +79,22 @@ export default function WorkPoints() {
   const uploadImage = async (file: File): Promise<string | null> => {
     try {
       setIsUploading(true)
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`
-      const filePath = `task-images/${fileName}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('designs')
-        .upload(filePath, file)
-
-      if (uploadError) throw uploadError
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('designs')
-        .getPublicUrl(filePath)
-
-      return publicUrl
+      
+      // Upload to Cloudinary via API
+      const formData = new FormData()
+      formData.append('files', file)
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload image')
+      }
+      
+      const data = await response.json()
+      return data.urls[0] || null
     } catch (error) {
       console.error('Error uploading image:', error)
       alert('Failed to upload image')

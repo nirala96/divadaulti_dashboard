@@ -152,30 +152,28 @@ export function AddDesignForm() {
   }
 
   const uploadImages = async (): Promise<string[]> => {
-    const uploadedUrls: string[] = []
-
-    for (const file of imageFiles) {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Math.random()}.${fileExt}`
-      const filePath = `${fileName}`
-
-      const { error: uploadError } = await supabase.storage
-        .from('design-images')
-        .upload(filePath, file)
-
-      if (uploadError) {
-        console.error('Error uploading image:', uploadError)
-        continue
+    if (imageFiles.length === 0) return []
+    
+    try {
+      // Upload to Cloudinary via API
+      const formData = new FormData()
+      imageFiles.forEach(file => formData.append('files', file))
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload images')
       }
-
-      const { data } = supabase.storage
-        .from('design-images')
-        .getPublicUrl(filePath)
-
-      uploadedUrls.push(data.publicUrl)
+      
+      const data = await response.json()
+      return data.urls
+    } catch (error) {
+      console.error('Error uploading images:', error)
+      return []
     }
-
-    return uploadedUrls
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
