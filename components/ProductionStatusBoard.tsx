@@ -1,8 +1,41 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { supabase, type Design, type DesignStatus, type DesignType, type StageState } from "@/lib/supabase"
 import { compressImage } from "@/lib/imageUtils"
+import {
+  getDesignsWithClients,
+  updateDesignStageStatus,
+  updateDesignNotes,
+  updateDesignOrder,
+  updateDesignImages,
+  updateClientOrder,
+  addDesign,
+  deleteDesign,
+  completeDesign,
+  type Design
+} from "@/lib/actions"
+
+type DesignStatus = string
+type DesignType = 'Sampling' | 'Production'
+type StageState = 'vacant' | 'in-progress' | 'completed'
+
+// Helper function to upload images via API
+async function uploadImagesToCloudinary(files: File[]): Promise<string[]> {
+  const formData = new FormData()
+  files.forEach(file => formData.append('files', file))
+  
+  const response = await fetch('/api/upload', {
+    method: 'POST',
+    body: formData
+  })
+  
+  if (!response.ok) {
+    throw new Error('Failed to upload images')
+  }
+  
+  const data = await response.json()
+  return data.urls
+}
 import { formatDisplayDate } from "@/lib/timeline"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -59,33 +92,8 @@ function ImageCarousel({
     if (!files || files.length === 0) return
 
     try {
-      const uploadedUrls: string[] = []
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
-        
-        // Compress image before uploading (reduces egress by 95%!)
-        const compressed = await compressImage(file, 1200, 0.8)
-        
-        const fileExt = file.name.split('.').pop()
-        const fileName = `${Date.now()}-${Math.random()}.${fileExt}`
-        const filePath = `${fileName}`
-
-        const { data, error } = await supabase.storage
-          .from('design-images')
-          .upload(filePath, compressed, { 
-            upsert: true,
-            cacheControl: '2592000' // Cache for 30 days
-          })
-
-        if (error) throw error
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('design-images')
-          .getPublicUrl(filePath)
-
-        uploadedUrls.push(publicUrl)
-      }
+      const fileArray = Array.from(files)
+      const uploadedUrls = await uploadImagesToCloudinary(fileArray)
 
       // Add new images to existing ones
       const newImages = [...images, ...uploadedUrls]
@@ -335,41 +343,11 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     if (!files || files.length === 0) return
 
     try {
-      const uploadedUrls: string[] = []
-
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]
-        
-        // Compress image before uploading
-        const compressed = await compressImage(file, 1200, 0.8)
-        
-        const fileExt = file.name.split('.').pop()
-        const fileName = `${Date.now()}-${Math.random()}.${fileExt}`
-        const filePath = `${fileName}`
-
-        const { data, error } = await supabase.storage
-          .from('design-images')
-          .upload(filePath, compressed, { 
-            upsert: true,
-            cacheControl: '2592000' // Cache for 30 days
-          })
-
-        if (error) throw error
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('design-images')
-          .getPublicUrl(filePath)
-
-        uploadedUrls.push(publicUrl)
-      }
+      const fileArray = Array.from(files)
+      const uploadedUrls = await uploadImagesToCloudinary(fileArray)
 
       // Update design with new images
-      const { error: updateError } = await supabase
-        .from('designs')
-        .update({ images: uploadedUrls })
-        .eq('id', designId)
-
-      if (updateError) throw updateError
+      await updateDesignImages(designId, uploadedUrls)
 
       // Refresh designs
       await fetchDesigns()
@@ -382,21 +360,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const fetchDesigns = async () => {
     setLoading(true)
     try {
-      // Fetch all clients first to get their display_order
-      const { data: clientsData } = await supabase
-        .from('clients')
-        .select('id, name, display_order')
-        .order('display_order', { ascending: true, nullsFirst: false })
-        .order('id', { ascending: true })
-
-      // Fetch designs with client information, ordered by display_order, then created_at
-      const { data: designsData, error } = await supabase
-        .from('designs')
-        .select('*, clients(name, id)')
-        .order('display_order', { ascending: true, nullsFirst: false })
-        .order('created_at', { ascending: true })
-
-      if (error) throw error
+      // Fetch designs with clients using server action
+      const designsData = await getDesignsWithClients()
 
       // Debug: Log the first few designs with their display_order
       const designOrders = designsData?.slice(0, 10).map(d => ({ 
@@ -410,8 +375,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       // Transform data to include client name and id
       const designsWithClients: DesignWithClient[] = (designsData || []).map((design: any) => ({
         ...design,
-        client_name: design.clients?.name || 'Unknown Client',
-        client_id: design.clients?.id || design.client_id
+        client_name: design.client_name || 'Unknown Client',
+        client_id: design.client_id
       }))
 
       // Apply type filter
@@ -455,35 +420,34 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         })
       })
 
-      // Create client groups using the sorted clients list (maintains display_order)
+      // Create client groups using the designs data
       const groups: ClientGroup[] = []
       
-      // First, add clients that have designs (in their display_order)
-      clientsData?.forEach(client => {
-        if (groupedByClient[client.id]) {
-          groups.push({
-            client_id: client.id,
-            client_name: client.name,
-            designs: groupedByClient[client.id],
-            isExpanded: true,
-            display_order: client.display_order
+      // Get unique clients from designs
+      const clientMap = new Map<string, { name: string, display_order: number | null }>()
+      designsWithClients.forEach(design => {
+        if (!clientMap.has(design.client_id)) {
+          clientMap.set(design.client_id, {
+            name: design.client_name,
+            display_order: null // Will be set if we have it
           })
         }
       })
       
-      // Then add any clients not in the clients table (shouldn't happen normally)
-      Object.entries(groupedByClient).forEach(([clientId, designs]) => {
-        if (!clientsData?.find(c => c.id === clientId)) {
+      // Build groups from filtered designs
+      clientMap.forEach((client, clientId) => {
+        const clientDesigns = groupedByClient[clientId]
+        if (clientDesigns && clientDesigns.length > 0) {
           groups.push({
             client_id: clientId,
-            client_name: designs[0]?.client_name || 'Unknown Client',
-            designs: designs,
+            client_name: client.name,
+            designs: clientDesigns,
             isExpanded: true,
             display_order: null
           })
         }
       })
-
+      
       console.log('Client groups order:', groups.map(g => ({ name: g.client_name, order: g.display_order })))
       const shouldAutoReindex =
         !autoReindexedRef.current &&
@@ -631,37 +595,17 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     try {
       // Upload new images if any
       const newImageUrls: string[] = []
-      for (const file of editImageFiles) {
-        const fileExt = file.name.split('.').pop()
-        const fileName = `${Date.now()}_${Math.random()}.${fileExt}`
-        const filePath = `${fileName}`
-
-        const { error: uploadError } = await supabase.storage
-          .from('design-images')
-          .upload(filePath, file)
-
-        if (uploadError) throw uploadError
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('design-images')
-          .getPublicUrl(filePath)
-
-        newImageUrls.push(publicUrl)
+      if (editImageFiles.length > 0) {
+        const uploadedUrls = await uploadImagesToCloudinary(editImageFiles)
+        newImageUrls.push(...uploadedUrls)
       }
 
       // Combine existing images with new ones
       const existingImages = editingDesign.images || []
       const allImages = [...existingImages, ...newImageUrls]
 
-      const { error } = await supabase
-        .from('designs')
-        .update({ 
-          notes: notesValue,
-          images: allImages
-        })
-        .eq('id', editingDesign.id)
-
-      if (error) throw error
+      // Update using server action
+      await updateDesignNotes(editingDesign.id, notesValue, allImages)
 
       // Update local state
       setClientGroups(prevGroups => 
@@ -847,77 +791,25 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     try {
       // Upload images first if any
       const imageUrls: string[] = []
-      for (const file of imageFiles) {
-        const fileExt = file.name.split('.').pop()
-        const fileName = `${Math.random()}.${fileExt}`
-        const filePath = `design-images/${fileName}`
-
-        const { error: uploadError } = await supabase.storage
-          .from('design-images')
-          .upload(filePath, file)
-
-        if (uploadError) throw uploadError
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('design-images')
-          .getPublicUrl(filePath)
-
-        imageUrls.push(publicUrl)
+      if (imageFiles.length > 0) {
+        const uploadedUrls = await uploadImagesToCloudinary(imageFiles)
+        imageUrls.push(...uploadedUrls)
       }
 
       // Calculate timeline
       const { calculateTimeline } = await import("@/lib/timeline")
       const timeline = await calculateTimeline(newDesignForm.quantity, newDesignForm.type)
 
-      // Initialize stage_status
-      const initialStageStatus: Record<DesignStatus, StageState> = {
-        'Payment Received': 'in-progress',
-        'Fabric Finalize': 'vacant',
-        'Pattern': 'vacant',
-        'Grading': 'vacant',
-        'Cutting': 'vacant',
-        'Stitching': 'vacant',
-        'Dye': 'vacant',
-        'Print': 'vacant',
-        'Embroidery': 'vacant',
-        'Wash': 'vacant',
-        'Kaaj': 'vacant',
-        'Finishing': 'vacant',
-        'Photoshoot': 'vacant',
-        'Final Settlement': 'vacant',
-        'Dispatch': 'vacant'
-      }
-
-      // Get max display_order to append new design at the end
-      const { data: maxOrderData } = await supabase
-        .from('designs')
-        .select('display_order')
-        .order('display_order', { ascending: false, nullsFirst: false })
-        .limit(1)
-        .single()
-      
-      const nextDisplayOrder = (maxOrderData?.display_order ?? -1) + 1
-
-      // Insert design (display_order will be added after running migration)
-      const { data, error } = await supabase
-        .from('designs')
-        .insert({
-          client_id: addingForClient.id,
-          title: newDesignForm.title,
-          type: newDesignForm.type,
-          quantity: newDesignForm.quantity,
-          status: newDesignForm.status,
-          notes: newDesignForm.notes,
-          images: imageUrls,
-          stage_status: initialStageStatus,
-          start_date: timeline.start_date,
-          end_date: timeline.end_date,
-          display_order: nextDisplayOrder,
-        })
-        .select()
-        .single()
-
-      if (error) throw error
+      // Add design using server action
+      await addDesign({
+        client_id: addingForClient.id,
+        title: newDesignForm.title,
+        type: newDesignForm.type,
+        quantity: newDesignForm.quantity,
+        status: newDesignForm.status,
+        notes: newDesignForm.notes,
+        images: imageUrls
+      })
 
       // Refresh the designs list
       await fetchDesigns()

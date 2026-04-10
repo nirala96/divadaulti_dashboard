@@ -1,0 +1,874 @@
+🚀 Starting image migration to Cloudinary...
+
+✅ Connected to Railway database
+
+Found 167 designs with images
+
+[1/167] Migrating images for: beige lace shirt
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.38629296442771577.jpg: Request failed with status code 402
+  💾 Updated database
+
+[2/167] Migrating images for: peacock print neck embroidery
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.14356219259007008.png: Request failed with status code 402
+  💾 Updated database
+
+[3/167] Migrating images for: heritage ember layered suit
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.5635068862977659.png: Request failed with status code 402
+  💾 Updated database
+
+[4/167] Migrating images for: set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.13991935436207725.jpg: Request failed with status code 402
+  💾 Updated database
+
+[5/167] Migrating images for: Kids pajama 
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.05381730229715953.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[6/167] Migrating images for: dress 1
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.2388869322731958.JPG: Request failed with status code 402
+  💾 Updated database
+
+[7/167] Migrating images for: dress 2
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.9031416968814359.JPG: Request failed with status code 402
+  💾 Updated database
+
+[8/167] Migrating images for: Blue Kids Embroidery
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.505565533737907.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[9/167] Migrating images for: Outer
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.3330087259105654.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[10/167] Migrating images for: white kurta
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.6815441024287205.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[11/167] Migrating images for: halter kurti
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.06345885662503292.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[12/167] Migrating images for: halter kurti
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.3076204704240324.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[13/167] Migrating images for: Sleeveless kurti
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.41886846932723865.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[14/167] Migrating images for: diva daulti design
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.7205690536868928.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[15/167] Migrating images for: co ord set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.28414117803309313.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[16/167] Migrating images for: blouse
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.548958027948612.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[17/167] Migrating images for: Pants
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.8290972569990528.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[18/167] Migrating images for: Dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.568221546087433.jpeg: Request failed with status code 402
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.4452378129305419.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[19/167] Migrating images for: dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.13185826583914784.webp: Request failed with status code 402
+  💾 Updated database
+
+[20/167] Migrating images for: white bead work
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.95327085358424.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[21/167] Migrating images for: white bead work
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.999224863341911.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[22/167] Migrating images for: Abaya1
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.7495375350406022.png: Request failed with status code 402
+  💾 Updated database
+
+[23/167] Migrating images for: Abaya 3 
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.39654990758323283.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[24/167] Migrating images for: zig zag coord
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.21531601445629234.jpg: Request failed with status code 402
+  💾 Updated database
+
+[25/167] Migrating images for: yellow gingham 
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.3399263339637907.jpg: Request failed with status code 402
+  💾 Updated database
+
+[26/167] Migrating images for: line dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.7914694794089454.jpg: Request failed with status code 402
+  💾 Updated database
+
+[27/167] Migrating images for: polka dot 
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.9357788874497851.JPG: Request failed with status code 402
+  💾 Updated database
+
+[28/167] Migrating images for: Top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.641612055154841.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[29/167] Migrating images for: Top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.13661162061956567.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[30/167] Migrating images for: anarkalli
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.5178473521185682.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[31/167] Migrating images for: kurta
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.783593691462437.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[32/167] Migrating images for: afghani dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.8221078376844205.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[33/167] Migrating images for: coat
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.6827881843301422.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[34/167] Migrating images for: kurta
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.813604564402629.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[35/167] Migrating images for: set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.9964641769850491.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[36/167] Migrating images for: red set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.0025277351271132398.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[37/167] Migrating images for: green set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.023776885841223394.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[38/167] Migrating images for: set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.6903050301693588.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[39/167] Migrating images for: pink set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.44507232270738295.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[40/167] Migrating images for: dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.2727360741390096.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[41/167] Migrating images for: yellow dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.6864140290450357.jpg: Request failed with status code 402
+  💾 Updated database
+
+[42/167] Migrating images for: stripe coord
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.5513069796201355.jpg: Request failed with status code 402
+  💾 Updated database
+
+[43/167] Migrating images for: black polka coord
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.7864797059063641.jpg: Request failed with status code 402
+  💾 Updated database
+
+[44/167] Migrating images for: abaya no 1
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.15141984911847495.PNG: Request failed with status code 402
+  💾 Updated database
+
+[45/167] Migrating images for: abaya no 3
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.0046282229217236015.PNG: Request failed with status code 402
+  💾 Updated database
+
+[46/167] Migrating images for: Top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.38760112223812937.PNG: Request failed with status code 402
+  💾 Updated database
+
+[47/167] Migrating images for: shorts
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.21231606114893065.PNG: Request failed with status code 402
+  💾 Updated database
+
+[48/167] Migrating images for: skirt
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.9562828995657483.PNG: Request failed with status code 402
+  💾 Updated database
+
+[49/167] Migrating images for: top 2
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.4164432492605792.PNG: Request failed with status code 402
+  💾 Updated database
+
+[50/167] Migrating images for: skirt top 3
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.8825669792230708.PNG: Request failed with status code 402
+  💾 Updated database
+
+[51/167] Migrating images for: skirrtt
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.6594255797172681.PNG: Request failed with status code 402
+  💾 Updated database
+
+[52/167] Migrating images for: dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.02891719922095437.PNG: Request failed with status code 402
+  💾 Updated database
+
+[53/167] Migrating images for: Abaya
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.5535074821744206.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[54/167] Migrating images for: Bamboo cotton kids coord
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.9123585516020944.jpg: Request failed with status code 402
+  💾 Updated database
+
+[55/167] Migrating images for: Kurta
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.42932961146215687.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[56/167] Migrating images for: Design 1
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.764990974139903.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[57/167] Migrating images for: Design 2
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.6169855725445664.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[58/167] Migrating images for: Design 3
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.19442129365744087.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[59/167] Migrating images for: Design 4
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.4742770020953857.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[60/167] Migrating images for: Design 5 
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.2660492866247419.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[61/167] Migrating images for: Design 6
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.5191857457058882.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[62/167] Migrating images for: Design 7
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.15422100675049522.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[63/167] Migrating images for: Design 8 
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.44482707687614387.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[64/167] Migrating images for: Design 8
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.3401292396676483.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[65/167] Migrating images for: Design 9
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.9962009517013581.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[66/167] Migrating images for: Design 11
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.9571103213866441.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[67/167] Migrating images for: Dress1
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.6808310493755628.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[68/167] Migrating images for: Top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.7589985449435266.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[69/167] Migrating images for: Set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.21972421425851818.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[70/167] Migrating images for: pants
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.744093028444977.jpg: Request failed with status code 402
+  💾 Updated database
+
+[71/167] Migrating images for: puff sleeve top and shorts
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.030146147218588104.jpg: Request failed with status code 402
+  💾 Updated database
+
+[72/167] Migrating images for: denim set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.059370472763133675.jpg: Request failed with status code 402
+  💾 Updated database
+
+[73/167] Migrating images for: that set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.43513707464119156.jpg: Request failed with status code 402
+  💾 Updated database
+
+[74/167] Migrating images for: the big dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.7896383516105314.jpg: Request failed with status code 402
+  💾 Updated database
+
+[75/167] Migrating images for: the dungree
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.08272692278312177.jpg: Request failed with status code 402
+  💾 Updated database
+
+[76/167] Migrating images for: denim skirt set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.530713052206562.jpg: Request failed with status code 402
+  💾 Updated database
+
+[77/167] Migrating images for: back open set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.20894259154684247.jpg: Request failed with status code 402
+  💾 Updated database
+
+[78/167] Migrating images for: camel bottom set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.9526880953820311.jpg: Request failed with status code 402
+  💾 Updated database
+
+[79/167] Migrating images for: cloudish set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.22704583232769582.jpg: Request failed with status code 402
+  💾 Updated database
+
+[80/167] Migrating images for: jacket set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.8715773126372485.jpg: Request failed with status code 402
+  💾 Updated database
+
+[81/167] Migrating images for: denim dungaree
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.426452722436209.jpg: Request failed with status code 402
+  💾 Updated database
+
+[82/167] Migrating images for: shirt shorts set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.2692063706234069.jpg: Request failed with status code 402
+  💾 Updated database
+
+[83/167] Migrating images for: baby blue set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.8103239565032537.jpg: Request failed with status code 402
+  💾 Updated database
+
+[84/167] Migrating images for: the tunic set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.8107998040976863.PNG: Request failed with status code 402
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.07086247862915551.PNG: Request failed with status code 402
+  💾 Updated database
+
+[85/167] Migrating images for: the denim dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.9916784487669834.PNG: Request failed with status code 402
+  💾 Updated database
+
+[86/167] Migrating images for: pocket embroidery set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.37122971806122296.PNG: Request failed with status code 402
+  💾 Updated database
+
+[87/167] Migrating images for: fish embroidery set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.8226271348775883.PNG: Request failed with status code 402
+  💾 Updated database
+
+[88/167] Migrating images for: black lycra dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.20763389454465442.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[89/167] Migrating images for: Blouse no 2
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.3903826172809348.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[90/167] Migrating images for: Blouse no 3
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.41392779839566196.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[91/167] Migrating images for: blouse no 1
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.9666553527811649.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[92/167] Migrating images for: White dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.22200816568626702.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[93/167] Migrating images for: white with lace
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.9031726819576273.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[94/167] Migrating images for: 1 top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.11461127849564812.png: Request failed with status code 402
+  💾 Updated database
+
+[95/167] Migrating images for: Top 2
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.4480474229388558.png: Request failed with status code 402
+  💾 Updated database
+
+[96/167] Migrating images for: Skirt
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.9263796586498526.png: Request failed with status code 402
+  💾 Updated database
+
+[97/167] Migrating images for: Shorts
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.1505185897392055.png: Request failed with status code 402
+  💾 Updated database
+
+[98/167] Migrating images for: Set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.3515098765312502.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[99/167] Migrating images for: jeans 10 pieces
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.9537740077346853.jpg: Request failed with status code 402
+  💾 Updated database
+
+[100/167] Migrating images for: black bazer
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.5943708810124848.png: Request failed with status code 402
+  💾 Updated database
+
+[101/167] Migrating images for: blazer
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.21530058085557846.PNG: Request failed with status code 402
+  💾 Updated database
+
+[102/167] Migrating images for: wrap top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.3003122951617947.PNG: Request failed with status code 402
+  💾 Updated database
+
+[103/167] Migrating images for: panel top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.10041928108383669.PNG: Request failed with status code 402
+  💾 Updated database
+
+[104/167] Migrating images for: chikankari top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.8326095381382611.PNG: Request failed with status code 402
+  💾 Updated database
+
+[105/167] Migrating images for: top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.5015966562067844.PNG: Request failed with status code 402
+  💾 Updated database
+
+[106/167] Migrating images for: wrap top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.10870046153814195.PNG: Request failed with status code 402
+  💾 Updated database
+
+[107/167] Migrating images for: panel shirt
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.6777942096978886.PNG: Request failed with status code 402
+  💾 Updated database
+
+[108/167] Migrating images for: keyhole top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.9528261207961886.PNG: Request failed with status code 402
+  💾 Updated database
+
+[109/167] Migrating images for: Tshirt
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.4248596037612693.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[110/167] Migrating images for: embroidered shirt
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.4083885057651876.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[111/167] Migrating images for: Bike - white
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.3527761632134093.png: Request failed with status code 402
+  💾 Updated database
+
+[112/167] Migrating images for: top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.3540848394030207.JPG: Request failed with status code 402
+  💾 Updated database
+
+[113/167] Migrating images for: design 1
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.07687230666672207.PNG: Request failed with status code 402
+  💾 Updated database
+
+[114/167] Migrating images for: top 2
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.4636089097535414.PNG: Request failed with status code 402
+  💾 Updated database
+
+[115/167] Migrating images for: skirt
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.9879333199208694.PNG: Request failed with status code 402
+  💾 Updated database
+
+[116/167] Migrating images for: dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.7549261725090151.PNG: Request failed with status code 402
+  💾 Updated database
+
+[117/167] Migrating images for: blue embroidered abaya
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.45896477542382086.png: Request failed with status code 402
+  💾 Updated database
+
+[118/167] Migrating images for: gingham
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.125909380390404.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[119/167] Migrating images for: polka dot dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.9910728895045411.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[120/167] Migrating images for: kids mens
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.7996025583056519.JPG: Request failed with status code 402
+  💾 Updated database
+
+[121/167] Migrating images for: Kids 3 
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.09038198221972771.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[122/167] Migrating images for: Kids 4 
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.5264285701452054.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[123/167] Migrating images for: set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.5582887942371598.JPG: Request failed with status code 402
+  💾 Updated database
+
+[124/167] Migrating images for: Set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.48802489988895625.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[125/167] Migrating images for: Halter top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.010883678235045324.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[126/167] Migrating images for: Top 1
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.41095483187487014.png: Request failed with status code 402
+  💾 Updated database
+
+[127/167] Migrating images for: Top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.688874981440566.png: Request failed with status code 402
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.3002383922634011.png: Request failed with status code 402
+  💾 Updated database
+
+[128/167] Migrating images for: Saree
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.9934297416203347.jpg: Request failed with status code 402
+  💾 Updated database
+
+[129/167] Migrating images for: coord 3 piece 
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.11318756753168191.png: Request failed with status code 402
+  💾 Updated database
+
+[130/167] Migrating images for: Top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.32801017430931145.png: Request failed with status code 402
+  💾 Updated database
+
+[131/167] Migrating images for: Set 1 
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.4701554564630339.png: Request failed with status code 402
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.41644037667784306.png: Request failed with status code 402
+  💾 Updated database
+
+[132/167] Migrating images for: Set 2 
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.9023229754169794.png: Request failed with status code 402
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.2174708814414288.png: Request failed with status code 402
+  💾 Updated database
+
+[133/167] Migrating images for: Top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.0846069838624316.png: Request failed with status code 402
+  💾 Updated database
+
+[134/167] Migrating images for: Dress 1
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.35033482611979017.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[135/167] Migrating images for: Design 2
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.46968604307316875.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[136/167] Migrating images for: Kurti
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.5139886687379933.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[137/167] Migrating images for: Kurta
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.09544714971214796.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[138/167] Migrating images for: kurta
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.44612582994509653.JPG: Request failed with status code 402
+  💾 Updated database
+
+[139/167] Migrating images for: lehenga
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.3081143445295731.JPG: Request failed with status code 402
+  💾 Updated database
+
+[140/167] Migrating images for: pant
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.9197099140416505.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[141/167] Migrating images for: Biker blouse
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.3509475857608908.png: Request failed with status code 402
+  💾 Updated database
+
+[142/167] Migrating images for: graffiti pants
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.42125553960380024.png: Request failed with status code 402
+  💾 Updated database
+
+[143/167] Migrating images for: patchwork blazer
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.666999861250772.png: Request failed with status code 402
+  💾 Updated database
+
+[144/167] Migrating images for: Tshirt
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.627971073620028.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[145/167] Migrating images for: Tshirt
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.802179000736954.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[146/167] Migrating images for: Tshirt
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.7833107920185863.png: Request failed with status code 402
+  💾 Updated database
+
+[147/167] Migrating images for: Tshirt
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.07048176180482824.png: Request failed with status code 402
+  💾 Updated database
+
+[148/167] Migrating images for: Tshirt
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.23614598935118847.png: Request failed with status code 402
+  💾 Updated database
+
+[149/167] Migrating images for: 3 piece set printed
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.05924326081416731.jpg: Request failed with status code 402
+  💾 Updated database
+
+[150/167] Migrating images for: kurti
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.2850685083772758.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[151/167] Migrating images for: Abaya 2 
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.70972390955195.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[152/167] Migrating images for: jumpsuit
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.6113616024441232.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[153/167] Migrating images for: abaya no 2
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.4961819943381942.PNG: Request failed with status code 402
+  💾 Updated database
+
+[154/167] Migrating images for: Dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.006492869827836145.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[155/167] Migrating images for: Design 10
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.7992636635546754.png: Request failed with status code 402
+  💾 Updated database
+
+[156/167] Migrating images for: tunic
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.23465350612734293.jpg: Request failed with status code 402
+  💾 Updated database
+
+[157/167] Migrating images for: bqby wrap 2
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.6427165644102943.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[158/167] Migrating images for: bqby blanket
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.6622213690694535.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[159/167] Migrating images for: 3 pc bedding set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.024176807052193827.jpeg: Request failed with status code 402
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.8367635540000199.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[160/167] Migrating images for: White Lycra Dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.3150422612166083.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[161/167] Migrating images for: Trousers
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.028591732781633405.png: Request failed with status code 402
+  💾 Updated database
+
+[162/167] Migrating images for: ikkat top
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.6586766679877779.PNG: Request failed with status code 402
+  💾 Updated database
+
+[163/167] Migrating images for: red dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.34164388839620197.png: Request failed with status code 402
+  💾 Updated database
+
+[164/167] Migrating images for: brown coord set
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.24248556181539793.jpg: Request failed with status code 402
+  💾 Updated database
+
+[165/167] Migrating images for: Khushi dress
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.7556152280050626.jpeg: Request failed with status code 402
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.2725930871959166.jpeg: Request failed with status code 402
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.6954680323411364.jpeg: Request failed with status code 402
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.9681351916571508.jpeg: Request failed with status code 402
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.0037647634068830316.jpeg: Request failed with status code 402
+  💾 Updated database
+
+[166/167] Migrating images for: kurta
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/design-images/0.7260017755607118.JPG: Request failed with status code 402
+  💾 Updated database
+
+[167/167] Migrating images for: babywrap
+  📥 Downloading: https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v...
+  ❌ Failed to migrate https://pcjfeskhfrxsoxgixmps.supabase.co/storage/v1/object/public/design-images/0.45146182554885583.jpeg: Request failed with status code 402
+  💾 Updated database
+
+
+📊 Migration Summary:
+   ✅ Successfully migrated: 0 images
+   ❌ Failed migrations: 177 images
+   📦 Total designs processed: 167
+
+⚠️  Some images failed to migrate. Check logs above.
+
+Next steps:
+1. Update lib/database.ts with Railway connection
+2. Update components to use Cloudinary upload
+3. Test locally with Railway DATABASE_URL
+4. Deploy to Railway
