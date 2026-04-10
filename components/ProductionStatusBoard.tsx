@@ -1659,36 +1659,41 @@ function ClientGroupRow({
                   className={`w-5 h-5 ${design.is_priority ? 'fill-yellow-900' : ''}`}
                 />
               </button>
-              {/* Image Thumbnail with Hover Cycling */}
-              {design.images && design.images.length > 0 ? (
-                <ImageCarousel
-                  images={design.images}
-                  title={design.title}
-                  designId={design.id}
-                  onImageClick={onImageClick}
-                  onImagesUpdate={(newImages) => handleUpdateDesignImages(design.id, newImages)}
-                />
-              ) : (
-                <div className="relative group">
-                  <div className="w-12 h-12 flex-shrink-0 bg-gray-100 rounded flex items-center justify-center">
+              {/* Image Thumbnail */}
+              <div className="flex items-center gap-1">
+                {design.images && design.images.length > 0 ? (
+                  <div 
+                    className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => onImageClick(design.images[0])}
+                  >
+                    <Image
+                      src={design.images[0]}
+                      alt={design.title}
+                      fill
+                      className="object-cover"
+                      sizes="48px"
+                    />
+                  </div>
+                ) : (
+                  <div 
+                    className="w-12 h-12 flex-shrink-0 bg-gray-100 rounded flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors"
+                    onClick={() => onTileClick(design)}
+                    title="Click to add images"
+                  >
                     <ImageIcon className="h-5 w-5 text-gray-400" />
                   </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    id={`upload-${design.id}`}
-                    onChange={(e) => handleImageUploadForDesign(design.id, e.target.files)}
-                  />
-                  <label
-                    htmlFor={`upload-${design.id}`}
-                    className="absolute inset-0 flex items-center justify-center bg-blue-500 bg-opacity-0 group-hover:bg-opacity-80 transition-all cursor-pointer rounded"
-                  >
-                    <Upload className="h-5 w-5 text-white opacity-0 group-hover:opacity-100" />
-                  </label>
-                </div>
-              )}  
+                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onTileClick(design)
+                  }}
+                  className="w-7 h-7 flex-shrink-0 bg-blue-500 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors shadow-sm"
+                  title="Add/manage images"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
               <div className="min-w-0 flex-1 cursor-pointer hover:text-blue-600" onClick={() => onTileClick(design)}>
                 <div className="text-sm font-medium text-gray-900 truncate hover:underline">
                   {design.title}
