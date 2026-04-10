@@ -255,6 +255,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   })
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [editImageFiles, setEditImageFiles] = useState<File[]>([])
+  const [editImagePreviews, setEditImagePreviews] = useState<string[]>([])
   const [savingDesign, setSavingDesign] = useState(false)
   const [draggedClientId, setDraggedClientId] = useState<string | null>(null)
   const [draggedDesignId, setDraggedDesignId] = useState<string | null>(null)
@@ -592,11 +594,34 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const openNotesModal = (design: DesignWithClient) => {
     setEditingDesign(design)
     setNotesValue(design.notes || "")
+    setEditImageFiles([])
+    setEditImagePreviews([])
   }
 
   const closeNotesModal = () => {
     setEditingDesign(null)
     setNotesValue("")
+    setEditImageFiles([])
+    setEditImagePreviews([])
+  }
+
+  const handleEditImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    setEditImageFiles(prev => [...prev, ...files])
+    
+    // Generate previews
+    files.forEach(file => {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setEditImagePreviews(prev => [...prev, reader.result as string])
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  const removeEditImage = (index: number) => {
+    setEditImageFiles(prev => prev.filter((_, i) => i !== index))
+    setEditImagePreviews(prev => prev.filter((_, i) => i !== index))
   }
 
   const saveNotes = async () => {
@@ -604,9 +629,36 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     
     setSavingNotes(true)
     try {
+      // Upload new images if any
+      const newImageUrls: string[] = []
+      for (const file of editImageFiles) {
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${Date.now()}_${Math.random()}.${fileExt}`
+        const filePath = `${fileName}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('design-images')
+          .upload(filePath, file)
+
+        if (uploadError) throw uploadError
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('design-images')
+          .getPublicUrl(filePath)
+
+        newImageUrls.push(publicUrl)
+      }
+
+      // Combine existing images with new ones
+      const existingImages = editingDesign.images || []
+      const allImages = [...existingImages, ...newImageUrls]
+
       const { error } = await supabase
         .from('designs')
-        .update({ notes: notesValue })
+        .update({ 
+          notes: notesValue,
+          images: allImages
+        })
         .eq('id', editingDesign.id)
 
       if (error) throw error
@@ -616,15 +668,15 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         prevGroups.map(group => ({
           ...group,
           designs: group.designs.map(d => 
-            d.id === editingDesign.id ? { ...d, notes: notesValue } : d
+            d.id === editingDesign.id ? { ...d, notes: notesValue, images: allImages } : d
           )
         }))
       )
 
       closeNotesModal()
     } catch (error: any) {
-      console.error('Error saving notes:', error)
-      alert('Failed to save notes: ' + error.message)
+      console.error('Error saving:', error)
+      alert('Failed to save: ' + error.message)
     } finally {
       setSavingNotes(false)
     }
@@ -1244,10 +1296,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Notes: {editingDesign?.title}
+              Edit Design: {editingDesign?.title}
             </DialogTitle>
             <DialogDescription>
-              Add status updates, sizes, client instructions, meeting notes, or any custom information.
+              Update notes and add images for this design.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -1255,12 +1307,79 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
               <Label htmlFor="notes-editor">Notes</Label>
               <textarea
                 id="notes-editor"
-                className="flex min-h-[250px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex min-h-[150px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 placeholder="Type your notes here..."
                 value={notesValue}
                 onChange={(e) => setNotesValue(e.target.value)}
               />
             </div>
+
+            {/* Image Upload Section */}
+            <div className="grid gap-2">
+              <Label>Design Images</Label>
+              <div className="flex items-center gap-2">
+                <label className="cursor-pointer">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 border border-blue-300 rounded-md transition-colors">
+                    <Plus className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm text-blue-600">Upload Images</span>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleEditImageSelect}
+                  />
+                </label>
+                {editImageFiles.length > 0 && (
+                  <span className="text-sm text-gray-600">{editImageFiles.length} new image{editImageFiles.length !== 1 ? 's' : ''} selected</span>
+                )}
+              </div>
+
+              {/* Current Images */}
+              {editingDesign && editingDesign.images && editingDesign.images.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-500 font-medium">Current Images ({editingDesign.images.length})</div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {editingDesign.images.map((imageUrl, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={imageUrl}
+                          alt={`Current ${index + 1}`}
+                          className="w-full h-20 object-cover rounded border cursor-pointer"
+                          onClick={() => setPreviewImage(imageUrl)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* New Image Previews */}
+              {editImagePreviews.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-500 font-medium">New Images to Upload</div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {editImagePreviews.map((preview, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={preview}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-20 object-cover rounded border"
+                        />
+                        <button
+                          onClick={() => removeEditImage(index)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {editingDesign && (
               <div className="text-xs text-gray-500 space-y-1">
                 <div><strong>Client:</strong> {editingDesign.client_name}</div>
@@ -1278,7 +1397,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
               Cancel
             </Button>
             <Button onClick={saveNotes} disabled={savingNotes}>
-              {savingNotes ? "Saving..." : "Save Notes"}
+              {savingNotes ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
