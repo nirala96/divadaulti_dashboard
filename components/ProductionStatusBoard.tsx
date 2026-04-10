@@ -1642,23 +1642,6 @@ function ClientGroupRow({
         >
           <td className="px-6 py-4">
             <div className="flex items-center gap-3 pl-7">
-              {/* Priority Toggle Button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onTogglePriority(design.id, design.is_priority || false)
-                }}
-                className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                  design.is_priority
-                    ? 'bg-yellow-400 hover:bg-yellow-500 text-yellow-900 shadow-md'
-                    : 'bg-gray-200 hover:bg-gray-300 text-gray-400'
-                }`}
-                title={design.is_priority ? 'Remove from priority' : 'Mark as priority'}
-              >
-                <Star 
-                  className={`w-5 h-5 ${design.is_priority ? 'fill-yellow-900' : ''}`}
-                />
-              </button>
               {/* Image Thumbnail */}
               <div className="flex items-center gap-1">
                 {design.images && design.images.length > 0 ? (
