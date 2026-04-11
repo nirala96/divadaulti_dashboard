@@ -3,6 +3,8 @@ import { Users } from 'lucide-react'
 import Link from 'next/link'
 import { ClientLinkRow } from '@/components/ClientLinkRow'
 
+export const dynamic = 'force-dynamic'
+
 export default async function ClientLinksPage() {
   const clients = await getClients()
   

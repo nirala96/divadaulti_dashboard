@@ -5,6 +5,8 @@ import { CheckCircle2, Clock, Package, Sparkles } from 'lucide-react'
 import { cookies } from 'next/headers'
 import { AdminOrderActions } from '@/components/AdminOrderActions'
 
+export const dynamic = 'force-dynamic'
+
 const STAGES = [
   { key: 'pattern_making', label: 'Pattern Making' },
   { key: 'fabric_cutting', label: 'Fabric Cutting' },
