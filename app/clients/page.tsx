@@ -4,10 +4,12 @@ import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/Sidebar"
 import { AddClientModal } from "@/components/AddClientModal"
 import { getClients, type Client } from "@/lib/actions"
+import { Link2 } from "lucide-react"
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchClients()
@@ -22,6 +24,14 @@ export default function ClientsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  function copyTrackingLink(trackingToken: string, clientId: string) {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin
+    const trackingUrl = `${baseUrl}/track/${trackingToken}`
+    navigator.clipboard.writeText(trackingUrl)
+    setCopiedId(clientId)
+    setTimeout(() => setCopiedId(null), 2000)
   }
 
   return (
@@ -52,6 +62,7 @@ export default function ClientsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Added</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tracking Link</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -63,6 +74,23 @@ export default function ClientsPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-gray-600">{client.phone || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-500 text-sm">
                         {new Date(client.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {client.tracking_token ? (
+                          <button
+                            onClick={() => copyTrackingLink(client.tracking_token, client.id)}
+                            className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                              copiedId === client.id
+                                ? 'bg-green-500 text-white'
+                                : 'bg-purple-600 text-white hover:bg-purple-700'
+                            }`}
+                          >
+                            <Link2 className="w-4 h-4" />
+                            {copiedId === client.id ? 'Copied!' : 'Copy Link'}
+                          </button>
+                        ) : (
+                          <span className="text-gray-400 text-sm">No tracking link</span>
+                        )}
                       </td>
                     </tr>
                   ))}

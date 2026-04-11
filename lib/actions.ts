@@ -16,6 +16,7 @@ export type Client = {
   phone: string | null
   display_order: number
   created_at: string
+  tracking_token: string
 }
 
 export type Design = {

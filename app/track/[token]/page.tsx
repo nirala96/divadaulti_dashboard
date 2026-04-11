@@ -2,8 +2,6 @@ import { getClientByTrackingToken } from '@/lib/actions'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import { CheckCircle2, Clock, Package, Sparkles } from 'lucide-react'
-import { cookies } from 'next/headers'
-import { AdminOrderActions } from '@/components/AdminOrderActions'
 
 export const dynamic = 'force-dynamic'
 
@@ -72,30 +70,17 @@ export default async function ClientTrackingPage({ params }: PageProps) {
   
   const { client, designs } = data
   
-  // Check if viewer is an admin
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'divadaulti2024'
-  const cookieStore = cookies()
-  const authCookie = cookieStore.get('admin-auth')
-  const isAdmin = authCookie?.value === ADMIN_PASSWORD
-  
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-6xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Sparkles className="w-8 h-8 text-purple-600" />
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Diva Daulti</h1>
-                <p className="text-gray-600">Order Tracking</p>
-              </div>
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-8 h-8 text-purple-600" />
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Diva Daulti</h1>
+              <p className="text-gray-600">Order Tracking</p>
             </div>
-            {isAdmin && (
-              <div className="bg-amber-100 text-amber-900 px-4 py-2 rounded-lg font-medium text-sm border border-amber-300">
-                🔐 Admin View
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -201,23 +186,7 @@ export default async function ClientTrackingPage({ params }: PageProps) {
                   </div>
                 )}
                 
-                {/* Notes */}
-                {design.notes && (
-                  <div className="px-6 py-4 bg-blue-50 border-t border-blue-100">
-                    <p className="text-sm text-blue-900">
-                      <span className="font-medium">Note:</span> {design.notes}
-                    </p>
-                  </div>
-                )}
-                
-                {/* Admin Controls */}
-                {isAdmin && (
-                  <AdminOrderActions
-                    designId={design.id}
-                    currentStatus={design.status}
-                    designTitle={design.title}
-                  />
-                )}
+
               </div>
             ))}
           </div>
