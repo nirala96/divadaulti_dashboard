@@ -427,3 +427,86 @@ export async function updateDesignDates(designId: string, startDate: string, end
   revalidatePath('/timeline')
   revalidatePath('/')
 }
+
+// Workforce Settings
+export async function getWorkforceSettings() {
+  const result = await pool.query('SELECT * FROM workforce_settings LIMIT 1')
+  return result.rows[0] || { daily_unit_capacity: 10 }
+}
+
+export async function getDesignCount(): Promise<number> {
+  const result = await pool.query('SELECT COUNT(*) as count FROM designs')
+  return parseInt(result.rows[0].count)
+}
+
+// Timeline Calculation
+export interface TimelineResult {
+  start_date: string
+  end_date: string
+  total_days: number
+}
+
+export async function calculateTimeline(
+  quantity: number,
+  type: 'Sampling' | 'Production'
+): Promise<TimelineResult> {
+  try {
+    // 1. Fetch workforce capacity
+    const settings = await getWorkforceSettings()
+    const dailyCapacity = settings?.daily_unit_capacity || 10
+
+    // 2. Calculate total duration
+    let totalDays = 0
+
+    if (type === 'Sampling') {
+      // Sampling orders: flat 2 weeks (14 days) for all samples
+      totalDays = 14
+    } else {
+      // Production orders: calculate based on quantity and capacity
+      const daysPerStage = Math.ceil(quantity / dailyCapacity)
+      totalDays = daysPerStage * 15 // 15 stages in the workflow
+    }
+
+    // Ensure minimum 1 day
+    if (totalDays < 1) totalDays = 1
+
+    // 3. Find queue position based on capacity
+    const queueCount = await getDesignCount()
+
+    // 4. Calculate start_date based on queue position and capacity
+    let startDate: Date
+    const currentQueuePosition = queueCount || 0
+    const daysToWait = Math.floor(currentQueuePosition / dailyCapacity)
+    
+    startDate = new Date()
+    startDate.setDate(startDate.getDate() + daysToWait)
+
+    // Calculate end_date
+    const endDate = new Date(startDate)
+    endDate.setDate(endDate.getDate() + totalDays - 1)
+
+    // Format dates as YYYY-MM-DD
+    const formatDate = (date: Date): string => {
+      return date.toISOString().split('T')[0]
+    }
+
+    return {
+      start_date: formatDate(startDate),
+      end_date: formatDate(endDate),
+      total_days: totalDays,
+    }
+  } catch (error) {
+    console.error('Error calculating timeline:', error)
+    // Fallback: start today, duration based on type
+    const today = new Date()
+    const defaultDays = type === 'Sampling' ? 7 : 30
+    const endDate = new Date(today)
+    endDate.setDate(endDate.getDate() + defaultDays - 1)
+
+    return {
+      start_date: today.toISOString().split('T')[0],
+      end_date: endDate.toISOString().split('T')[0],
+      total_days: defaultDays,
+    }
+  }
+}

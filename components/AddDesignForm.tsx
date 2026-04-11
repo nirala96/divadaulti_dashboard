@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { getClients, addClient, addDesign, type Client, type Design } from "@/lib/actions"
-import { calculateTimeline, formatDisplayDate } from "@/lib/timeline"
+import { getClients, addClient, addDesign, calculateTimeline, type Client, type Design } from "@/lib/actions"
+import { formatDisplayDate } from "@/lib/timeline"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
