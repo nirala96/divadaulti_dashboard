@@ -1,45 +1,78 @@
 import { getClientByTrackingToken } from '@/lib/actions'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
-import { CheckCircle2, Clock, Package, Sparkles } from 'lucide-react'
+import { CheckCircle2, Clock, Package, Sparkles, Circle, Minus } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
 const STAGES = [
-  { key: 'pattern_making', label: 'Pattern Making' },
-  { key: 'fabric_cutting', label: 'Fabric Cutting' },
-  { key: 'sewing_tailor', label: 'Sewing/Tailoring' },
-  { key: 'finishing', label: 'Finishing' },
-  { key: 'quality_check', label: 'Quality Check' },
-  { key: 'ready_for_dispatch', label: 'Ready for Dispatch' }
+  'Payment Received',
+  'Fabric Finalize',
+  'Pattern',
+  'Grading',
+  'Cutting',
+  'Stitching',
+  'Dye',
+  'Print',
+  'Embroidery',
+  'Wash',
+  'Kaaj',
+  'Finishing',
+  'Photoshoot',
+  'Final Settlement',
+  'Dispatch'
 ]
+
+const STAGE_COLORS: Record<string, string> = {
+  'Payment Received': 'from-green-400 to-green-600',
+  'Fabric Finalize': 'from-slate-400 to-slate-600',
+  'Pattern': 'from-blue-400 to-blue-600',
+  'Grading': 'from-purple-400 to-purple-600',
+  'Cutting': 'from-orange-400 to-orange-600',
+  'Stitching': 'from-pink-400 to-pink-600',
+  'Dye': 'from-rose-400 to-rose-600',
+  'Print': 'from-lime-400 to-lime-600',
+  'Kaaj': 'from-indigo-400 to-indigo-600',
+  'Embroidery': 'from-violet-400 to-violet-600',
+  'Wash': 'from-cyan-400 to-cyan-600',
+  'Finishing': 'from-teal-400 to-teal-600',
+  'Photoshoot': 'from-fuchsia-400 to-fuchsia-600',
+  'Final Settlement': 'from-amber-400 to-amber-600',
+  'Dispatch': 'from-emerald-400 to-emerald-600',
+}
 
 type PageProps = {
   params: { token: string }
 }
 
-function getStageStatus(stageStatus: Record<string, string>, stageKey: string): string {
-  return stageStatus?.[stageKey] || 'not-started'
+type StageState = 'vacant' | 'not-needed' | 'in-progress' | 'completed'
+
+function getStageStatus(stageStatus: Record<string, string>, stage: string): StageState {
+  return (stageStatus?.[stage] as StageState) || 'vacant'
 }
 
-function StageProgress({ stage, status }: { stage: typeof STAGES[0], status: string }) {
+function StageProgress({ stage, status, color }: { stage: string, status: StageState, color: string }) {
   const isCompleted = status === 'completed'
   const isInProgress = status === 'in-progress'
-  const isNotStarted = status === 'not-started' || status === 'vacant'
+  const isNotNeeded = status === 'not-needed'
+  const isVacant = status === 'vacant'
   
   return (
     <div className="flex items-center gap-4">
       <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
-        isCompleted ? 'bg-green-500' :
-        isInProgress ? 'bg-blue-500 animate-pulse' :
-        'bg-gray-200'
+        isCompleted ? `bg-gradient-to-br ${color}` :
+        isInProgress ? `bg-gradient-to-br ${color} animate-pulse` :
+        isNotNeeded ? 'bg-gray-300' :
+        'bg-gray-100 border-2 border-gray-300'
       }`}>
         {isCompleted ? (
           <CheckCircle2 className="w-6 h-6 text-white" />
         ) : isInProgress ? (
           <Clock className="w-6 h-6 text-white" />
+        ) : isNotNeeded ? (
+          <Minus className="w-6 h-6 text-gray-600" />
         ) : (
-          <div className="w-6 h-6 rounded-full border-2 border-gray-400" />
+          <Circle className="w-6 h-6 text-gray-400" />
         )}
       </div>
       
@@ -47,13 +80,15 @@ function StageProgress({ stage, status }: { stage: typeof STAGES[0], status: str
         <h3 className={`font-medium ${
           isCompleted ? 'text-green-700' :
           isInProgress ? 'text-blue-700' :
-          'text-gray-500'
+          isNotNeeded ? 'text-gray-500' :
+          'text-gray-400'
         }`}>
-          {stage.label}
+          {stage}
         </h3>
         <p className="text-sm text-gray-600">
           {isCompleted ? 'Completed ✓' :
            isInProgress ? 'In Progress...' :
+           isNotNeeded ? 'Not Needed' :
            'Not Started'}
         </p>
       </div>
@@ -153,10 +188,11 @@ export default async function ClientTrackingPage({ params }: PageProps) {
                   <h4 className="text-lg font-semibold text-gray-900 mb-4">Production Progress</h4>
                   <div className="space-y-4">
                     {STAGES.map((stage, idx) => (
-                      <div key={stage.key}>
+                      <div key={stage}>
                         <StageProgress
                           stage={stage}
-                          status={getStageStatus(design.stage_status as Record<string, string>, stage.key)}
+                          status={getStageStatus(design.stage_status as Record<string, string>, stage)}
+                          color={STAGE_COLORS[stage]}
                         />
                         {idx < STAGES.length - 1 && (
                           <div className="ml-6 h-8 w-0.5 bg-gray-200" />
