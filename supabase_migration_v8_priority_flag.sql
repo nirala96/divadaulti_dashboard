@@ -1,4 +1,5 @@
 -- Migration v8: Add priority flag for designs
+-- Redeploy trigger comment
 -- Simple priority system - priority designs appear at the top
 
 -- Add is_priority column
