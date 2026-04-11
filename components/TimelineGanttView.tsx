@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import Gantt from "frappe-gantt"
-import { getDesignsWithClients, type Design } from "@/lib/actions"
+import { getDesignsWithClients, updateDesignDates, type Design } from "@/lib/actions"
 import { formatDisplayDate, calculateDaysBetween } from "@/lib/timeline"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -55,19 +55,22 @@ export function TimelineGanttView() {
   const fetchDesigns = async () => {
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from("designs")
-        .select("*, clients(name)")
-        .not("start_date", "is", null)
-        .not("end_date", "is", null)
-        .order("start_date", { ascending: true })
+      const data = await getDesignsWithClients()
 
-      if (error) throw error
-
-      const designsWithClients: DesignWithClient[] = (data || []).map((design: any) => ({
+      // Filter designs that have dates
+      const designsWithDates = data.filter(d => d.start_date && d.end_date)
+      
+      const designsWithClients: DesignWithClient[] = designsWithDates.map((design: any) => ({
         ...design,
-        client_name: design.clients?.name || "Unknown Client",
+        client_name: design.client_name || "Unknown Client",
       }))
+
+      // Sort by start date
+      designsWithClients.sort((a, b) => {
+        const aDate = new Date(a.start_date!)
+        const bDate = new Date(b.start_date!)
+        return aDate.getTime() - bDate.getTime()
+      })
 
       setDesigns(designsWithClients)
     } catch (error) {
@@ -207,15 +210,7 @@ export function TimelineGanttView() {
       const newStartDateObj = new Date(newStartDate)
 
       // Update the current design
-      const { error: updateError } = await supabase
-        .from("designs")
-        .update({
-          start_date: newStartDate,
-          end_date: newEndDate,
-        })
-        .eq("id", editingDesign.id)
-
-      if (updateError) throw updateError
+      await updateDesignDates(editingDesign.id, newStartDate, newEndDate)
 
       // Get all designs that come after this one (by original start date)
       const subsequentDesigns = designs
@@ -244,17 +239,11 @@ export function TimelineGanttView() {
         const cascadeEndDate = new Date(cascadeStartDate)
         cascadeEndDate.setDate(cascadeEndDate.getDate() + designDuration - 1)
 
-        const { error: cascadeError } = await supabase
-          .from("designs")
-          .update({
-            start_date: cascadeStartDate.toISOString().split("T")[0],
-            end_date: cascadeEndDate.toISOString().split("T")[0],
-          })
-          .eq("id", design.id)
-
-        if (cascadeError) {
-          console.error("Error cascading update:", cascadeError)
-        }
+        await updateDesignDates(
+          design.id,
+          cascadeStartDate.toISOString().split("T")[0],
+          cascadeEndDate.toISOString().split("T")[0]
+        )
 
         previousEndDate = cascadeEndDate
       }

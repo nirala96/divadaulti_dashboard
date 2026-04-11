@@ -418,3 +418,12 @@ export async function restoreDesign(designId: string) {
   revalidatePath('/completed-orders')
   revalidatePath('/')
 }
+
+export async function updateDesignDates(designId: string, startDate: string, endDate: string) {
+  await pool.query(
+    'UPDATE designs SET start_date = $1, end_date = $2 WHERE id = $3',
+    [startDate, endDate, designId]
+  )
+  revalidatePath('/timeline')
+  revalidatePath('/')
+}
