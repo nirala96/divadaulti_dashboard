@@ -1,13 +1,16 @@
 # Diva Daulti Order Management System
 
-A modern order management system built with Next.js, Tailwind CSS, Shadcn UI, and Supabase for managing fashion design orders.
+A modern order management system built with Next.js, Tailwind CSS, Shadcn UI, and Railway PostgreSQL for managing fashion design orders.
 
 ## Tech Stack
 
 - **Framework**: Next.js 14 (App Router)
 - **Styling**: Tailwind CSS + Shadcn UI
-- **Database/Auth**: Supabase (PostgreSQL + Storage)
+- **Database**: Railway PostgreSQL
+- **Image Storage**: Cloudinary
 - **Icons**: Lucide React
+
+<!-- Build: 2026-04-11 - Fixed all RLS errors, using Railway PostgreSQL exclusively -->
 - **Language**: TypeScript
 
 ## Features
