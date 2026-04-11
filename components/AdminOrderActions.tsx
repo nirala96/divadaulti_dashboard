@@ -6,7 +6,7 @@ import { updateDesignStatus, deleteDesign } from '@/lib/actions'
 import { useRouter } from 'next/navigation'
 
 type AdminOrderActionsProps = {
-  designId: number
+  designId: number | string
   currentStatus: string
   designTitle: string
 }
