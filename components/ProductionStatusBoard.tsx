@@ -97,8 +97,8 @@ function ImageCarousel({
       const fileArray = Array.from(files)
       const uploadedUrls = await uploadImagesToCloudinary(fileArray)
 
-      // Add new images to existing ones
-      const newImages = [...images, ...uploadedUrls]
+      // Add NEW images FIRST, then existing ones
+      const newImages = [...uploadedUrls, ...images]
       onImagesUpdate(newImages)
     } catch (error) {
       console.error('Error uploading images:', error)
@@ -568,9 +568,9 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         newImageUrls.push(...uploadedUrls)
       }
 
-      // Combine existing images with new ones
+      // Combine images - NEW images FIRST, then existing ones
       const existingImages = editingDesign.images || []
-      const allImages = [...existingImages, ...newImageUrls]
+      const allImages = [...newImageUrls, ...existingImages]
 
       // Update using server action
       await updateDesignNotes(editingDesign.id, notesValue, allImages)
