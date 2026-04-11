@@ -41,6 +41,24 @@ const STAGE_COLORS: Record<string, string> = {
   'Dispatch': 'from-emerald-400 to-emerald-600',
 }
 
+const STAGE_ESTIMATED_DAYS: Record<string, number> = {
+  'Payment Received': 0,
+  'Fabric Finalize': 5,
+  'Pattern': 1,
+  'Grading': 1,
+  'Cutting': 1,
+  'Stitching': 2,
+  'Dye': 2,
+  'Print': 2,
+  'Embroidery': 3,
+  'Wash': 1,
+  'Kaaj': 2,
+  'Finishing': 1,
+  'Photoshoot': 1,
+  'Final Settlement': 1,
+  'Dispatch': 1,
+}
+
 type PageProps = {
   params: { token: string }
 }
@@ -51,7 +69,7 @@ function getStageStatus(stageStatus: Record<string, string>, stage: string): Sta
   return (stageStatus?.[stage] as StageState) || 'vacant'
 }
 
-function StageProgress({ stage, status, color }: { stage: string, status: StageState, color: string }) {
+function StageProgress({ stage, status, color, estimatedDays }: { stage: string, status: StageState, color: string, estimatedDays: number }) {
   const isCompleted = status === 'completed'
   const isInProgress = status === 'in-progress'
   const isNotNeeded = status === 'not-needed'
@@ -60,13 +78,13 @@ function StageProgress({ stage, status, color }: { stage: string, status: StageS
   return (
     <div className="flex items-center gap-4">
       <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
-        isCompleted ? `bg-gradient-to-br ${color}` :
-        isInProgress ? `bg-gradient-to-br ${color} animate-pulse` :
+        isCompleted ? 'bg-gradient-to-br from-green-500 to-green-700 shadow-lg' :
+        isInProgress ? `bg-gradient-to-br ${color} animate-pulse shadow-md` :
         isNotNeeded ? 'bg-gray-300' :
         'bg-gray-100 border-2 border-gray-300'
       }`}>
         {isCompleted ? (
-          <CheckCircle2 className="w-6 h-6 text-white" />
+          <CheckCircle2 className="w-7 h-7 text-white" />
         ) : isInProgress ? (
           <Clock className="w-6 h-6 text-white" />
         ) : isNotNeeded ? (
@@ -77,7 +95,7 @@ function StageProgress({ stage, status, color }: { stage: string, status: StageS
       </div>
       
       <div className="flex-1">
-        <h3 className={`font-medium ${
+        <h3 className={`font-semibold ${
           isCompleted ? 'text-green-700' :
           isInProgress ? 'text-blue-700' :
           isNotNeeded ? 'text-gray-500' :
@@ -85,11 +103,19 @@ function StageProgress({ stage, status, color }: { stage: string, status: StageS
         }`}>
           {stage}
         </h3>
-        <p className="text-sm text-gray-600">
-          {isCompleted ? 'Completed ✓' :
+        <p className={`text-sm ${
+          isCompleted ? 'text-green-600 font-medium' :
+          'text-gray-600'
+        }`}>
+          {isCompleted ? '✓ Completed' :
            isInProgress ? 'In Progress...' :
            isNotNeeded ? 'Not Needed' :
            'Not Started'}
+          {estimatedDays > 0 && !isCompleted && (
+            <span className="text-gray-500 ml-2">
+              (Est. {estimatedDays} {estimatedDays === 1 ? 'day' : 'days'})
+            </span>
+          )}
         </p>
       </div>
     </div>
@@ -193,6 +219,7 @@ export default async function ClientTrackingPage({ params }: PageProps) {
                           stage={stage}
                           status={getStageStatus(design.stage_status as Record<string, string>, stage)}
                           color={STAGE_COLORS[stage]}
+                          estimatedDays={STAGE_ESTIMATED_DAYS[stage]}
                         />
                         {idx < STAGES.length - 1 && (
                           <div className="ml-6 h-8 w-0.5 bg-gray-200" />
