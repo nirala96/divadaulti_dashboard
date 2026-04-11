@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { getTasks, addTask, updateTask, deleteTask, type Task } from '@/lib/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -22,18 +22,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-
-interface Task {
-  id: string
-  title: string
-  description: string | null
-  assigned_to: 'Arun' | 'Allish' | 'Nirjara' | null
-  completed: boolean
-  completed_at: string | null
-  images: string[] | null
-  display_order: number
-  created_at: string
-}
 
 const EMPLOYEES = ['Arun', 'Allish', 'Nirjara'] as const
 
@@ -61,13 +49,7 @@ export default function WorkPoints() {
 
   const fetchTasks = async () => {
     try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select('*')
-        .order('display_order', { ascending: true, nullsFirst: false })
-        .order('created_at', { ascending: true })
-
-      if (error) throw error
+      const data = await getTasks()
       setTasks(data || [])
     } catch (error) {
       console.error('Error fetching tasks:', error)
@@ -168,22 +150,13 @@ export default function WorkPoints() {
         ? Math.max(...tasks.map(t => t.display_order || 0))
         : -1
 
-      const { data, error } = await supabase
-        .from('tasks')
-        .insert([
-          {
-            title: newTask.title,
-            description: newTask.description || null,
-            assigned_to: newTask.assigned_to || null,
-            images: uploadedImages.length > 0 ? uploadedImages : null,
-            display_order: maxOrder + 1,
-            completed: false,
-          },
-        ])
-        .select()
-        .single()
-
-      if (error) throw error
+      const data = await addTask({
+        title: newTask.title,
+        description: newTask.description || undefined,
+        assigned_to: newTask.assigned_to || undefined,
+        images: uploadedImages.length > 0 ? uploadedImages : undefined,
+        display_order: maxOrder + 1,
+      })
 
       setTasks([...tasks, data])
       setNewTask({ title: '', description: '', assigned_to: '' })
@@ -212,17 +185,12 @@ export default function WorkPoints() {
     if (!editingTask || !newTask.title.trim()) return
 
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .update({
-          title: newTask.title,
-          description: newTask.description || null,
-          assigned_to: newTask.assigned_to || null,
-          images: uploadedImages.length > 0 ? uploadedImages : null,
-        })
-        .eq('id', editingTask.id)
-
-      if (error) throw error
+      await updateTask(editingTask.id, {
+        title: newTask.title,
+        description: newTask.description || undefined,
+        assigned_to: newTask.assigned_to || undefined,
+        images: uploadedImages.length > 0 ? uploadedImages : undefined,
+      })
 
       // Update local state
       setTasks(tasks.map(t => 
@@ -251,15 +219,10 @@ export default function WorkPoints() {
     try {
       const newCompleted = !task.completed
 
-      const { error } = await supabase
-        .from('tasks')
-        .update({
-          completed: newCompleted,
-          completed_at: newCompleted ? new Date().toISOString() : null,
-        })
-        .eq('id', task.id)
-
-      if (error) throw error
+      await updateTask(task.id, {
+        completed: newCompleted,
+        completed_at: newCompleted ? new Date().toISOString() : null,
+      })
 
       setTasks(tasks.map(t => 
         t.id === task.id 
@@ -276,12 +239,7 @@ export default function WorkPoints() {
     if (!confirm('Are you sure you want to delete this task?')) return
 
     try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', taskId)
-
-      if (error) throw error
+      await deleteTask(taskId)
 
       setTasks(tasks.filter(t => t.id !== taskId))
     } catch (error) {
@@ -323,16 +281,10 @@ export default function WorkPoints() {
 
     // Save to database in background
     try {
-      const updates = reorderedTasks.map((task, index) => ({
-        id: task.id,
-        display_order: index,
-      }))
-
-      for (const update of updates) {
-        await supabase
-          .from('tasks')
-          .update({ display_order: update.display_order })
-          .eq('id', update.id)
+      // Update all task orders
+      for (const task of reorderedTasks) {
+        const index = reorderedTasks.indexOf(task)
+        await updateTask(task.id, { display_order: index })
       }
 
       console.log('✅ Task order saved')

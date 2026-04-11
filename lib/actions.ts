@@ -181,6 +181,22 @@ export async function updateDesignImages(designId: string, images: string[]) {
   revalidatePath('/')
 }
 
+export async function updateDesignStatus(designId: string, status: string) {
+  await pool.query(
+    'UPDATE designs SET status = $1 WHERE id = $2',
+    [status, designId]
+  )
+  revalidatePath('/')
+}
+
+export async function updateDesignPriority(designId: string, isPriority: boolean) {
+  await pool.query(
+    'UPDATE designs SET is_priority = $1 WHERE id = $2',
+    [isPriority, designId]
+  )
+  revalidatePath('/')
+}
+
 export async function deleteDesign(designId: string) {
   await pool.query('DELETE FROM designs WHERE id = $1', [designId])
   revalidatePath('/')
@@ -248,6 +264,114 @@ export async function updateWorkPointStatus(id: string, status: string) {
 
 export async function deleteWorkPoint(id: string) {
   await pool.query('DELETE FROM work_points WHERE id = $1', [id])
+  revalidatePath('/work-points')
+}
+
+// Tasks (for Work Points page)
+export type Task = {
+  id: string
+  title: string
+  description: string | null
+  assigned_to: 'Arun' | 'Allish' | 'Nirjara' | null
+  completed: boolean
+  completed_at: string | null
+  images: string[] | null
+  display_order: number
+  created_at: string
+}
+
+export async function getTasks(): Promise<Task[]> {
+  const result = await pool.query(`
+    SELECT * FROM tasks 
+    ORDER BY display_order ASC NULLS LAST, created_at ASC
+  `)
+  return result.rows
+}
+
+export async function addTask(data: {
+  title: string
+  description?: string
+  assigned_to?: 'Arun' | 'Allish' | 'Nirjara'
+  images?: string[]
+  display_order?: number
+}) {
+  const result = await pool.query(
+    `INSERT INTO tasks (title, description, assigned_to, images, display_order, completed)
+     VALUES ($1, $2, $3, $4, $5, FALSE)
+     RETURNING *`,
+    [
+      data.title,
+      data.description || null,
+      data.assigned_to || null,
+      data.images || null,
+      data.display_order ?? 0
+    ]
+  )
+  revalidatePath('/work-points')
+  return result.rows[0]
+}
+
+export async function updateTask(id: string, data: {
+  title?: string
+  description?: string
+  assigned_to?: 'Arun' | 'Allish' | 'Nirjara' | null
+  images?: string[]
+  completed?: boolean
+  completed_at?: string | null
+  display_order?: number
+}) {
+  const updates: string[] = []
+  const values: any[] = []
+  let paramIndex = 1
+
+  if (data.title !== undefined) {
+    updates.push(`title = $${paramIndex}`)
+    values.push(data.title)
+    paramIndex++
+  }
+  if (data.description !== undefined) {
+    updates.push(`description = $${paramIndex}`)
+    values.push(data.description || null)
+    paramIndex++
+  }
+  if (data.assigned_to !== undefined) {
+    updates.push(`assigned_to = $${paramIndex}`)
+    values.push(data.assigned_to)
+    paramIndex++
+  }
+  if (data.images !== undefined) {
+    updates.push(`images = $${paramIndex}`)
+    values.push(data.images)
+    paramIndex++
+  }
+  if (data.completed !== undefined) {
+    updates.push(`completed = $${paramIndex}`)
+    values.push(data.completed)
+    paramIndex++
+  }
+  if (data.completed_at !== undefined) {
+    updates.push(`completed_at = $${paramIndex}`)
+    values.push(data.completed_at)
+    paramIndex++
+  }
+  if (data.display_order !== undefined) {
+    updates.push(`display_order = $${paramIndex}`)
+    values.push(data.display_order)
+    paramIndex++
+  }
+
+  if (updates.length === 0) return
+
+  values.push(id)
+  await pool.query(
+    `UPDATE tasks SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+    values
+  )
+  revalidatePath('/work-points')
+}
+
+export async function deleteTask(id: string) {
+  await pool.query('DELETE FROM tasks WHERE id = $1', [id])
   revalidatePath('/work-points')
 }
 

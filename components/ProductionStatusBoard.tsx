@@ -5,6 +5,8 @@ import { compressImage } from "@/lib/imageUtils"
 import {
   getDesignsWithClients,
   updateDesignStageStatus,
+  updateDesignStatus,
+  updateDesignPriority,
   updateDesignNotes,
   updateDesignOrder,
   updateDesignImages,
@@ -17,7 +19,7 @@ import {
 
 type DesignStatus = string
 type DesignType = 'Sampling' | 'Production'
-type StageState = 'vacant' | 'in-progress' | 'completed'
+type StageState = 'vacant' | 'not-needed' | 'in-progress' | 'completed'
 
 // Helper function to upload images via API
 async function uploadImagesToCloudinary(files: File[]): Promise<string[]> {
@@ -300,15 +302,12 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     if (reindexingClients) return null
     setReindexingClients(true)
     try {
-      const updates = orderedGroups.map((group, index) =>
-        supabase
-          .from('clients')
-          .update({ display_order: index })
-          .eq('id', group.client_id)
+      // Update client display orders using server action
+      await Promise.all(
+        orderedGroups.map((group, index) =>
+          updateClientOrder(group.client_id, index)
+        )
       )
-      const results = await Promise.all(updates)
-      const firstError = results.find(r => r.error)?.error
-      if (firstError) throw firstError
 
       return orderedGroups.map((group, index) => ({ ...group, display_order: index }))
     } catch (error) {
@@ -324,12 +323,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
 
   const handleUpdateDesignImages = async (designId: string, newImages: string[]) => {
     try {
-      const { error } = await supabase
-        .from('designs')
-        .update({ images: newImages })
-        .eq('id', designId)
-
-      if (error) throw error
+      await updateDesignImages(designId, newImages)
 
       // Refresh designs to show updated images
       await fetchDesigns()
@@ -428,7 +422,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       designsWithClients.forEach(design => {
         if (!clientMap.has(design.client_id)) {
           clientMap.set(design.client_id, {
-            name: design.client_name,
+            name: design.client_name || 'Unknown Client',
             display_order: null // Will be set if we have it
           })
         }
@@ -482,14 +476,9 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     )
   }
 
-  const updateDesignStatus = async (designId: string, newStatus: DesignStatus) => {
+  const updateDesignStatusLocal = async (designId: string, newStatus: DesignStatus) => {
     try {
-      const { error } = await supabase
-        .from('designs')
-        .update({ status: newStatus })
-        .eq('id', designId)
-
-      if (error) throw error
+      await updateDesignStatus(designId, newStatus)
 
       // Refresh data
       fetchDesigns()
@@ -500,24 +489,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
 
   const updateStageStatus = async (designId: string, stage: DesignStatus, newState: StageState) => {
     try {
-      // Find the design to get current stage_status
-      const design = clientGroups
-        .flatMap(g => g.designs)
-        .find(d => d.id === designId)
-      
-      if (!design) return
-
-      const updatedStageStatus = {
-        ...design.stage_status,
-        [stage]: newState
-      }
-
-      const { error } = await supabase
-        .from('designs')
-        .update({ stage_status: updatedStageStatus })
-        .eq('id', designId)
-
-      if (error) throw error
+      // Update using server action
+      await updateDesignStageStatus(designId, stage, newState)
 
       // Update local state immediately for better UX
       setClientGroups(prevGroups =>
@@ -525,7 +498,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           ...group,
           designs: group.designs.map(d =>
             d.id === designId
-              ? { ...d, stage_status: updatedStageStatus }
+              ? { ...d, stage_status: { ...d.stage_status, [stage]: newState } }
               : d
           )
         }))
@@ -540,12 +513,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     try {
       const newPriority = !currentPriority
 
-      const { error } = await supabase
-        .from('designs')
-        .update({ is_priority: newPriority })
-        .eq('id', designId)
-
-      if (error) throw error
+      await updateDesignPriority(designId, newPriority)
 
       // Refresh to re-sort with priority designs at top
       fetchDesigns()
@@ -607,15 +575,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       // Update using server action
       await updateDesignNotes(editingDesign.id, notesValue, allImages)
 
-      // Update local state
-      setClientGroups(prevGroups => 
-        prevGroups.map(group => ({
-          ...group,
-          designs: group.designs.map(d => 
-            d.id === editingDesign.id ? { ...d, notes: notesValue, images: allImages } : d
-          )
-        }))
-      )
+      // Refresh designs from database to ensure images are displayed
+      await fetchDesigns()
 
       closeNotesModal()
     } catch (error: any) {
@@ -630,46 +591,11 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     if (!confirmComplete) return
     
     try {
-      // Mark all stages as completed
-      const completedStageStatus: Record<DesignStatus, StageState> = {
-        'Payment Received': 'completed',
-        'Fabric Finalize': 'completed',
-        'Pattern': 'completed',
-        'Grading': 'completed',
-        'Cutting': 'completed',
-        'Stitching': 'completed',
-        'Dye': 'completed',
-        'Print': 'completed',
-        'Embroidery': 'completed',
-        'Wash': 'completed',
-        'Kaaj': 'completed',
-        'Finishing': 'completed',
-        'Photoshoot': 'completed',
-        'Final Settlement': 'completed',
-        'Dispatch': 'completed'
-      }
+      // Use the completeDesign server action
+      await completeDesign(confirmComplete.id)
 
-      const { error } = await supabase
-        .from('designs')
-        .update({ 
-          stage_status: completedStageStatus,
-          status: 'Dispatch'
-        })
-        .eq('id', confirmComplete.id)
-
-      if (error) throw error
-
-      // Update local state
-      setClientGroups(prevGroups =>
-        prevGroups.map(group => ({
-          ...group,
-          designs: group.designs.map(d =>
-            d.id === confirmComplete.id
-              ? { ...d, stage_status: completedStageStatus, status: 'Dispatch' as DesignStatus }
-              : d
-          )
-        }))
-      )
+      // Refresh data from database
+      await fetchDesigns()
 
       setConfirmComplete(null)
     } catch (error: any) {
@@ -684,23 +610,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     try {
       console.log('Attempting to delete design:', confirmDelete.id)
       
-      const { data, error } = await supabase
-        .from('designs')
-        .delete()
-        .eq('id', confirmDelete.id)
-        .select()
+      // Use the deleteDesign server action
+      await deleteDesign(confirmDelete.id)
 
-      if (error) {
-        console.error('Delete error details:', {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint
-        })
-        throw error
-      }
-
-      console.log('Delete successful:', data)
+      console.log('Delete successful')
 
       // Update local state - remove the design and filter out empty client groups
       setClientGroups(prevGroups =>
@@ -895,11 +808,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     const orderInfo = reorderedGroups.map((g, i) => ({ name: g.client_name, order: i }))
     console.log('=== SAVING CLIENT ORDER ===', orderInfo)
     try {
-      const { error } = await supabase
-        .from('clients')
-        .update({ display_order: newPriority })
-        .eq('id', draggedItem.client_id)
-      if (error) throw error
+      await updateClientOrder(draggedItem.client_id, newPriority)
     } catch (error) {
       console.error('❌ Error saving client order:', error)
       alert('Failed to save client order. Please refresh and try again.')
@@ -991,22 +900,15 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     const orderInfo = allDesigns.map((d, i) => ({ title: d.title, order: i }))
     console.log('=== SAVING DESIGN ORDER ===', orderInfo)
     try {
-      const updates = allDesigns.map((design, index) =>
-        supabase
-          .from('designs')
-          .update({ display_order: index })
-          .eq('id', design.id)
+      // Update all design orders using server action
+      await Promise.all(
+        allDesigns.map((design, index) =>
+          updateDesignOrder(design.id, index)
+        )
       )
-      const results = await Promise.all(updates)
-      const firstError = results.find(r => r.error)?.error
-      if (firstError) throw firstError
 
       if (priorityChanged) {
-        const { error: priorityError } = await supabase
-          .from('designs')
-          .update({ is_priority: shouldBePriority })
-          .eq('id', draggedItem.id)
-        if (priorityError) throw priorityError
+        await updateDesignPriority(draggedItem.id, shouldBePriority)
       }
     } catch (error) {
       console.error('❌ Error saving design order:', error)
@@ -1134,7 +1036,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     key={group.client_id}
                     group={group}
                     onToggle={() => toggleClientExpansion(group.client_id)}
-                    onUpdateStatus={updateDesignStatus}
+                    onUpdateStatus={updateDesignStatusLocal}
                     onUpdateStageStatus={updateStageStatus}
                     onTogglePriority={togglePriority}
                     onImageClick={setPreviewImage}
@@ -1658,10 +1560,10 @@ function ClientGroupRow({
                 {design.images && design.images.length > 0 ? (
                   <div 
                     className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => onImageClick(design.images[0])}
+                    onClick={() => onImageClick(design.images![0])}
                   >
                     <Image
-                      src={design.images[0]}
+                      src={design.images![0]}
                       alt={design.title}
                       fill
                       className="object-cover"
@@ -1772,7 +1674,7 @@ interface StatusIndicatorProps {
 
 function StatusIndicator({ design, stage, onUpdateStageStatus }: StatusIndicatorProps) {
   // Get the current state of this stage from stage_status
-  const stageState: StageState = design.stage_status?.[stage] || 'vacant'
+  const stageState: StageState = (design.stage_status?.[stage] as StageState) || 'vacant'
   
   // Define the cycle: vacant → not-needed → in-progress → completed → vacant
   const getNextState = (current: StageState): StageState => {
