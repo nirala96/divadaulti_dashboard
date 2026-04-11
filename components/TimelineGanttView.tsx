@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import Gantt from "frappe-gantt"
-import { supabase, type Design, type DesignType } from "@/lib/supabase"
+import { getDesignsWithClients, type Design } from "@/lib/actions"
 import { formatDisplayDate, calculateDaysBetween } from "@/lib/timeline"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"

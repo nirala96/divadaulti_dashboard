@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { supabase, type Client, type DesignType, type DesignStatus } from "@/lib/supabase"
+import { getClients, addClient, addDesign, type Client, type Design } from "@/lib/actions"
 import { calculateTimeline, formatDisplayDate } from "@/lib/timeline"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,6 +24,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Upload, X, ImageIcon, Calendar, Clock, Plus } from "lucide-react"
+
+type DesignType = 'Sampling' | 'Production'
+type DesignStatus = string
 
 const PROCESS_STEPS: DesignStatus[] = [
   'Payment Received',
@@ -99,12 +102,12 @@ export function AddDesignForm() {
   }, [formData.quantity, formData.type, formData.client_id, formData.title])
 
   const fetchClients = async () => {
-    const { data, error } = await supabase
-      .from("clients")
-      .select("*")
-      .order("name")
-
-    if (data) setClients(data)
+    try {
+      const data = await getClients()
+      setClients(data)
+    } catch (error) {
+      console.error('Error fetching clients:', error)
+    }
   }
 
   const handleAddNewClient = async () => {
@@ -114,19 +117,16 @@ export function AddDesignForm() {
     }
 
     try {
-      const { data, error } = await supabase
-        .from("clients")
-        .insert([{ name: newClientName.trim() }])
-        .select()
+      const newClient = await addClient({
+        name: newClientName.trim(),
+        contact_person: '',
+        email: `${newClientName.trim().toLowerCase().replace(/\s+/g, '')}@example.com`
+      })
 
-      if (error) throw error
-
-      if (data && data[0]) {
-        await fetchClients()
-        setFormData({ ...formData, client_id: data[0].id })
-        setShowAddClient(false)
-        setNewClientName("")
-      }
+      await fetchClients()
+      setFormData({ ...formData, client_id: newClient.id })
+      setShowAddClient(false)
+      setNewClientName("")
     } catch (error: any) {
       alert("Error adding client: " + error.message)
     }
@@ -190,36 +190,16 @@ export function AddDesignForm() {
       // Upload images first
       const imageUrls = await uploadImages()
 
-      // Initialize stage_status with all stages vacant except the initial status
-      const initialStageStatus: Record<string, string> = {}
-      PROCESS_STEPS.forEach(step => {
-        initialStageStatus[step] = step === formData.status ? 'in-progress' : 'vacant'
+      // Add design using server action
+      await addDesign({
+        client_id: formData.client_id,
+        title: formData.title,
+        type: formData.type as 'Sampling' | 'Production',
+        quantity: formData.quantity,
+        status: formData.status,
+        notes: formData.notes,
+        images: imageUrls
       })
-
-      // Get max display_order to append new design at the end
-      const { data: maxOrderData } = await supabase
-        .from('designs')
-        .select('display_order')
-        .order('display_order', { ascending: false, nullsFirst: false })
-        .limit(1)
-        .single()
-      
-      const nextDisplayOrder = (maxOrderData?.display_order ?? -1) + 1
-
-      // Insert design with calculated timeline (display_order will be added after running migration)
-      const { data, error } = await supabase
-        .from("designs")
-        .insert([{
-          ...formData,
-          images: imageUrls,
-          stage_status: initialStageStatus,
-          start_date: timeline.start_date,
-          end_date: timeline.end_date,
-          display_order: nextDisplayOrder,
-        }])
-        .select()
-
-      if (error) throw error
 
       alert(
         `Design added successfully!\n\n` +

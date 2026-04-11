@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { addClient } from "@/lib/actions"
 import {
   Dialog,
   DialogContent,
@@ -34,12 +34,7 @@ export function AddClientModal({ onClientAdded }: AddClientModalProps) {
     setLoading(true)
 
     try {
-      const { data, error } = await supabase
-        .from("clients")
-        .insert([formData])
-        .select()
-
-      if (error) throw error
+      await addClient(formData)
 
       alert("Client added successfully!")
       setFormData({ name: "", contact_person: "", email: "" })

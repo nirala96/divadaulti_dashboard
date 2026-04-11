@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { supabase, type Design, type DesignStatus, type DesignType, type StageState } from "@/lib/supabase"
+import { getCompletedDesigns, deleteDesign, restoreDesign, type Design } from "@/lib/actions"
 import { formatDisplayDate } from "@/lib/timeline"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -15,6 +15,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+
+type DesignStatus = string
+type DesignType = 'Sampling' | 'Production'
+type StageState = 'vacant' | 'not-needed' | 'in-progress' | 'completed'
 
 const STAGES: DesignStatus[] = [
   'Payment Received',
@@ -66,17 +70,11 @@ export function CompletedOrders() {
   const fetchCompletedDesigns = async () => {
     setLoading(true)
     try {
-      const { data: designsData, error } = await supabase
-        .from('designs')
-        .select('*, clients(name, id)')
-        .order('created_at', { ascending: false })
+      const designsData = await getCompletedDesigns()
 
-      if (error) throw error
-
-      const designsWithClients: DesignWithClient[] = (designsData || []).map((design: any) => ({
+      const designsWithClients: DesignWithClient[] = designsData.map((design: any) => ({
         ...design,
-        client_name: design.clients?.name || 'Unknown Client',
-        client_id: design.clients?.id || design.client_id
+        client_name: design.client_name || 'Unknown Client',
       }))
 
       // Filter only completed designs
@@ -121,37 +119,19 @@ export function CompletedOrders() {
     if (!confirmRestore) return
     
     try {
-      // Reset all stages to vacant
-      const vacantStageStatus: Record<DesignStatus, StageState> = {
-        'Payment Received': 'vacant',
-        'Fabric Finalize': 'vacant',
-        'Pattern': 'vacant',
-        'Grading': 'vacant',
-        'Cutting': 'vacant',
-        'Stitching': 'vacant',
-        'Dye': 'vacant',
-        'Print': 'vacant',
-        'Embroidery': 'vacant',
-        'Wash': 'vacant',
-        'Kaaj': 'vacant',
-        'Finishing': 'vacant',
-        'Photoshoot': 'vacant',
-        'Final Settlement': 'vacant',
-        'Dispatch': 'vacant'
-      }
+      await restoreDesign(confirmRestore.id)
 
-      const { error } = await supabase
-        .from('designs')
-        .update({ 
-          stage_status: vacantStageStatus,
-          status: 'Payment Received'
-        })
-        .eq('id', confirmRestore.id)
-
-      if (error) throw error
+      // Remove from completed list
+      setClientGroups(prevGroups =>
+        prevGroups
+          .map(group => ({
+            ...group,
+            designs: group.designs.filter(d => d.id !== confirmRestore.id)
+          }))
+          .filter(group => group.designs.length > 0)
+      )
 
       setConfirmRestore(null)
-      fetchCompletedDesigns()
     } catch (error: any) {
       console.error('Error restoring design:', error)
       alert('Failed to restore design: ' + error.message)
@@ -162,15 +142,19 @@ export function CompletedOrders() {
     if (!confirmDelete) return
     
     try {
-      const { error } = await supabase
-        .from('designs')
-        .delete()
-        .eq('id', confirmDelete.id)
+      await deleteDesign(confirmDelete.id)
 
-      if (error) throw error
+      // Remove from list
+      setClientGroups(prevGroups =>
+        prevGroups
+          .map(group => ({
+            ...group,
+            designs: group.designs.filter(d => d.id !== confirmDelete.id)
+          }))
+          .filter(group => group.designs.length > 0)
+      )
 
       setConfirmDelete(null)
-      fetchCompletedDesigns()
     } catch (error: any) {
       console.error('Error deleting design:', error)
       alert('Failed to delete design: ' + error.message)
@@ -260,10 +244,10 @@ export function CompletedOrders() {
                           {design.images && design.images.length > 0 ? (
                             <div 
                               className="relative w-12 h-12 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity rounded overflow-hidden"
-                              onClick={() => setPreviewImage(design.images[0])}
+                              onClick={() => setPreviewImage(design.images![0])}
                             >
                               <Image
-                                src={design.images[0]}
+                                src={design.images![0]}
                                 alt={design.title}
                                 fill
                                 className="object-cover"

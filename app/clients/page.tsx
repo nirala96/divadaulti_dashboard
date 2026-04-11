@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/Sidebar"
 import { AddClientModal } from "@/components/AddClientModal"
-import { supabase, type Client } from "@/lib/supabase"
+import { getClients, type Client } from "@/lib/actions"
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
@@ -15,13 +15,7 @@ export default function ClientsPage() {
 
   async function fetchClients() {
     try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .order('display_order', { ascending: true, nullsFirst: false })
-        .order('created_at', { ascending: false })
-      
-      if (error) throw error
+      const data = await getClients()
       setClients(data || [])
     } catch (error) {
       console.error('Error fetching clients:', error)

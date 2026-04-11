@@ -388,3 +388,33 @@ export async function getCompletedDesigns(): Promise<Design[]> {
   `)
   return result.rows
 }
+
+export async function restoreDesign(designId: string) {
+  // Reset all stages to vacant and status to Payment Received
+  const vacantStageStatus = {
+    'Payment Received': 'vacant',
+    'Fabric Finalize': 'vacant',
+    'Pattern': 'vacant',
+    'Grading': 'vacant',
+    'Cutting': 'vacant',
+    'Stitching': 'vacant',
+    'Dye': 'vacant',
+    'Print': 'vacant',
+    'Embroidery': 'vacant',
+    'Wash': 'vacant',
+    'Kaaj': 'vacant',
+    'Finishing': 'vacant',
+    'Photoshoot': 'vacant',
+    'Final Settlement': 'vacant',
+    'Dispatch': 'vacant'
+  }
+  
+  await pool.query(
+    `UPDATE designs 
+     SET stage_status = $1, status = 'Payment Received'
+     WHERE id = $2`,
+    [JSON.stringify(vacantStageStatus), designId]
+  )
+  revalidatePath('/completed-orders')
+  revalidatePath('/')
+}
