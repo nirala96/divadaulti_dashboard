@@ -187,6 +187,8 @@ export async function updateDesignStatus(designId: string, status: string) {
     [status, designId]
   )
   revalidatePath('/')
+  revalidatePath('/orders')
+  revalidatePath('/completed-orders')
 }
 
 export async function updateDesignPriority(designId: string, isPriority: boolean) {
@@ -200,6 +202,8 @@ export async function updateDesignPriority(designId: string, isPriority: boolean
 export async function deleteDesign(designId: string) {
   await pool.query('DELETE FROM designs WHERE id = $1', [designId])
   revalidatePath('/')
+  revalidatePath('/orders')
+  revalidatePath('/completed-orders')
 }
 
 export async function completeDesign(designId: string) {
@@ -508,5 +512,44 @@ export async function calculateTimeline(
       end_date: endDate.toISOString().split('T')[0],
       total_days: defaultDays,
     }
+  }
+}
+
+// Client Tracking (Public - for clients to view their orders)
+export type ClientTrackingData = {
+  client: Client & { tracking_token: string }
+  designs: Design[]
+}
+
+export async function getClientByTrackingToken(token: string): Promise<ClientTrackingData | null> {
+  try {
+    // Get client by tracking token
+    const clientResult = await pool.query(
+      'SELECT * FROM clients WHERE tracking_token = $1',
+      [token]
+    )
+    
+    if (clientResult.rows.length === 0) {
+      return null
+    }
+    
+    const client = clientResult.rows[0]
+    
+    // Get all designs for this client
+    const designsResult = await pool.query(
+      `SELECT * FROM designs 
+       WHERE client_id = $1 
+       AND status NOT IN ('Completed', 'Cancelled', 'Dispatched')
+       ORDER BY is_priority DESC, created_at DESC`,
+      [client.id]
+    )
+    
+    return {
+      client,
+      designs: designsResult.rows
+    }
+  } catch (error) {
+    console.error('Error fetching client by tracking token:', error)
+    return null
   }
 }

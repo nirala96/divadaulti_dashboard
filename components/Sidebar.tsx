@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Users, Package, Calendar, ClipboardList, CheckCircle2 } from "lucide-react"
+import { LayoutDashboard, Users, Package, Calendar, ClipboardList, CheckCircle2, Link2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navigation = [
@@ -11,6 +11,7 @@ const navigation = [
   { name: "Timeline", href: "/timeline", icon: Calendar },
   { name: "Work Points", href: "/work-points", icon: ClipboardList },
   { name: "Completed Orders", href: "/completed-orders", icon: CheckCircle2 },
+  { name: "Client Links", href: "/admin/client-links", icon: Link2 },
 ]
 
 export function Sidebar() {
