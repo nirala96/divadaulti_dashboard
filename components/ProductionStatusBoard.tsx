@@ -14,6 +14,7 @@ import {
   addDesign,
   deleteDesign,
   completeDesign,
+  calculateTimeline,
   type Design
 } from "@/lib/actions"
 
@@ -709,8 +710,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         imageUrls.push(...uploadedUrls)
       }
 
-      // Calculate timeline
-      const { calculateTimeline } = await import("@/lib/timeline")
+      // Calculate timeline using server action
       const timeline = await calculateTimeline(newDesignForm.quantity, newDesignForm.type)
 
       // Add design using server action
