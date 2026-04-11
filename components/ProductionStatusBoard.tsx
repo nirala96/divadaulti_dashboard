@@ -241,11 +241,12 @@ type ClientGroup = {
 
 interface ProductionStatusBoardProps {
   filter?: DesignType | 'All'
+  initialDesigns?: Design[]
 }
 
-export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardProps) {
+export function ProductionStatusBoard({ filter = 'All', initialDesigns = [] }: ProductionStatusBoardProps) {
   const [clientGroups, setClientGroups] = useState<ClientGroup[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!initialDesigns || initialDesigns.length === 0)
   const [activeFilter, setActiveFilter] = useState<DesignType | 'All'>(filter)
   const [activeStageFilter, setActiveStageFilter] = useState<DesignStatus | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
@@ -275,8 +276,15 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [dragOverDesignId, setDragOverDesignId] = useState<string | null>(null)
 
   useEffect(() => {
-    console.log('🔄 ProductionStatusBoard mounted - fetching designs...')
-    fetchDesigns()
+    // Use initial designs on first mount if available
+    if (initialDesigns && initialDesigns.length > 0 && activeFilter === 'All' && !activeStageFilter) {
+      console.log('🚀 Using server-side initial designs:', initialDesigns.length)
+      processDesigns(initialDesigns)
+      setLoading(false)
+    } else {
+      console.log('🔄 Fetching designs for filter:', activeFilter, activeStageFilter)
+      fetchDesigns()
+    }
   }, [activeFilter, activeStageFilter])
 
   const isDesignCompleted = (design: DesignWithClient): boolean => {
@@ -352,114 +360,107 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     }
   }
 
+  const processDesigns = async (designsData: Design[]) => {
+    // Transform data to include client name and id
+    const designsWithClients: DesignWithClient[] = (designsData || []).map((design: any) => ({
+      ...design,
+      client_name: design.client_name || 'Unknown Client',
+      client_id: design.client_id
+    }))
+
+    // Apply type filter
+    let filteredDesigns = activeFilter === 'All' 
+      ? designsWithClients
+      : designsWithClients.filter(d => d.type === activeFilter)
+
+    // Apply stage filter (show only designs where stage is vacant or in-progress)
+    if (activeStageFilter) {
+      filteredDesigns = filteredDesigns.filter(d => {
+        const stageState = d.stage_status?.[activeStageFilter] || 'vacant'
+        return stageState === 'vacant' || stageState === 'in-progress'
+      })
+    }
+
+    // Group by client
+    const groupedByClient: Record<string, DesignWithClient[]> = {}
+    filteredDesigns.forEach(design => {
+      const clientId = design.client_id || 'unknown'
+      if (!groupedByClient[clientId]) {
+        groupedByClient[clientId] = []
+      }
+      groupedByClient[clientId].push(design)
+    })
+
+    // Sort designs within each client group by priority, then display_order
+    Object.keys(groupedByClient).forEach(clientId => {
+      // Filter out completed designs - they now appear in separate Completed Orders page
+      groupedByClient[clientId] = groupedByClient[clientId].filter(d => !isDesignCompleted(d))
+      
+      groupedByClient[clientId].sort((a, b) => {
+        // Priority designs first
+        const aPriority = a.is_priority ? 1 : 0
+        const bPriority = b.is_priority ? 1 : 0
+        if (aPriority !== bPriority) return bPriority - aPriority
+        
+        // Then by display_order
+        const orderA = a.display_order ?? 999999
+        const orderB = b.display_order ?? 999999
+        return orderA - orderB
+      })
+    })
+
+    // Create client groups using the designs data
+    const groups: ClientGroup[] = []
+    
+    // Get unique clients from designs
+    const clientMap = new Map<string, { name: string, display_order: number | null }>()
+    designsWithClients.forEach(design => {
+      if (!clientMap.has(design.client_id)) {
+        clientMap.set(design.client_id, {
+          name: design.client_name || 'Unknown Client',
+          display_order: null // Will be set if we have it
+        })
+      }
+    })
+    
+    // Build groups from filtered designs
+    clientMap.forEach((client, clientId) => {
+      const clientDesigns = groupedByClient[clientId]
+      if (clientDesigns && clientDesigns.length > 0) {
+        groups.push({
+          client_id: clientId,
+          client_name: client.name,
+          designs: clientDesigns,
+          isExpanded: true,
+          display_order: null
+        })
+      }
+    })
+    
+    const shouldAutoReindex =
+      !autoReindexedRef.current &&
+      activeFilter === 'All' &&
+      !activeStageFilter &&
+      needsClientReindex(groups)
+
+    if (shouldAutoReindex) {
+      autoReindexedRef.current = true
+      const updatedGroups = await applyClientReindex(groups, true)
+      if (updatedGroups) {
+        setClientGroups(updatedGroups)
+        return
+      }
+    }
+
+    setClientGroups(groups)
+  }
+
   const fetchDesigns = async () => {
     setLoading(true)
     try {
       // Fetch designs with clients using server action
       const designsData = await getDesignsWithClients()
-
-      // Debug: Log the first few designs with their display_order
-      const designOrders = designsData?.slice(0, 10).map(d => ({ 
-        id: d.id, 
-        title: d.title, 
-        display_order: d.display_order 
-      }))
-      console.log('=== FETCHED DESIGNS ORDER ===', designOrders)
-      console.log('Total designs:', designsData?.length)
-
-      // Transform data to include client name and id
-      const designsWithClients: DesignWithClient[] = (designsData || []).map((design: any) => ({
-        ...design,
-        client_name: design.client_name || 'Unknown Client',
-        client_id: design.client_id
-      }))
-
-      // Apply type filter
-      let filteredDesigns = activeFilter === 'All' 
-        ? designsWithClients
-        : designsWithClients.filter(d => d.type === activeFilter)
-
-      // Apply stage filter (show only designs where stage is vacant or in-progress)
-      if (activeStageFilter) {
-        filteredDesigns = filteredDesigns.filter(d => {
-          const stageState = d.stage_status?.[activeStageFilter] || 'vacant'
-          return stageState === 'vacant' || stageState === 'in-progress'
-        })
-      }
-
-      // Group by client
-      const groupedByClient: Record<string, DesignWithClient[]> = {}
-      filteredDesigns.forEach(design => {
-        const clientId = design.client_id || 'unknown'
-        if (!groupedByClient[clientId]) {
-          groupedByClient[clientId] = []
-        }
-        groupedByClient[clientId].push(design)
-      })
-
-      // Sort designs within each client group by priority, then display_order
-      Object.keys(groupedByClient).forEach(clientId => {
-        // Filter out completed designs - they now appear in separate Completed Orders page
-        groupedByClient[clientId] = groupedByClient[clientId].filter(d => !isDesignCompleted(d))
-        
-        groupedByClient[clientId].sort((a, b) => {
-          // Priority designs first
-          const aPriority = a.is_priority ? 1 : 0
-          const bPriority = b.is_priority ? 1 : 0
-          if (aPriority !== bPriority) return bPriority - aPriority
-          
-          // Then by display_order
-          const orderA = a.display_order ?? 999999
-          const orderB = b.display_order ?? 999999
-          return orderA - orderB
-        })
-      })
-
-      // Create client groups using the designs data
-      const groups: ClientGroup[] = []
-      
-      // Get unique clients from designs
-      const clientMap = new Map<string, { name: string, display_order: number | null }>()
-      designsWithClients.forEach(design => {
-        if (!clientMap.has(design.client_id)) {
-          clientMap.set(design.client_id, {
-            name: design.client_name || 'Unknown Client',
-            display_order: null // Will be set if we have it
-          })
-        }
-      })
-      
-      // Build groups from filtered designs
-      clientMap.forEach((client, clientId) => {
-        const clientDesigns = groupedByClient[clientId]
-        if (clientDesigns && clientDesigns.length > 0) {
-          groups.push({
-            client_id: clientId,
-            client_name: client.name,
-            designs: clientDesigns,
-            isExpanded: true,
-            display_order: null
-          })
-        }
-      })
-      
-      console.log('Client groups order:', groups.map(g => ({ name: g.client_name, order: g.display_order })))
-      const shouldAutoReindex =
-        !autoReindexedRef.current &&
-        activeFilter === 'All' &&
-        !activeStageFilter &&
-        needsClientReindex(groups)
-
-      if (shouldAutoReindex) {
-        autoReindexedRef.current = true
-        const updatedGroups = await applyClientReindex(groups, true)
-        if (updatedGroups) {
-          setClientGroups(updatedGroups)
-          return
-        }
-      }
-
-      setClientGroups(groups)
+      await processDesigns(designsData)
     } catch (error) {
       console.error('Error fetching designs:', error)
     } finally {

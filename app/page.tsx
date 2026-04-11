@@ -1,7 +1,13 @@
 import { Sidebar } from "@/components/Sidebar";
 import { ProductionStatusBoard } from "@/components/ProductionStatusBoard";
+import { getDesignsWithClients } from "@/lib/actions";
 
-export default function Home() {
+export const dynamic = 'force-dynamic'
+
+export default async function Home() {
+  // Fetch data on server for faster initial load
+  const designs = await getDesignsWithClients()
+  
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
@@ -15,7 +21,7 @@ export default function Home() {
               Track and manage all designs across different production stages
             </p>
           </div>
-          <ProductionStatusBoard />
+          <ProductionStatusBoard initialDesigns={designs} />
         </div>
       </main>
     </div>
