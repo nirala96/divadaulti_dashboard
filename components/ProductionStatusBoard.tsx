@@ -51,7 +51,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ChevronDown, ChevronRight, Calendar, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Upload, Star } from "lucide-react"
+import { ChevronDown, ChevronRight, Calendar, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Upload, Star, Link2 } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -149,6 +149,8 @@ function ImageCarousel({
           fill
           className="object-cover"
           sizes="48px"
+          loading="lazy"
+          priority={false}
           unoptimized
           onError={() => setImageError(true)}
         />
@@ -249,6 +251,7 @@ export function ProductionStatusBoard({ filter = 'All', initialDesigns = [] }: P
   const [loading, setLoading] = useState(!initialDesigns || initialDesigns.length === 0)
   const [activeFilter, setActiveFilter] = useState<DesignType | 'All'>(filter)
   const [activeStageFilter, setActiveStageFilter] = useState<DesignStatus | null>(null)
+  const [copiedTrackingToken, setCopiedTrackingToken] = useState<string | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [editingDesign, setEditingDesign] = useState<DesignWithClient | null>(null)
   const [notesValue, setNotesValue] = useState("")
@@ -824,6 +827,24 @@ export function ProductionStatusBoard({ filter = 'All', initialDesigns = [] }: P
     setDragOverClientId(null)
   }
 
+  // Copy tracking link handler
+  const handleCopyTrackingLink = async (clientId: string) => {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin
+      const response = await fetch(`/api/client-token?clientId=${clientId}`)
+      const data = await response.json()
+      
+      if (data.trackingToken) {
+        const trackingUrl = `${baseUrl}/track/${data.trackingToken}`
+        await navigator.clipboard.writeText(trackingUrl)
+        setCopiedTrackingToken(clientId)
+        setTimeout(() => setCopiedTrackingToken(null), 2000)
+      }
+    } catch (err) {
+      console.error('Error copying tracking link:', err)
+    }
+  }
+
   // Drag and Drop Handlers for Designs within a Client
   const handleDesignDragStart = (designId: string) => {
     setDraggedDesignId(designId)
@@ -1058,6 +1079,8 @@ export function ProductionStatusBoard({ filter = 'All', initialDesigns = [] }: P
                     dragOverClientId={dragOverClientId}
                     draggedDesignId={draggedDesignId}
                     dragOverDesignId={dragOverDesignId}
+                    copiedTrackingToken={copiedTrackingToken}
+                    onCopyTrackingLink={handleCopyTrackingLink}
                   />
                 ))
               )}
@@ -1447,6 +1470,8 @@ interface ClientGroupRowProps {
   dragOverClientId: string | null
   draggedDesignId: string | null
   dragOverDesignId: string | null
+  copiedTrackingToken: string | null
+  onCopyTrackingLink: (clientId: string) => void
 }
 
 function ClientGroupRow({ 
@@ -1472,7 +1497,9 @@ function ClientGroupRow({
   draggedClientId,
   dragOverClientId,
   draggedDesignId,
-  dragOverDesignId
+  dragOverDesignId,
+  copiedTrackingToken,
+  onCopyTrackingLink
 }: ClientGroupRowProps) {
   const isDraggingClient = draggedClientId === group.client_id
   const isOverClient = dragOverClientId === group.client_id
@@ -1505,6 +1532,24 @@ function ClientGroupRow({
               <div className="text-sm font-bold text-gray-900">{group.client_name}</div>
               <div className="text-xs text-gray-500">{group.designs.length} product{group.designs.length !== 1 ? 's' : ''}</div>
             </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className={`h-7 w-7 p-0 transition-colors ${
+                copiedTrackingToken === group.client_id 
+                  ? 'bg-green-100 hover:bg-green-200' 
+                  : 'hover:bg-purple-100'
+              }`}
+              onClick={(e) => {
+                e.stopPropagation()
+                onCopyTrackingLink(group.client_id)
+              }}
+              title={copiedTrackingToken === group.client_id ? "Copied!" : "Copy tracking link"}
+            >
+              <Link2 className={`h-4 w-4 ${
+                copiedTrackingToken === group.client_id ? 'text-green-600' : 'text-purple-600'
+              }`} />
+            </Button>
             <Button
               size="sm"
               variant="ghost"
