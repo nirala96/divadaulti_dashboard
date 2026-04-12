@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { compressImage } from "@/lib/imageUtils"
 import {
   getDesignsWithClients,
@@ -277,16 +277,11 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [dragOverClientId, setDragOverClientId] = useState<string | null>(null)
   const [dragOverDesignId, setDragOverDesignId] = useState<string | null>(null)
 
-  useEffect(() => {
-    console.log('🔄 Fetching designs for filter:', activeFilter, activeStageFilter)
-    fetchDesigns()
-  }, [activeFilter, activeStageFilter])
-
-  const isDesignCompleted = (design: DesignWithClient): boolean => {
+  const isDesignCompleted = useCallback((design: DesignWithClient): boolean => {
     if (!design.stage_status) return false
     // Check if all stages are marked as 'completed'
     return STAGES.every(stage => design.stage_status?.[stage] === 'completed')
-  }
+  }, [])
 
   const needsClientReindex = (groups: ClientGroup[]) => {
     const seen = new Set<number>()
@@ -355,7 +350,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     }
   }
 
-  const processDesigns = async (designsData: Design[]) => {
+  const processDesigns = useCallback(async (designsData: Design[]) => {
     // Transform data to include client name and id
     const designsWithClients: DesignWithClient[] = (designsData || []).map((design: any) => ({
       ...design,
@@ -448,9 +443,9 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     }
 
     setClientGroups(groups)
-  }
+  }, [activeFilter, activeStageFilter, isDesignCompleted])
 
-  const fetchDesigns = async () => {
+  const fetchDesigns = useCallback(async () => {
     setLoading(true)
     try {
       // Fetch designs with clients using server action
@@ -461,7 +456,12 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     } finally {
       setLoading(false)
     }
-  }
+  }, [processDesigns])
+
+  useEffect(() => {
+    console.log('🔄 Fetching designs for filter:', activeFilter, activeStageFilter)
+    fetchDesigns()
+  }, [activeFilter, activeStageFilter, fetchDesigns])
 
   const toggleClientExpansion = (clientId: string) => {
     setClientGroups(prev =>
