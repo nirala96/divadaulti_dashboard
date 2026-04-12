@@ -59,11 +59,15 @@ export async function addClient(data: {
   email: string
   phone?: string
 }) {
+  // Generate unique tracking token using crypto
+  const crypto = require('crypto')
+  const trackingToken = crypto.randomBytes(16).toString('hex')
+  
   const result = await pool.query(
-    `INSERT INTO clients (name, contact_person, email, phone, display_order)
-     VALUES ($1, $2, $3, $4, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM clients))
+    `INSERT INTO clients (name, contact_person, email, phone, display_order, tracking_token)
+     VALUES ($1, $2, $3, $4, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM clients), $5)
      RETURNING *`,
-    [data.name, data.contact_person, data.email, data.phone || null]
+    [data.name, data.contact_person, data.email, data.phone || null, trackingToken]
   )
   revalidatePath('/')
   return result.rows[0]

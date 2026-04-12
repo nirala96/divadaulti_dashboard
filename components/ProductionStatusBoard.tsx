@@ -250,7 +250,6 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<DesignType | 'All'>(filter)
   const [activeStageFilter, setActiveStageFilter] = useState<DesignStatus | null>(null)
-  const [copiedTrackingToken, setCopiedTrackingToken] = useState<string | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [editingDesign, setEditingDesign] = useState<DesignWithClient | null>(null)
   const [notesValue, setNotesValue] = useState("")
@@ -825,8 +824,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     setDragOverClientId(null)
   }
 
-  // Copy tracking link handler
-  const handleCopyTrackingLink = async (clientId: string) => {
+  // Open tracking page handler
+  const handleOpenTracking = async (clientId: string) => {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || window.location.origin
       const response = await fetch(`/api/client-token?clientId=${clientId}`)
@@ -834,12 +833,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       
       if (data.trackingToken) {
         const trackingUrl = `${baseUrl}/track/${data.trackingToken}`
-        await navigator.clipboard.writeText(trackingUrl)
-        setCopiedTrackingToken(clientId)
-        setTimeout(() => setCopiedTrackingToken(null), 2000)
+        window.open(trackingUrl, '_blank', 'noopener,noreferrer')
       }
     } catch (err) {
-      console.error('Error copying tracking link:', err)
+      console.error('Error opening tracking link:', err)
     }
   }
 
@@ -1121,8 +1118,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     dragOverClientId={dragOverClientId}
                     draggedDesignId={draggedDesignId}
                     dragOverDesignId={dragOverDesignId}
-                    copiedTrackingToken={copiedTrackingToken}
-                    onCopyTrackingLink={handleCopyTrackingLink}
+                    onCopyTrackingLink={handleOpenTracking}
                   />
                 ))
               )}
@@ -1512,7 +1508,6 @@ interface ClientGroupRowProps {
   dragOverClientId: string | null
   draggedDesignId: string | null
   dragOverDesignId: string | null
-  copiedTrackingToken: string | null
   onCopyTrackingLink: (clientId: string) => void
 }
 
@@ -1540,7 +1535,6 @@ function ClientGroupRow({
   dragOverClientId,
   draggedDesignId,
   dragOverDesignId,
-  copiedTrackingToken,
   onCopyTrackingLink
 }: ClientGroupRowProps) {
   const isDraggingClient = draggedClientId === group.client_id
@@ -1577,20 +1571,14 @@ function ClientGroupRow({
             <Button
               size="sm"
               variant="ghost"
-              className={`h-7 w-7 p-0 transition-colors ${
-                copiedTrackingToken === group.client_id 
-                  ? 'bg-green-100 hover:bg-green-200' 
-                  : 'hover:bg-purple-100'
-              }`}
+              className="h-7 w-7 p-0 transition-colors hover:bg-purple-100"
               onClick={(e) => {
                 e.stopPropagation()
                 onCopyTrackingLink(group.client_id)
               }}
-              title={copiedTrackingToken === group.client_id ? "Copied!" : "Copy tracking link"}
+              title="View tracking page"
             >
-              <Link2 className={`h-4 w-4 ${
-                copiedTrackingToken === group.client_id ? 'text-green-600' : 'text-purple-600'
-              }`} />
+              <Link2 className="h-4 w-4 text-purple-600" />
             </Button>
             <Button
               size="sm"
