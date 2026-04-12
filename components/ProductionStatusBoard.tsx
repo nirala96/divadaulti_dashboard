@@ -243,12 +243,11 @@ type ClientGroup = {
 
 interface ProductionStatusBoardProps {
   filter?: DesignType | 'All'
-  initialDesigns?: Design[]
 }
 
-export function ProductionStatusBoard({ filter = 'All', initialDesigns = [] }: ProductionStatusBoardProps) {
+export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardProps) {
   const [clientGroups, setClientGroups] = useState<ClientGroup[]>([])
-  const [loading, setLoading] = useState(!initialDesigns || initialDesigns.length === 0)
+  const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<DesignType | 'All'>(filter)
   const [activeStageFilter, setActiveStageFilter] = useState<DesignStatus | null>(null)
   const [copiedTrackingToken, setCopiedTrackingToken] = useState<string | null>(null)
@@ -279,15 +278,8 @@ export function ProductionStatusBoard({ filter = 'All', initialDesigns = [] }: P
   const [dragOverDesignId, setDragOverDesignId] = useState<string | null>(null)
 
   useEffect(() => {
-    // Use initial designs on first mount if available
-    if (initialDesigns && initialDesigns.length > 0 && activeFilter === 'All' && !activeStageFilter) {
-      console.log('🚀 Using server-side initial designs:', initialDesigns.length)
-      processDesigns(initialDesigns)
-      setLoading(false)
-    } else {
-      console.log('🔄 Fetching designs for filter:', activeFilter, activeStageFilter)
-      fetchDesigns()
-    }
+    console.log('🔄 Fetching designs for filter:', activeFilter, activeStageFilter)
+    fetchDesigns()
   }, [activeFilter, activeStageFilter])
 
   const isDesignCompleted = (design: DesignWithClient): boolean => {
@@ -478,6 +470,12 @@ export function ProductionStatusBoard({ filter = 'All', initialDesigns = [] }: P
           ? { ...group, isExpanded: !group.isExpanded }
           : group
       )
+    )
+  }
+
+  const collapseAllClients = () => {
+    setClientGroups(prev =>
+      prev.map(group => ({ ...group, isExpanded: false }))
     )
   }
 
@@ -949,8 +947,52 @@ export function ProductionStatusBoard({ filter = 'All', initialDesigns = [] }: P
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Loading designs...</p>
+      <div className="space-y-6">
+        {/* Filter Toggle Skeleton */}
+        <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-lg shadow animate-pulse">
+          <div className="flex items-center gap-4">
+            <div className="h-4 w-24 bg-gray-200 rounded"></div>
+            <div className="flex gap-2">
+              <div className="h-8 w-24 bg-gray-200 rounded"></div>
+              <div className="h-8 w-28 bg-gray-200 rounded"></div>
+              <div className="h-8 w-32 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+          <div className="h-4 w-32 bg-gray-200 rounded"></div>
+        </div>
+
+        {/* Table Skeleton */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="animate-pulse">
+            {/* Header */}
+            <div className="bg-gray-50 p-4 border-b">
+              <div className="flex gap-4">
+                <div className="h-4 w-48 bg-gray-200 rounded"></div>
+                {[...Array(8)].map((_, i) => (
+                  <div key={i} className="h-4 w-20 bg-gray-200 rounded"></div>
+                ))}
+              </div>
+            </div>
+            {/* Rows */}
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="p-4 border-b">
+                <div className="flex gap-4 items-center">
+                  <div className="h-12 w-12 bg-gray-200 rounded"></div>
+                  <div className="flex-1">
+                    <div className="h-4 w-48 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-3 w-32 bg-gray-200 rounded"></div>
+                  </div>
+                  {[...Array(8)].map((_, j) => (
+                    <div key={j} className="h-8 w-20 bg-gray-200 rounded"></div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="text-center text-gray-500 text-sm mt-4">
+          Loading designs from database...
+        </div>
       </div>
     )
   }
@@ -989,11 +1031,11 @@ export function ProductionStatusBoard({ filter = 'All', initialDesigns = [] }: P
           <Button
             variant="outline"
             size="sm"
-            onClick={normalizeClientOrder}
-            disabled={reindexingClients || clientGroups.length === 0}
-            title="Normalize client order so each client has a unique priority"
+            onClick={collapseAllClients}
+            disabled={clientGroups.length === 0}
+            title="Collapse all client sections"
           >
-            {reindexingClients ? 'Reindexing...' : 'Reindex Client Order'}
+            Collapse All
           </Button>
           {activeStageFilter && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-md border border-blue-200">
