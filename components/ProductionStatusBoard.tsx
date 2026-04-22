@@ -149,8 +149,6 @@ function ImageCarousel({
           fill
           className="object-cover"
           sizes="48px"
-          loading="lazy"
-          priority={false}
           unoptimized
           onError={() => setImageError(true)}
         />
@@ -1140,6 +1138,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                 fill
                 className="object-contain"
                 sizes="(max-width: 1024px) 100vw, 1024px"
+                unoptimized
               />
             </div>
           )}
