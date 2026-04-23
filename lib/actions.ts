@@ -559,103 +559,52 @@ export async function getClientByTrackingToken(token: string): Promise<ClientTra
   }
 }
 
-// Financial Tracking
+// Financial Tracking - Client-level pricing
 export type FinancialData = {
   summary: {
     total_revenue: number
-    total_received: number
-    total_pending: number
-    collection_rate: number
+    client_count: number
   }
-  by_client: Array<{
-    client_id: string
-    client_name: string
-    order_count: number
-    total_amount: number
-    total_received: number
-    total_pending: number
-  }>
-  designs: Array<{
+  clients: Array<{
     id: string
-    client_id: string
-    client_name: string
-    title: string
-    type: string
+    name: string
     price: number
-    payment_received: number
-    payment_status: string
-    payment_date: string | null
-    notes_financial: string | null
+    order_count: number
   }>
 }
 
 export async function getFinancialData(): Promise<FinancialData> {
   try {
-    // Get summary
-    const summaryResult = await pool.query(`
+    // Get all clients with their price and order count
+    const clientsResult = await pool.query(`
       SELECT 
-        COALESCE(SUM(price), 0) as total_revenue,
-        COALESCE(SUM(payment_received), 0) as total_received,
-        COALESCE(SUM(price - payment_received), 0) as total_pending
-      FROM designs
-      WHERE price > 0
-    `)
-    
-    const summary = summaryResult.rows[0]
-    const collection_rate = summary.total_revenue > 0 
-      ? (summary.total_received / summary.total_revenue) * 100 
-      : 0
-
-    // Get client-wise breakdown
-    const clientResult = await pool.query(`
-      SELECT 
-        c.id as client_id,
-        c.name as client_name,
-        COUNT(d.id) as order_count,
-        COALESCE(SUM(d.price), 0) as total_amount,
-        COALESCE(SUM(d.payment_received), 0) as total_received,
-        COALESCE(SUM(d.price - d.payment_received), 0) as total_pending
+        c.id,
+        c.name,
+        COALESCE(c.price, 0) as price,
+        COUNT(d.id) as order_count
       FROM clients c
       LEFT JOIN designs d ON c.id = d.client_id
-      GROUP BY c.id, c.name
-      HAVING COALESCE(SUM(d.price), 0) > 0
-      ORDER BY total_amount DESC
+      GROUP BY c.id, c.name, c.price
+      ORDER BY c.display_order
     `)
 
-    // Get all designs with financial info
-    const designsResult = await pool.query(`
-      SELECT 
-        d.id,
-        d.client_id,
-        c.name as client_name,
-        d.title,
-        d.type,
-        COALESCE(d.price, 0) as price,
-        COALESCE(d.payment_received, 0) as payment_received,
-        COALESCE(d.payment_status, 'not-set') as payment_status,
-        d.payment_date,
-        d.notes_financial
-      FROM designs d
-      LEFT JOIN clients c ON d.client_id = c.id
-      ORDER BY c.display_order, d.display_order
-    `)
+    const clients = clientsResult.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      price: parseFloat(row.price) || 0,
+      order_count: parseInt(row.order_count) || 0
+    }))
+
+    // Calculate summary
+    const total_revenue = clients.reduce((sum, client) => sum + client.price, 0)
+    const client_count = clients.filter(c => c.price > 0).length
 
     return {
       summary: {
-        total_revenue: parseFloat(summary.total_revenue) || 0,
-        total_received: parseFloat(summary.total_received) || 0,
-        total_pending: parseFloat(summary.total_pending) || 0,
-        collection_rate
+        total_revenue,
+        client_count
       },
-      by_client: clientResult.rows.map(row => ({
-        client_id: row.client_id,
-        client_name: row.client_name,
-        order_count: parseInt(row.order_count),
-        total_amount: parseFloat(row.total_amount) || 0,
-        total_received: parseFloat(row.total_received) || 0,
-        total_pending: parseFloat(row.total_pending) || 0
-      })),
-      designs: designsResult.rows
+      clients
     }
   } catch (error) {
     console.error('Error fetching financial data:', error)
@@ -663,38 +612,22 @@ export async function getFinancialData(): Promise<FinancialData> {
   }
 }
 
-export async function updateDesignFinancials(
-  designId: string, 
-  data: {
-    price: number
-    payment_received: number
-    payment_status: string
-    payment_date: string | null
-    notes_financial?: string
-  }
+export async function updateClientPrice(
+  clientId: string, 
+  price: number
 ) {
   try {
     await pool.query(
-      `UPDATE designs 
-       SET price = $1, 
-           payment_received = $2, 
-           payment_status = $3,
-           payment_date = $4,
-           notes_financial = $5
-       WHERE id = $6`,
-      [
-        data.price,
-        data.payment_received,
-        data.payment_status,
-        data.payment_date,
-        data.notes_financial || null,
-        designId
-      ]
+      `UPDATE clients 
+       SET price = $1
+       WHERE id = $2`,
+      [price, clientId]
     )
     revalidatePath('/finance')
+    revalidatePath('/clients')
     revalidatePath('/')
   } catch (error) {
-    console.error('Error updating design financials:', error)
+    console.error('Error updating client price:', error)
     throw error
   }
 }
