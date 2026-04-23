@@ -330,8 +330,8 @@ export function FinancialDashboard() {
                         {design.payment_received > 0 ? formatCurrency(design.payment_received) : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(design.payment_status)}`}>
-                          {getStatusIcon(design.payment_status)}
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(design.payment_status as PaymentStatus)}`}>
+                          {getStatusIcon(design.payment_status as PaymentStatus)}
                           {design.payment_status}
                         </span>
                       </td>
