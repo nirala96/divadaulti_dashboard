@@ -180,6 +180,7 @@ function ImageCarousel({
 const STAGES: DesignStatus[] = [
   'Payment Received',
   'Fabric Finalize',
+  'Trims Sourcing',
   'Pattern',
   'Grading',
   'Cutting',
@@ -198,6 +199,7 @@ const STAGES: DesignStatus[] = [
 const STAGE_COLORS: Record<DesignStatus, string> = {
   'Payment Received': 'bg-green-100 text-green-800',
   'Fabric Finalize': 'bg-slate-100 text-slate-800',
+  'Trims Sourcing': 'bg-yellow-100 text-yellow-800',
   'Pattern': 'bg-blue-100 text-blue-800',
   'Grading': 'bg-purple-100 text-purple-800',
   'Cutting': 'bg-orange-100 text-orange-800',
