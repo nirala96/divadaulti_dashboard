@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect, useRef, useCallback } from "react"
+import React, { useState, useEffect, useRef, useCallback } from "react"
 import { compressImage } from "@/lib/imageUtils"
 import {
   getDesignsWithClients,
+  getHeldClientsWithDesigns,
   updateDesignStageStatus,
   updateDesignStatus,
   updateDesignPriority,
@@ -11,6 +12,8 @@ import {
   updateDesignOrder,
   updateDesignImages,
   updateClientOrder,
+  holdClient,
+  unholdClient,
   addDesign,
   deleteDesign,
   completeDesign,
@@ -51,7 +54,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ChevronDown, ChevronRight, Calendar, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Upload, Star, Link2 } from "lucide-react"
+import { ChevronDown, ChevronRight, Calendar, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Upload, Star, Link2, PauseCircle, PlayCircle } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -247,6 +250,7 @@ interface ProductionStatusBoardProps {
 
 export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardProps) {
   const [clientGroups, setClientGroups] = useState<ClientGroup[]>([])
+  const [heldClientGroups, setHeldClientGroups] = useState<ClientGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<DesignType | 'All'>(filter)
   const [activeStageFilter, setActiveStageFilter] = useState<DesignStatus | null>(null)
@@ -275,6 +279,58 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [draggedDesignId, setDraggedDesignId] = useState<string | null>(null)
   const [dragOverClientId, setDragOverClientId] = useState<string | null>(null)
   const [dragOverDesignId, setDragOverDesignId] = useState<string | null>(null)
+
+  const sortDesignsForDisplay = useCallback((designs: DesignWithClient[]) => {
+    return [...designs].sort((a, b) => {
+      const aPriority = a.is_priority ? 1 : 0
+      const bPriority = b.is_priority ? 1 : 0
+      if (aPriority !== bPriority) return bPriority - aPriority
+
+      const orderA = a.display_order ?? 999999
+      const orderB = b.display_order ?? 999999
+      return orderA - orderB
+    })
+  }, [])
+
+  const updateLocalDesignState = useCallback((designId: string, updater: (design: DesignWithClient) => DesignWithClient) => {
+    setClientGroups(prevGroups =>
+      prevGroups
+        .map(group => ({
+          ...group,
+          designs: group.designs.map(d => (d.id === designId ? updater(d) : d))
+        }))
+        .filter(group => group.designs.length > 0)
+    )
+
+    setHeldClientGroups(prevGroups =>
+      prevGroups
+        .map(group => ({
+          ...group,
+          designs: group.designs.map(d => (d.id === designId ? updater(d) : d))
+        }))
+        .filter(group => group.designs.length > 0)
+    )
+  }, [])
+
+  const removeDesignFromLocalState = useCallback((designId: string) => {
+    setClientGroups(prevGroups =>
+      prevGroups
+        .map(group => ({
+          ...group,
+          designs: group.designs.filter(d => d.id !== designId)
+        }))
+        .filter(group => group.designs.length > 0)
+    )
+
+    setHeldClientGroups(prevGroups =>
+      prevGroups
+        .map(group => ({
+          ...group,
+          designs: group.designs.filter(d => d.id !== designId)
+        }))
+        .filter(group => group.designs.length > 0)
+    )
+  }, [])
 
   const isDesignCompleted = useCallback((design: DesignWithClient): boolean => {
     if (!design.stage_status) return false
@@ -320,11 +376,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   }
 
   const handleUpdateDesignImages = async (designId: string, newImages: string[]) => {
+    updateLocalDesignState(designId, design => ({ ...design, images: newImages }))
+
     try {
       await updateDesignImages(designId, newImages)
-
-      // Refresh designs to show updated images
-      await fetchDesigns()
     } catch (error) {
       console.error('Error updating design images:', error)
       alert('Failed to update images')
@@ -338,11 +393,9 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       const fileArray = Array.from(files)
       const uploadedUrls = await uploadImagesToCloudinary(fileArray)
 
-      // Update design with new images
+      // Update design with new images locally and in the backend
+      updateLocalDesignState(designId, design => ({ ...design, images: uploadedUrls }))
       await updateDesignImages(designId, uploadedUrls)
-
-      // Refresh designs
-      await fetchDesigns()
     } catch (error) {
       console.error('Error uploading images:', error)
       alert('Failed to upload images')
@@ -444,18 +497,83 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     setClientGroups(groups)
   }, [activeFilter, activeStageFilter, isDesignCompleted])
 
+  const processHeldDesigns = useCallback(async (designsData: Design[]) => {
+    // Transform data to include client name and id
+    const designsWithClients: DesignWithClient[] = (designsData || []).map((design: any) => ({
+      ...design,
+      client_name: design.client_name || 'Unknown Client',
+      client_id: design.client_id
+    }))
+
+    // Group by client
+    const groupedByClient: Record<string, DesignWithClient[]> = {}
+    designsWithClients.forEach(design => {
+      const clientId = design.client_id || 'unknown'
+      if (!groupedByClient[clientId]) {
+        groupedByClient[clientId] = []
+      }
+      groupedByClient[clientId].push(design)
+    })
+
+    // Sort designs within each client group by priority, then display_order
+    Object.keys(groupedByClient).forEach(clientId => {
+      groupedByClient[clientId] = groupedByClient[clientId].filter(d => !isDesignCompleted(d))
+      
+      groupedByClient[clientId].sort((a, b) => {
+        const aPriority = a.is_priority ? 1 : 0
+        const bPriority = b.is_priority ? 1 : 0
+        if (aPriority !== bPriority) return bPriority - aPriority
+        
+        const orderA = a.display_order ?? 999999
+        const orderB = b.display_order ?? 999999
+        return orderA - orderB
+      })
+    })
+
+    // Create held client groups
+    const groups: ClientGroup[] = []
+    const clientMap = new Map<string, { name: string, display_order: number | null }>()
+    designsWithClients.forEach(design => {
+      if (!clientMap.has(design.client_id)) {
+        clientMap.set(design.client_id, {
+          name: design.client_name || 'Unknown Client',
+          display_order: null
+        })
+      }
+    })
+    
+    clientMap.forEach((client, clientId) => {
+      const clientDesigns = groupedByClient[clientId]
+      if (clientDesigns && clientDesigns.length > 0) {
+        groups.push({
+          client_id: clientId,
+          client_name: client.name,
+          designs: clientDesigns,
+          isExpanded: true,
+          display_order: null
+        })
+      }
+    })
+
+    setHeldClientGroups(groups)
+  }, [isDesignCompleted])
+
   const fetchDesigns = useCallback(async () => {
     setLoading(true)
     try {
-      // Fetch designs with clients using server action
+      // Fetch active designs with clients using server action
       const designsData = await getDesignsWithClients()
       await processDesigns(designsData)
+      
+      // Fetch held clients with designs
+      const heldDesignsData = await getHeldClientsWithDesigns()
+      await processHeldDesigns(heldDesignsData)
     } catch (error) {
       console.error('Error fetching designs:', error)
     } finally {
       setLoading(false)
     }
-  }, [processDesigns])
+  }, [processDesigns, processHeldDesigns])
 
   useEffect(() => {
     console.log('🔄 Fetching designs for filter:', activeFilter, activeStageFilter)
@@ -478,33 +596,126 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     )
   }
 
+  const handleHoldClient = async (clientId: string, clientName: string) => {
+    if (!confirm(`Mark "${clientName}" as unresponsive and move to hold? All designs for this client will be moved to the hold section.`)) {
+      return
+    }
+
+    const movedDesigns = clientGroups.find(group => group.client_id === clientId)?.designs || []
+
+    if (movedDesigns.length > 0) {
+      setClientGroups(prevGroups =>
+        prevGroups
+          .map(group => (group.client_id === clientId ? { ...group, designs: [] } : group))
+          .filter(group => group.designs.length > 0)
+      )
+
+      setHeldClientGroups(prevGroups => {
+        const existingGroup = prevGroups.find(group => group.client_id === clientId)
+        const nextDesigns = sortDesignsForDisplay([
+          ...(existingGroup?.designs || []),
+          ...movedDesigns.map(design => ({ ...design, client_name: clientName }))
+        ])
+
+        if (existingGroup) {
+          return prevGroups.map(group =>
+            group.client_id === clientId ? { ...group, designs: nextDesigns, isExpanded: true } : group
+          )
+        }
+
+        return [
+          ...prevGroups,
+          {
+            client_id: clientId,
+            client_name: clientName,
+            designs: nextDesigns,
+            isExpanded: true,
+            display_order: null
+          }
+        ]
+      })
+    }
+
+    try {
+      await holdClient(clientId)
+    } catch (error: any) {
+      console.error('Error holding client:', error)
+      alert('Failed to hold client: ' + error.message)
+    }
+  }
+
+  const handleUnholdClient = async (clientId: string, clientName: string) => {
+    const movedDesigns = heldClientGroups.find(group => group.client_id === clientId)?.designs || []
+
+    if (movedDesigns.length > 0) {
+      setHeldClientGroups(prevGroups =>
+        prevGroups
+          .map(group => (group.client_id === clientId ? { ...group, designs: [] } : group))
+          .filter(group => group.designs.length > 0)
+      )
+
+      setClientGroups(prevGroups => {
+        const existingGroup = prevGroups.find(group => group.client_id === clientId)
+        const nextDesigns = sortDesignsForDisplay([
+          ...(existingGroup?.designs || []),
+          ...movedDesigns.map(design => ({ ...design, client_name: clientName }))
+        ])
+
+        if (existingGroup) {
+          return prevGroups.map(group =>
+            group.client_id === clientId ? { ...group, designs: nextDesigns, isExpanded: true } : group
+          )
+        }
+
+        return [
+          ...prevGroups,
+          {
+            client_id: clientId,
+            client_name: clientName,
+            designs: nextDesigns,
+            isExpanded: true,
+            display_order: null
+          }
+        ]
+      })
+    }
+
+    try {
+      await unholdClient(clientId)
+    } catch (error: any) {
+      console.error('Error unholding client:', error)
+      alert('Failed to restore client: ' + error.message)
+    }
+  }
+
   const updateDesignStatusLocal = async (designId: string, newStatus: DesignStatus) => {
+    if (newStatus === 'Dispatch') {
+      removeDesignFromLocalState(designId)
+    } else {
+      updateLocalDesignState(designId, design => ({ ...design, status: newStatus }))
+    }
+
     try {
       await updateDesignStatus(designId, newStatus)
-
-      // Refresh data
-      fetchDesigns()
     } catch (error: any) {
       alert('Error updating status: ' + error.message)
     }
   }
 
   const updateStageStatus = async (designId: string, stage: DesignStatus, newState: StageState) => {
-    try {
-      // Update using server action
-      await updateDesignStageStatus(designId, stage, newState)
+    setClientGroups(prevGroups =>
+      prevGroups.map(group => ({
+        ...group,
+        designs: group.designs.map(d =>
+          d.id === designId
+            ? { ...d, stage_status: { ...d.stage_status, [stage]: newState } }
+            : d
+        )
+      }))
+    )
 
-      // Update local state immediately for better UX
-      setClientGroups(prevGroups =>
-        prevGroups.map(group => ({
-          ...group,
-          designs: group.designs.map(d =>
-            d.id === designId
-              ? { ...d, stage_status: { ...d.stage_status, [stage]: newState } }
-              : d
-          )
-        }))
-      )
+    try {
+      await updateDesignStageStatus(designId, stage, newState)
     } catch (error: any) {
       console.error('Error updating stage status:', error)
       alert('Failed to update stage status: ' + error.message)
@@ -512,13 +723,19 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   }
 
   const togglePriority = async (designId: string, currentPriority: boolean) => {
+    const newPriority = !currentPriority
+
+    setClientGroups(prevGroups =>
+      prevGroups.map(group => ({
+        ...group,
+        designs: sortDesignsForDisplay(group.designs.map(design =>
+          design.id === designId ? { ...design, is_priority: newPriority } : design
+        ))
+      }))
+    )
+
     try {
-      const newPriority = !currentPriority
-
       await updateDesignPriority(designId, newPriority)
-
-      // Refresh to re-sort with priority designs at top
-      fetchDesigns()
     } catch (error: any) {
       console.error('Error toggling priority:', error)
       alert('Failed to toggle priority: ' + error.message)
@@ -574,11 +791,13 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       const existingImages = editingDesign.images || []
       const allImages = [...newImageUrls, ...existingImages]
 
-      // Update using server action
-      await updateDesignNotes(editingDesign.id, notesValue, allImages)
+      updateLocalDesignState(editingDesign.id, design => ({
+        ...design,
+        notes: notesValue,
+        images: allImages
+      }))
 
-      // Refresh designs from database to ensure images are displayed
-      await fetchDesigns()
+      await updateDesignNotes(editingDesign.id, notesValue, allImages)
 
       closeNotesModal()
     } catch (error: any) {
@@ -592,14 +811,11 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const handleCompleteDesign = async () => {
     if (!confirmComplete) return
     
+    removeDesignFromLocalState(confirmComplete.id)
+    setConfirmComplete(null)
+
     try {
-      // Use the completeDesign server action
       await completeDesign(confirmComplete.id)
-
-      // Refresh data from database
-      await fetchDesigns()
-
-      setConfirmComplete(null)
     } catch (error: any) {
       console.error('Error completing design:', error)
       alert('Failed to complete design: ' + error.message)
@@ -617,20 +833,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
 
       console.log('Delete successful')
 
-      // Update local state - remove the design and filter out empty client groups
-      setClientGroups(prevGroups =>
-        prevGroups
-          .map(group => ({
-            ...group,
-            designs: group.designs.filter(d => d.id !== confirmDelete.id)
-          }))
-          .filter(group => group.designs.length > 0)
-      )
-
+      removeDesignFromLocalState(confirmDelete.id)
       setConfirmDelete(null)
-      
-      // Optionally refresh to ensure sync
-      await fetchDesigns()
     } catch (error: any) {
       console.error('Error deleting design:', error)
       alert(`Failed to delete design: ${error.message || 'Unknown error'}\n\nCheck browser console for details.`)
@@ -714,8 +918,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       // Calculate timeline using server action
       const timeline = await calculateTimeline(newDesignForm.quantity, newDesignForm.type)
 
-      // Add design using server action
-      await addDesign({
+      const addedDesign = await addDesign({
         client_id: addingForClient.id,
         title: newDesignForm.title,
         type: newDesignForm.type,
@@ -725,8 +928,40 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         images: imageUrls
       })
 
-      // Refresh the designs list
-      await fetchDesigns()
+      const shouldShowDesign =
+        (activeFilter === 'All' || addedDesign.type === activeFilter) &&
+        (!activeStageFilter || ['vacant', 'in-progress'].includes(addedDesign.stage_status?.[activeStageFilter] || 'vacant'))
+
+      if (shouldShowDesign) {
+        const newDesign: DesignWithClient = {
+          ...addedDesign,
+          client_name: addingForClient.name,
+          client_id: addingForClient.id
+        }
+
+        setClientGroups(prevGroups => {
+          const existingGroup = prevGroups.find(group => group.client_id === addingForClient.id)
+          if (existingGroup) {
+            return prevGroups.map(group =>
+              group.client_id === addingForClient.id
+                ? { ...group, designs: sortDesignsForDisplay([...group.designs, newDesign]), isExpanded: true }
+                : group
+            )
+          }
+
+          return [
+            ...prevGroups,
+            {
+              client_id: addingForClient.id,
+              client_name: addingForClient.name,
+              designs: sortDesignsForDisplay([newDesign]),
+              isExpanded: true,
+              display_order: null
+            }
+          ]
+        })
+      }
+
       closeAddDesignDialog()
     } catch (error: any) {
       console.error('Error saving design:', error)
@@ -1105,6 +1340,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     onCompleteClick={setConfirmComplete}
                     onDeleteClick={setConfirmDelete}
                     onAddDesign={openAddDesignDialog}
+                    onHoldClient={handleHoldClient}
                     isOverdue={isOverdue}
                     onClientDragStart={handleClientDragStart}
                     onClientDragOver={handleClientDragOver}
@@ -1125,6 +1361,150 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
             </tbody>
           </table>
         </div>
+
+      {/* On Hold Clients Section */}
+      {heldClientGroups.length > 0 && (
+        <div className="mt-8">
+          <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 mb-4">
+            <h2 className="text-lg font-bold text-orange-800 flex items-center gap-2">
+              <PauseCircle className="h-5 w-5" />
+              On Hold - Unresponsive Clients ({heldClientGroups.length})
+            </h2>
+            <p className="text-sm text-orange-600 mt-1">
+              These clients are marked as unresponsive. Click the restore button to move them back to active when they respond.
+            </p>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="min-w-full bg-white border border-gray-200">
+              <thead>
+                <tr className="bg-orange-100">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider w-64">
+                    Client / Design
+                  </th>
+                  {STAGES.map(stage => (
+                    <th key={stage} className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[100px]">
+                      {stage}
+                    </th>
+                  ))}
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-32">
+                    Actions
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-24">
+                    Restore
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {heldClientGroups.map(group => (
+                  <React.Fragment key={group.client_id}>
+                    {/* Client Header Row */}
+                    <tr className="bg-orange-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <span 
+                            className="cursor-pointer"
+                            onClick={() => {
+                              setHeldClientGroups(prev =>
+                                prev.map(g =>
+                                  g.client_id === group.client_id
+                                    ? { ...g, isExpanded: !g.isExpanded }
+                                    : g
+                                )
+                              )
+                            }}
+                          >
+                            {group.isExpanded ? (
+                              <ChevronDown className="h-5 w-5 text-gray-500" />
+                            ) : (
+                              <ChevronRight className="h-5 w-5 text-gray-500" />
+                            )}
+                          </span>
+                          <div className="flex-1">
+                            <div className="text-sm font-bold text-gray-900">{group.client_name}</div>
+                            <div className="text-xs text-orange-600">{group.designs.length} product{group.designs.length !== 1 ? 's' : ''} on hold</div>
+                          </div>
+                        </div>
+                      </td>
+                      {STAGES.map(stage => (
+                        <td key={stage} className="px-4 py-4"></td>
+                      ))}
+                      <td className="px-4 py-4"></td>
+                      <td className="px-4 py-4 text-center">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-green-50 hover:bg-green-100 border-green-300 text-green-700"
+                          onClick={() => handleUnholdClient(group.client_id, group.client_name)}
+                          title="Client is responsive - move back to active"
+                        >
+                          <PlayCircle className="h-4 w-4 mr-1" />
+                          Restore
+                        </Button>
+                      </td>
+                    </tr>
+
+                    {/* Product Rows (shown when expanded) */}
+                    {group.isExpanded && group.designs.map(design => {
+                      const overdueStatus = isOverdue(design)
+                      return (
+                        <tr 
+                          key={design.id} 
+                          className="hover:bg-orange-50 border-l-4 border-l-orange-300"
+                        >
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-2 ml-8">
+                              <div className="flex flex-col flex-1">
+                                <div className="flex items-center gap-2">
+                                  {design.is_priority && (
+                                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                                  )}
+                                  <span className="font-medium text-sm">{design.title}</span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {design.type}
+                                  </Badge>
+                                  <span className="text-xs text-gray-500">Qty: {design.quantity}</span>
+                                </div>
+                                {design.notes && (
+                                  <div className="text-xs text-gray-500 mt-1 truncate max-w-md">
+                                    {design.notes}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          {STAGES.map(stage => {
+                            const stageState = design.stage_status?.[stage] || 'vacant'
+                            return (
+                              <td key={stage} className="px-4 py-4 text-center">
+                                <Badge 
+                                  variant="outline" 
+                                  className={`text-xs ${
+                                    stageState === 'completed' ? 'bg-green-100 text-green-800' :
+                                    stageState === 'in-progress' ? 'bg-blue-100 text-blue-800' :
+                                    stageState === 'not-needed' ? 'bg-gray-100 text-gray-500' :
+                                    'bg-gray-50 text-gray-600'
+                                  }`}
+                                >
+                                  {stageState === 'vacant' ? '○' : 
+                                   stageState === 'in-progress' ? '◐' :
+                                   stageState === 'completed' ? '●' : 'N/A'}
+                                </Badge>
+                              </td>
+                            )
+                          })}
+                          <td className="px-4 py-4"></td>
+                          <td className="px-4 py-4"></td>
+                        </tr>
+                      )
+                    })}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Image Preview Modal */}
       <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
@@ -1496,6 +1876,7 @@ interface ClientGroupRowProps {
   onCompleteClick: (design: DesignWithClient) => void
   onDeleteClick: (design: DesignWithClient) => void
   onAddDesign: (clientId: string, clientName: string) => void
+  onHoldClient: (clientId: string, clientName: string) => void
   isOverdue: (design: DesignWithClient) => boolean
   onClientDragStart: (clientId: string) => void
   onClientDragOver: (e: React.DragEvent, clientId: string) => void
@@ -1523,6 +1904,7 @@ function ClientGroupRow({
   onCompleteClick, 
   onDeleteClick, 
   onAddDesign, 
+  onHoldClient,
   isOverdue,
   onClientDragStart,
   onClientDragOver,
@@ -1584,6 +1966,18 @@ function ClientGroupRow({
             <Button
               size="sm"
               variant="ghost"
+              className="h-7 w-7 p-0 hover:bg-orange-100"
+              onClick={(e) => {
+                e.stopPropagation()
+                onHoldClient(group.client_id, group.client_name)
+              }}
+              title="Mark client as unresponsive and move to hold"
+            >
+              <PauseCircle className="h-4 w-4 text-orange-600" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
               className="h-7 w-7 p-0 hover:bg-blue-100"
               onClick={(e) => {
                 e.stopPropagation()
@@ -1608,135 +2002,135 @@ function ClientGroupRow({
         const isDraggingDesign = draggedDesignId === design.id
         const isOverDesign = dragOverDesignId === design.id
         return (
-        <tr 
-          key={design.id} 
-          className={`transition-all hover:bg-gray-50 border-l-4 cursor-move ${
-            overdueStatus 
-              ? 'border-l-red-500 bg-red-50' 
-              : 'border-l-transparent hover:border-l-blue-500'
-          } ${isDraggingDesign ? 'opacity-50' : ''} ${isOverDesign ? 'border-t-2 border-t-blue-400' : ''}`}
-          draggable={true}
-          onDragStart={(e) => {
-            e.stopPropagation()
-            onDesignDragStart(design.id)
-          }}
-          onDragOver={(e) => {
-            e.stopPropagation()
-            onDesignDragOver(e, design.id)
-          }}
-          onDrop={(e) => {
-            e.stopPropagation()
-            onDesignDrop(e, design.id, group.client_id)
-          }}
-          onDragEnd={onDesignDragEnd}
-        >
-          <td className="px-6 py-4">
-            <div className="flex items-center gap-3 pl-7">
-              {/* Image Thumbnail */}
-              <div className="flex items-center gap-1">
-                {design.images && design.images.length > 0 ? (
-                  <div 
-                    className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-                    onClick={() => onImageClick(design.images![0])}
+          <tr 
+            key={design.id} 
+            className={`transition-all hover:bg-gray-50 border-l-4 cursor-move ${
+              overdueStatus 
+                ? 'border-l-red-500 bg-red-50' 
+                : 'border-l-transparent hover:border-l-blue-500'
+            } ${isDraggingDesign ? 'opacity-50' : ''} ${isOverDesign ? 'border-t-2 border-t-blue-400' : ''}`}
+            draggable={true}
+            onDragStart={(e) => {
+              e.stopPropagation()
+              onDesignDragStart(design.id)
+            }}
+            onDragOver={(e) => {
+              e.stopPropagation()
+              onDesignDragOver(e, design.id)
+            }}
+            onDrop={(e) => {
+              e.stopPropagation()
+              onDesignDrop(e, design.id, group.client_id)
+            }}
+            onDragEnd={onDesignDragEnd}
+          >
+            <td className="px-6 py-4">
+              <div className="flex items-center gap-3 pl-7">
+                {/* Image Thumbnail */}
+                <div className="flex items-center gap-1">
+                  {design.images && design.images.length > 0 ? (
+                    <div 
+                      className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={() => onImageClick(design.images![0])}
+                    >
+                      <Image
+                        src={design.images![0]}
+                        alt={design.title}
+                        fill
+                        className="object-cover"
+                        sizes="48px"
+                      />
+                    </div>
+                  ) : (
+                    <div 
+                      className="w-12 h-12 flex-shrink-0 bg-gray-100 rounded flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors"
+                      onClick={() => onTileClick(design)}
+                      title="Click to add images"
+                    >
+                      <ImageIcon className="h-5 w-5 text-gray-400" />
+                    </div>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onTileClick(design)
+                    }}
+                    className="w-7 h-7 flex-shrink-0 bg-blue-500 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors shadow-sm"
+                    title="Add/manage images"
                   >
-                    <Image
-                      src={design.images![0]}
-                      alt={design.title}
-                      fill
-                      className="object-cover"
-                      sizes="48px"
-                    />
-                  </div>
-                ) : (
-                  <div 
-                    className="w-12 h-12 flex-shrink-0 bg-gray-100 rounded flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors"
-                    onClick={() => onTileClick(design)}
-                    title="Click to add images"
-                  >
-                    <ImageIcon className="h-5 w-5 text-gray-400" />
-                  </div>
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onTileClick(design)
-                  }}
-                  className="w-7 h-7 flex-shrink-0 bg-blue-500 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors shadow-sm"
-                  title="Add/manage images"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="min-w-0 flex-1 cursor-pointer hover:text-blue-600" onClick={() => onTileClick(design)}>
-                <div className="text-sm font-medium text-gray-900 truncate hover:underline">
-                  {design.title}
+                    <Plus className="h-4 w-4" />
+                  </button>
                 </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge 
-                    variant={design.type === 'Sampling' ? 'secondary' : 'default'}
-                    className="text-xs"
-                  >
-                    {design.type}
-                  </Badge>
-                  {design.notes && design.notes.trim() && (
-                    <span title="Has notes">
-                      <FileText className="h-3 w-3 text-blue-500" />
-                    </span>
+                <div className="min-w-0 flex-1 cursor-pointer hover:text-blue-600" onClick={() => onTileClick(design)}>
+                  <div className="text-sm font-medium text-gray-900 truncate hover:underline">
+                    {design.title}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge 
+                      variant={design.type === 'Sampling' ? 'secondary' : 'default'}
+                      className="text-xs"
+                    >
+                      {design.type}
+                    </Badge>
+                    {design.notes && design.notes.trim() && (
+                      <span title="Has notes">
+                        <FileText className="h-3 w-3 text-blue-500" />
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </td>
+            {STAGES.map(stage => (
+              <td key={stage} className="px-4 py-4 text-center">
+                <StatusIndicator
+                  design={design}
+                  stage={stage}
+                  onUpdateStageStatus={(newState) => onUpdateStageStatus(design.id, stage, newState)}
+                />
+              </td>
+            ))}
+            <td className="px-4 py-4 text-center">
+              {(design.start_date || design.end_date) && (
+                <div className="text-xs text-gray-600 space-y-1">
+                  {design.start_date && (
+                    <div className="flex items-center justify-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      <span>{formatDisplayDate(design.start_date)}</span>
+                    </div>
+                  )}
+                  {design.end_date && (
+                    <div className="flex items-center justify-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      <span>{formatDisplayDate(design.end_date)}</span>
+                    </div>
                   )}
                 </div>
-              </div>
-            </div>
-          </td>
-          {STAGES.map(stage => (
-            <td key={stage} className="px-4 py-4 text-center">
-              <StatusIndicator
-                design={design}
-                stage={stage}
-                onUpdateStageStatus={(newState) => onUpdateStageStatus(design.id, stage, newState)}
-              />
+              )}
             </td>
-          ))}
-          <td className="px-4 py-4 text-center">
-            {(design.start_date || design.end_date) && (
-              <div className="text-xs text-gray-600 space-y-1">
-                {design.start_date && (
-                  <div className="flex items-center justify-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    <span>{formatDisplayDate(design.start_date)}</span>
-                  </div>
-                )}
-                {design.end_date && (
-                  <div className="flex items-center justify-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    <span>{formatDisplayDate(design.end_date)}</span>
-                  </div>
-                )}
+            <td className="px-4 py-4">
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-2 bg-green-50 hover:bg-green-100 border-green-300 text-green-700"
+                  onClick={() => onCompleteClick(design)}
+                  title="Mark as completed"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 px-2 bg-red-50 hover:bg-red-100 border-red-300 text-red-700"
+                  onClick={() => onDeleteClick(design)}
+                  title="Remove design"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
-            )}
-          </td>
-          <td className="px-4 py-4">
-            <div className="flex items-center justify-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 px-2 bg-green-50 hover:bg-green-100 border-green-300 text-green-700"
-                onClick={() => onCompleteClick(design)}
-                title="Mark as completed"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 px-2 bg-red-50 hover:bg-red-100 border-red-300 text-red-700"
-                onClick={() => onDeleteClick(design)}
-                title="Remove design"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </td>
-        </tr>
+            </td>
+          </tr>
         )
       })}
     </>
