@@ -90,6 +90,7 @@ export async function holdClient(clientId: string) {
   )
   revalidatePath('/')
   revalidatePath('/orders')
+  revalidatePath('/on-hold')
 }
 
 export async function unholdClient(clientId: string) {
@@ -99,6 +100,7 @@ export async function unholdClient(clientId: string) {
   )
   revalidatePath('/')
   revalidatePath('/orders')
+  revalidatePath('/on-hold')
 }
 
 // Designs

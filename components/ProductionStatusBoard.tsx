@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef, useCallback } from "react"
 import { compressImage } from "@/lib/imageUtils"
 import {
   getDesignsWithClients,
-  getHeldClientsWithDesigns,
   updateDesignStageStatus,
   updateDesignStatus,
   updateDesignPriority,
@@ -13,7 +12,6 @@ import {
   updateDesignImages,
   updateClientOrder,
   holdClient,
-  unholdClient,
   addDesign,
   deleteDesign,
   completeDesign,
@@ -54,7 +52,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ChevronDown, ChevronRight, Calendar, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Upload, Star, Link2, PauseCircle, PlayCircle } from "lucide-react"
+import { ChevronDown, ChevronRight, Calendar, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Upload, Star, Link2, PauseCircle } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -250,7 +248,6 @@ interface ProductionStatusBoardProps {
 
 export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardProps) {
   const [clientGroups, setClientGroups] = useState<ClientGroup[]>([])
-  const [heldClientGroups, setHeldClientGroups] = useState<ClientGroup[]>([])
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<DesignType | 'All'>(filter)
   const [activeStageFilter, setActiveStageFilter] = useState<DesignStatus | null>(null)
@@ -301,28 +298,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         }))
         .filter(group => group.designs.length > 0)
     )
-
-    setHeldClientGroups(prevGroups =>
-      prevGroups
-        .map(group => ({
-          ...group,
-          designs: group.designs.map(d => (d.id === designId ? updater(d) : d))
-        }))
-        .filter(group => group.designs.length > 0)
-    )
   }, [])
 
   const removeDesignFromLocalState = useCallback((designId: string) => {
     setClientGroups(prevGroups =>
-      prevGroups
-        .map(group => ({
-          ...group,
-          designs: group.designs.filter(d => d.id !== designId)
-        }))
-        .filter(group => group.designs.length > 0)
-    )
-
-    setHeldClientGroups(prevGroups =>
       prevGroups
         .map(group => ({
           ...group,
@@ -497,83 +476,18 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     setClientGroups(groups)
   }, [activeFilter, activeStageFilter, isDesignCompleted])
 
-  const processHeldDesigns = useCallback(async (designsData: Design[]) => {
-    // Transform data to include client name and id
-    const designsWithClients: DesignWithClient[] = (designsData || []).map((design: any) => ({
-      ...design,
-      client_name: design.client_name || 'Unknown Client',
-      client_id: design.client_id
-    }))
-
-    // Group by client
-    const groupedByClient: Record<string, DesignWithClient[]> = {}
-    designsWithClients.forEach(design => {
-      const clientId = design.client_id || 'unknown'
-      if (!groupedByClient[clientId]) {
-        groupedByClient[clientId] = []
-      }
-      groupedByClient[clientId].push(design)
-    })
-
-    // Sort designs within each client group by priority, then display_order
-    Object.keys(groupedByClient).forEach(clientId => {
-      groupedByClient[clientId] = groupedByClient[clientId].filter(d => !isDesignCompleted(d))
-      
-      groupedByClient[clientId].sort((a, b) => {
-        const aPriority = a.is_priority ? 1 : 0
-        const bPriority = b.is_priority ? 1 : 0
-        if (aPriority !== bPriority) return bPriority - aPriority
-        
-        const orderA = a.display_order ?? 999999
-        const orderB = b.display_order ?? 999999
-        return orderA - orderB
-      })
-    })
-
-    // Create held client groups
-    const groups: ClientGroup[] = []
-    const clientMap = new Map<string, { name: string, display_order: number | null }>()
-    designsWithClients.forEach(design => {
-      if (!clientMap.has(design.client_id)) {
-        clientMap.set(design.client_id, {
-          name: design.client_name || 'Unknown Client',
-          display_order: null
-        })
-      }
-    })
-    
-    clientMap.forEach((client, clientId) => {
-      const clientDesigns = groupedByClient[clientId]
-      if (clientDesigns && clientDesigns.length > 0) {
-        groups.push({
-          client_id: clientId,
-          client_name: client.name,
-          designs: clientDesigns,
-          isExpanded: true,
-          display_order: null
-        })
-      }
-    })
-
-    setHeldClientGroups(groups)
-  }, [isDesignCompleted])
-
   const fetchDesigns = useCallback(async () => {
     setLoading(true)
     try {
       // Fetch active designs with clients using server action
       const designsData = await getDesignsWithClients()
       await processDesigns(designsData)
-      
-      // Fetch held clients with designs
-      const heldDesignsData = await getHeldClientsWithDesigns()
-      await processHeldDesigns(heldDesignsData)
     } catch (error) {
       console.error('Error fetching designs:', error)
     } finally {
       setLoading(false)
     }
-  }, [processDesigns, processHeldDesigns])
+  }, [processDesigns])
 
   useEffect(() => {
     console.log('🔄 Fetching designs for filter:', activeFilter, activeStageFilter)
@@ -597,94 +511,21 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   }
 
   const handleHoldClient = async (clientId: string, clientName: string) => {
-    if (!confirm(`Mark "${clientName}" as unresponsive and move to hold? All designs for this client will be moved to the hold section.`)) {
+    if (!confirm(`Mark "${clientName}" as unresponsive and move to hold? All designs for this client will move to the On Hold page.`)) {
       return
     }
 
-    const movedDesigns = clientGroups.find(group => group.client_id === clientId)?.designs || []
-
-    if (movedDesigns.length > 0) {
-      setClientGroups(prevGroups =>
-        prevGroups
-          .map(group => (group.client_id === clientId ? { ...group, designs: [] } : group))
-          .filter(group => group.designs.length > 0)
-      )
-
-      setHeldClientGroups(prevGroups => {
-        const existingGroup = prevGroups.find(group => group.client_id === clientId)
-        const nextDesigns = sortDesignsForDisplay([
-          ...(existingGroup?.designs || []),
-          ...movedDesigns.map(design => ({ ...design, client_name: clientName }))
-        ])
-
-        if (existingGroup) {
-          return prevGroups.map(group =>
-            group.client_id === clientId ? { ...group, designs: nextDesigns, isExpanded: true } : group
-          )
-        }
-
-        return [
-          ...prevGroups,
-          {
-            client_id: clientId,
-            client_name: clientName,
-            designs: nextDesigns,
-            isExpanded: true,
-            display_order: null
-          }
-        ]
-      })
-    }
+    setClientGroups(prevGroups =>
+      prevGroups
+        .map(group => (group.client_id === clientId ? { ...group, designs: [] } : group))
+        .filter(group => group.designs.length > 0)
+    )
 
     try {
       await holdClient(clientId)
     } catch (error: any) {
       console.error('Error holding client:', error)
       alert('Failed to hold client: ' + error.message)
-    }
-  }
-
-  const handleUnholdClient = async (clientId: string, clientName: string) => {
-    const movedDesigns = heldClientGroups.find(group => group.client_id === clientId)?.designs || []
-
-    if (movedDesigns.length > 0) {
-      setHeldClientGroups(prevGroups =>
-        prevGroups
-          .map(group => (group.client_id === clientId ? { ...group, designs: [] } : group))
-          .filter(group => group.designs.length > 0)
-      )
-
-      setClientGroups(prevGroups => {
-        const existingGroup = prevGroups.find(group => group.client_id === clientId)
-        const nextDesigns = sortDesignsForDisplay([
-          ...(existingGroup?.designs || []),
-          ...movedDesigns.map(design => ({ ...design, client_name: clientName }))
-        ])
-
-        if (existingGroup) {
-          return prevGroups.map(group =>
-            group.client_id === clientId ? { ...group, designs: nextDesigns, isExpanded: true } : group
-          )
-        }
-
-        return [
-          ...prevGroups,
-          {
-            client_id: clientId,
-            client_name: clientName,
-            designs: nextDesigns,
-            isExpanded: true,
-            display_order: null
-          }
-        ]
-      })
-    }
-
-    try {
-      await unholdClient(clientId)
-    } catch (error: any) {
-      console.error('Error unholding client:', error)
-      alert('Failed to restore client: ' + error.message)
     }
   }
 
@@ -1361,150 +1202,6 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
             </tbody>
           </table>
         </div>
-
-      {/* On Hold Clients Section */}
-      {heldClientGroups.length > 0 && (
-        <div className="mt-8">
-          <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4 mb-4">
-            <h2 className="text-lg font-bold text-orange-800 flex items-center gap-2">
-              <PauseCircle className="h-5 w-5" />
-              On Hold - Unresponsive Clients ({heldClientGroups.length})
-            </h2>
-            <p className="text-sm text-orange-600 mt-1">
-              These clients are marked as unresponsive. Click the restore button to move them back to active when they respond.
-            </p>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white border border-gray-200">
-              <thead>
-                <tr className="bg-orange-100">
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider w-64">
-                    Client / Design
-                  </th>
-                  {STAGES.map(stage => (
-                    <th key={stage} className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[100px]">
-                      {stage}
-                    </th>
-                  ))}
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-32">
-                    Actions
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider w-24">
-                    Restore
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {heldClientGroups.map(group => (
-                  <React.Fragment key={group.client_id}>
-                    {/* Client Header Row */}
-                    <tr className="bg-orange-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <span 
-                            className="cursor-pointer"
-                            onClick={() => {
-                              setHeldClientGroups(prev =>
-                                prev.map(g =>
-                                  g.client_id === group.client_id
-                                    ? { ...g, isExpanded: !g.isExpanded }
-                                    : g
-                                )
-                              )
-                            }}
-                          >
-                            {group.isExpanded ? (
-                              <ChevronDown className="h-5 w-5 text-gray-500" />
-                            ) : (
-                              <ChevronRight className="h-5 w-5 text-gray-500" />
-                            )}
-                          </span>
-                          <div className="flex-1">
-                            <div className="text-sm font-bold text-gray-900">{group.client_name}</div>
-                            <div className="text-xs text-orange-600">{group.designs.length} product{group.designs.length !== 1 ? 's' : ''} on hold</div>
-                          </div>
-                        </div>
-                      </td>
-                      {STAGES.map(stage => (
-                        <td key={stage} className="px-4 py-4"></td>
-                      ))}
-                      <td className="px-4 py-4"></td>
-                      <td className="px-4 py-4 text-center">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="bg-green-50 hover:bg-green-100 border-green-300 text-green-700"
-                          onClick={() => handleUnholdClient(group.client_id, group.client_name)}
-                          title="Client is responsive - move back to active"
-                        >
-                          <PlayCircle className="h-4 w-4 mr-1" />
-                          Restore
-                        </Button>
-                      </td>
-                    </tr>
-
-                    {/* Product Rows (shown when expanded) */}
-                    {group.isExpanded && group.designs.map(design => {
-                      const overdueStatus = isOverdue(design)
-                      return (
-                        <tr 
-                          key={design.id} 
-                          className="hover:bg-orange-50 border-l-4 border-l-orange-300"
-                        >
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2 ml-8">
-                              <div className="flex flex-col flex-1">
-                                <div className="flex items-center gap-2">
-                                  {design.is_priority && (
-                                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                                  )}
-                                  <span className="font-medium text-sm">{design.title}</span>
-                                  <Badge variant="outline" className="text-xs">
-                                    {design.type}
-                                  </Badge>
-                                  <span className="text-xs text-gray-500">Qty: {design.quantity}</span>
-                                </div>
-                                {design.notes && (
-                                  <div className="text-xs text-gray-500 mt-1 truncate max-w-md">
-                                    {design.notes}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          {STAGES.map(stage => {
-                            const stageState = design.stage_status?.[stage] || 'vacant'
-                            return (
-                              <td key={stage} className="px-4 py-4 text-center">
-                                <Badge 
-                                  variant="outline" 
-                                  className={`text-xs ${
-                                    stageState === 'completed' ? 'bg-green-100 text-green-800' :
-                                    stageState === 'in-progress' ? 'bg-blue-100 text-blue-800' :
-                                    stageState === 'not-needed' ? 'bg-gray-100 text-gray-500' :
-                                    'bg-gray-50 text-gray-600'
-                                  }`}
-                                >
-                                  {stageState === 'vacant' ? '○' : 
-                                   stageState === 'in-progress' ? '◐' :
-                                   stageState === 'completed' ? '●' : 'N/A'}
-                                </Badge>
-                              </td>
-                            )
-                          })}
-                          <td className="px-4 py-4"></td>
-                          <td className="px-4 py-4"></td>
-                        </tr>
-                      )
-                    })}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       {/* Image Preview Modal */}
       <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
