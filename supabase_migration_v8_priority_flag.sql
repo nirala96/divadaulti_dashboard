@@ -16,4 +16,3 @@ SELECT
 FROM information_schema.columns
 WHERE table_name = 'designs' AND column_name = 'is_priority';
 
-

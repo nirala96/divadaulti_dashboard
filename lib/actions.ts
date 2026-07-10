@@ -17,6 +17,8 @@ export type Client = {
   display_order: number
   created_at: string
   tracking_token: string
+  is_on_hold: boolean
+  hold_date: string | null
 }
 
 export type Design = {
@@ -81,6 +83,24 @@ export async function updateClientOrder(id: string, display_order: number) {
   revalidatePath('/')
 }
 
+export async function holdClient(clientId: string) {
+  await pool.query(
+    'UPDATE clients SET is_on_hold = TRUE, hold_date = NOW() WHERE id = $1',
+    [clientId]
+  )
+  revalidatePath('/')
+  revalidatePath('/orders')
+}
+
+export async function unholdClient(clientId: string) {
+  await pool.query(
+    'UPDATE clients SET is_on_hold = FALSE, hold_date = NULL WHERE id = $1',
+    [clientId]
+  )
+  revalidatePath('/')
+  revalidatePath('/orders')
+}
+
 // Designs
 export async function getDesignsWithClients(): Promise<Design[]> {
   const result = await pool.query(`
@@ -89,6 +109,24 @@ export async function getDesignsWithClients(): Promise<Design[]> {
       c.name as client_name
     FROM designs d
     LEFT JOIN clients c ON d.client_id = c.id
+    WHERE (c.is_on_hold IS NULL OR c.is_on_hold = FALSE)
+      AND d.status != 'Dispatch'
+    ORDER BY c.display_order, d.display_order
+  `)
+  return result.rows
+}
+
+export async function getHeldClientsWithDesigns(): Promise<Design[]> {
+  const result = await pool.query(`
+    SELECT 
+      d.*,
+      c.name as client_name,
+      c.is_on_hold,
+      c.hold_date
+    FROM designs d
+    LEFT JOIN clients c ON d.client_id = c.id
+    WHERE c.is_on_hold = TRUE
+      AND d.status != 'Dispatch'
     ORDER BY c.display_order, d.display_order
   `)
   return result.rows
@@ -282,12 +320,85 @@ export type Task = {
   id: string
   title: string
   description: string | null
-  assigned_to: 'Arun' | 'Allish' | 'Nirjara' | null
+  assigned_to: string | null
   completed: boolean
   completed_at: string | null
   images: string[] | null
   display_order: number
   created_at: string
+}
+
+export type Employee = {
+  id: string
+  name: string
+  display_order: number
+  created_at: string
+}
+
+async function ensureWorkpointEmployeesTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS workpoint_employees (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      display_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )
+  `)
+}
+
+export async function getEmployees(): Promise<Employee[]> {
+  await ensureWorkpointEmployeesTable()
+
+  const existing = await pool.query(`
+    SELECT * FROM workpoint_employees
+    ORDER BY display_order ASC, created_at ASC
+  `)
+
+  if (existing.rows.length > 0) {
+    return existing.rows
+  }
+
+  const defaults = ['Arun', 'Allish', 'Nirjara']
+  for (let index = 0; index < defaults.length; index++) {
+    const name = defaults[index]
+    await pool.query(
+      `INSERT INTO workpoint_employees (name, display_order)
+       VALUES ($1, $2)
+       ON CONFLICT (name) DO NOTHING`,
+      [name, index]
+    )
+  }
+
+  const seeded = await pool.query(`
+    SELECT * FROM workpoint_employees
+    ORDER BY display_order ASC, created_at ASC
+  `)
+
+  return seeded.rows
+}
+
+export async function addEmployee(name: string) {
+  await ensureWorkpointEmployeesTable()
+
+  const result = await pool.query(
+    `INSERT INTO workpoint_employees (name, display_order)
+     VALUES ($1, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM workpoint_employees))
+     ON CONFLICT (name) DO NOTHING
+     RETURNING *`,
+    [name]
+  )
+
+  revalidatePath('/work-points')
+  return result.rows[0] || null
+}
+
+export async function removeEmployee(name: string) {
+  await ensureWorkpointEmployeesTable()
+
+  await pool.query(`UPDATE tasks SET assigned_to = NULL WHERE assigned_to = $1`, [name])
+  await pool.query(`DELETE FROM workpoint_employees WHERE name = $1`, [name])
+
+  revalidatePath('/work-points')
 }
 
 export async function getTasks(): Promise<Task[]> {
@@ -301,7 +412,7 @@ export async function getTasks(): Promise<Task[]> {
 export async function addTask(data: {
   title: string
   description?: string
-  assigned_to?: 'Arun' | 'Allish' | 'Nirjara'
+  assigned_to?: string
   images?: string[]
   display_order?: number
 }) {
@@ -324,7 +435,7 @@ export async function addTask(data: {
 export async function updateTask(id: string, data: {
   title?: string
   description?: string
-  assigned_to?: 'Arun' | 'Allish' | 'Nirjara' | null
+  assigned_to?: string | null
   images?: string[]
   completed?: boolean
   completed_at?: string | null

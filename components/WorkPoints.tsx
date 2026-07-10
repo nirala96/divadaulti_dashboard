@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getTasks, addTask, updateTask, deleteTask, type Task } from '@/lib/actions'
+import { getTasks, addTask, updateTask, deleteTask, getEmployees, addEmployee, removeEmployee, type Task, type Employee } from '@/lib/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Plus, GripVertical, Check, Trash2, Image as ImageIcon, Pencil } from 'lucide-react'
+import { Plus, GripVertical, Check, Trash2, Image as ImageIcon, Pencil, UserPlus, X } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -23,7 +23,9 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 
-const EMPLOYEES = ['Arun', 'Allish', 'Nirjara'] as const
+const DEFAULT_EMPLOYEES = ['Arun', 'Allish', 'Nirjara']
+
+type EmployeeFilter = 'All' | string
 
 export default function WorkPoints() {
   const [tasks, setTasks] = useState<Task[]>([])
@@ -32,27 +34,34 @@ export default function WorkPoints() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
-  const [selectedFilter, setSelectedFilter] = useState<'All' | 'Arun' | 'Allish' | 'Nirjara'>('All')
+  const [selectedFilter, setSelectedFilter] = useState<EmployeeFilter>('All')
+  const [employees, setEmployees] = useState<string[]>(DEFAULT_EMPLOYEES)
+  const [newEmployeeName, setNewEmployeeName] = useState('')
 
   // Form state
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
-    assigned_to: '' as '' | 'Arun' | 'Allish' | 'Nirjara',
+    assigned_to: '' as string,
   })
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [isUploading, setIsUploading] = useState(false)
 
   useEffect(() => {
-    fetchTasks()
+    fetchData()
   }, [])
 
-  const fetchTasks = async () => {
+  const fetchData = async () => {
     try {
-      const data = await getTasks()
-      setTasks(data || [])
+      const [taskData, employeeData] = await Promise.all([
+        getTasks(),
+        getEmployees()
+      ])
+
+      setTasks(taskData || [])
+      setEmployees((employeeData || []).map((employee: Employee) => employee.name))
     } catch (error) {
-      console.error('Error fetching tasks:', error)
+      console.error('Error fetching work points data:', error)
     } finally {
       setLoading(false)
     }
@@ -291,16 +300,58 @@ export default function WorkPoints() {
     } catch (error) {
       console.error('Error saving task order:', error)
       // Revert on error
-      fetchTasks()
+      fetchData()
     }
   }
 
   const getEmployeeColor = (employee: string | null) => {
-    switch (employee) {
-      case 'Arun': return 'bg-blue-100 text-blue-800'
-      case 'Allish': return 'bg-green-100 text-green-800'
-      case 'Nirjara': return 'bg-purple-100 text-purple-800'
-      default: return 'bg-gray-100 text-gray-800'
+    const index = employee ? employees.indexOf(employee) : -1
+    if (index >= 0) {
+      const palette = ['bg-blue-100 text-blue-800', 'bg-green-100 text-green-800', 'bg-purple-100 text-purple-800', 'bg-orange-100 text-orange-800', 'bg-pink-100 text-pink-800', 'bg-cyan-100 text-cyan-800']
+      return palette[index % palette.length]
+    }
+    return 'bg-gray-100 text-gray-800'
+  }
+
+  const handleAddEmployee = async () => {
+    const trimmedName = newEmployeeName.trim()
+    if (!trimmedName) return
+    if (employees.some(employee => employee.toLowerCase() === trimmedName.toLowerCase())) {
+      alert('This employee already exists')
+      return
+    }
+
+    try {
+      const createdEmployee = await addEmployee(trimmedName)
+      if (createdEmployee) {
+        setEmployees(prev => [...prev, createdEmployee.name])
+      }
+      setNewEmployeeName('')
+    } catch (error) {
+      console.error('Error adding employee:', error)
+      alert('Failed to add employee')
+    }
+  }
+
+  const handleRemoveEmployee = async (employeeToRemove: string) => {
+    if (employees.length <= 1) {
+      alert('At least one employee is required')
+      return
+    }
+
+    try {
+      await removeEmployee(employeeToRemove)
+      setEmployees(prev => prev.filter(employee => employee !== employeeToRemove))
+      setTasks(prevTasks => prevTasks.map(task =>
+        task.assigned_to === employeeToRemove ? { ...task, assigned_to: null } : task
+      ))
+
+      if (selectedFilter === employeeToRemove) {
+        setSelectedFilter('All')
+      }
+    } catch (error) {
+      console.error('Error removing employee:', error)
+      alert('Failed to remove employee')
     }
   }
 
@@ -317,7 +368,7 @@ export default function WorkPoints() {
   const completedTasks = filteredTasks.filter(t => t.completed)
 
   // Get task counts per employee
-  const getEmployeeTaskCount = (employee: 'Arun' | 'Allish' | 'Nirjara') => {
+  const getEmployeeTaskCount = (employee: string) => {
     return tasks.filter(t => t.assigned_to === employee && !t.completed).length
   }
 
@@ -376,15 +427,13 @@ export default function WorkPoints() {
                 </label>
                 <Select
                   value={newTask.assigned_to}
-                  onValueChange={(value) => 
-                    setNewTask({ ...newTask, assigned_to: value as 'Arun' | 'Allish' | 'Nirjara' })
-                  }
+                  onValueChange={(value) => setNewTask({ ...newTask, assigned_to: value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select employee" />
                   </SelectTrigger>
                   <SelectContent>
-                    {EMPLOYEES.map(emp => (
+                    {employees.map(emp => (
                       <SelectItem key={emp} value={emp}>
                         {emp}
                       </SelectItem>
@@ -505,15 +554,13 @@ export default function WorkPoints() {
               </label>
               <Select
                 value={newTask.assigned_to}
-                onValueChange={(value) => 
-                  setNewTask({ ...newTask, assigned_to: value as 'Arun' | 'Allish' | 'Nirjara' })
-                }
+                onValueChange={(value) => setNewTask({ ...newTask, assigned_to: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select employee" />
                 </SelectTrigger>
                 <SelectContent>
-                  {EMPLOYEES.map(emp => (
+                  {employees.map(emp => (
                     <SelectItem key={emp} value={emp}>
                       {emp}
                     </SelectItem>
@@ -598,6 +645,47 @@ export default function WorkPoints() {
         </DialogContent>
       </Dialog>
 
+      {/* Employee Management */}
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Employees</h2>
+              <p className="text-sm text-gray-600">Add or remove team members for task assignment</p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {employees.map(employee => (
+              <div key={employee} className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                <span>{employee}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveEmployee(employee)}
+                  className="text-gray-400 hover:text-red-600"
+                  title={`Remove ${employee}`}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              value={newEmployeeName}
+              onChange={(e) => setNewEmployeeName(e.target.value)}
+              placeholder="Add employee name"
+              className="max-w-xs"
+            />
+            <Button type="button" onClick={handleAddEmployee} variant="outline">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Add Employee
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Employee Filter Tags */}
       <div className="mb-6 flex flex-wrap gap-2">
         <Button
@@ -607,42 +695,23 @@ export default function WorkPoints() {
         >
           All Tasks ({tasks.filter(t => !t.completed).length})
         </Button>
-        <Button
-          variant={selectedFilter === 'Arun' ? 'default' : 'outline'}
-          onClick={() => setSelectedFilter('Arun')}
-          className={`rounded-full ${
-            selectedFilter === 'Arun' 
-              ? 'bg-blue-600 hover:bg-blue-700' 
-              : 'border-blue-300 text-blue-700 hover:bg-blue-50'
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-blue-600 mr-2"></span>
-          Arun ({getEmployeeTaskCount('Arun')})
-        </Button>
-        <Button
-          variant={selectedFilter === 'Allish' ? 'default' : 'outline'}
-          onClick={() => setSelectedFilter('Allish')}
-          className={`rounded-full ${
-            selectedFilter === 'Allish' 
-              ? 'bg-green-600 hover:bg-green-700' 
-              : 'border-green-300 text-green-700 hover:bg-green-50'
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-green-600 mr-2"></span>
-          Allish ({getEmployeeTaskCount('Allish')})
-        </Button>
-        <Button
-          variant={selectedFilter === 'Nirjara' ? 'default' : 'outline'}
-          onClick={() => setSelectedFilter('Nirjara')}
-          className={`rounded-full ${
-            selectedFilter === 'Nirjara' 
-              ? 'bg-purple-600 hover:bg-purple-700' 
-              : 'border-purple-300 text-purple-700 hover:bg-purple-50'
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-purple-600 mr-2"></span>
-          Nirjara ({getEmployeeTaskCount('Nirjara')})
-        </Button>
+        {employees.map((employee, index) => (
+          <Button
+            key={employee}
+            variant={selectedFilter === employee ? 'default' : 'outline'}
+            onClick={() => setSelectedFilter(employee)}
+            className={`rounded-full ${
+              selectedFilter === employee
+                ? index % 2 === 0
+                  ? 'bg-blue-600 hover:bg-blue-700'
+                  : 'bg-purple-600 hover:bg-purple-700'
+                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <span className={`w-2 h-2 rounded-full mr-2 ${index % 2 === 0 ? 'bg-blue-600' : 'bg-purple-600'}`}></span>
+            {employee} ({getEmployeeTaskCount(employee)})
+          </Button>
+        ))}
       </div>
 
       {/* Active Tasks */}
