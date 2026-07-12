@@ -246,20 +246,28 @@ export async function updateDesignStageStatus(
       `UPDATE designs
        SET stage_status = jsonb_set(COALESCE(stage_status, '{}'::jsonb), $2::text[], $3::jsonb)
        WHERE id = $1
-       RETURNING stage_started_at ->> $4 AS started_at`,
+       RETURNING
+         stage_started_at ->> $4 AS started_at,
+         title AS design_title,
+         (SELECT name FROM clients WHERE id = designs.client_id) AS client_name`,
       [designId, `{${stage}}`, JSON.stringify(status), stage]
     )
 
     const startedAtText: string | null = result.rows[0]?.started_at ?? null
+    const designTitle: string | null = result.rows[0]?.design_title ?? null
+    const clientName: string | null = result.rows[0]?.client_name ?? null
     const completedAt = new Date()
     const durationSeconds = startedAtText
       ? Math.max(0, Math.round((completedAt.getTime() - new Date(startedAtText).getTime()) / 1000))
       : null
 
+    // Snapshotting design_title/client_name so this record stays meaningful
+    // even if the design or client is later deleted or renamed.
     await pool.query(
-      `INSERT INTO stage_work_logs (design_id, stage, employee_name, started_at, completed_at, duration_seconds)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [designId, stage, employee, startedAtText, completedAt.toISOString(), durationSeconds]
+      `INSERT INTO stage_work_logs
+         (design_id, stage, employee_name, started_at, completed_at, duration_seconds, design_title, client_name)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [designId, stage, employee, startedAtText, completedAt.toISOString(), durationSeconds, designTitle, clientName]
     )
 
     revalidatePath('/')
@@ -283,9 +291,16 @@ export async function updateDesignStageStatus(
 export async function getStageWorkLogs(): Promise<StageWorkLog[]> {
   const result = await pool.query(`
     SELECT
-      l.*,
-      d.title AS design_title,
-      c.name AS client_name
+      l.id,
+      l.design_id,
+      l.stage,
+      l.employee_name,
+      l.started_at,
+      l.completed_at,
+      l.duration_seconds,
+      l.created_at,
+      COALESCE(l.design_title, d.title) AS design_title,
+      COALESCE(l.client_name, c.name) AS client_name
     FROM stage_work_logs l
     LEFT JOIN designs d ON l.design_id = d.id
     LEFT JOIN clients c ON d.client_id = c.id
