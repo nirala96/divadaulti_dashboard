@@ -40,6 +40,7 @@ export type Design = {
   is_priority: boolean
   created_at: string
   client_name?: string
+  client_display_order?: number | null
 }
 
 export type StageWorkLog = {
@@ -153,9 +154,10 @@ export async function unhideClientFromOrders(clientId: string) {
 // Designs
 export async function getDesignsWithClients(): Promise<Design[]> {
   const result = await pool.query(`
-    SELECT 
+    SELECT
       d.*,
-      c.name as client_name
+      c.name as client_name,
+      c.display_order as client_display_order
     FROM designs d
     LEFT JOIN clients c ON d.client_id = c.id
     WHERE (c.is_on_hold IS NULL OR c.is_on_hold = FALSE)

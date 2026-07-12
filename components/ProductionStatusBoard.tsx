@@ -437,11 +437,11 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       if (!clientMap.has(design.client_id)) {
         clientMap.set(design.client_id, {
           name: design.client_name || 'Unknown Client',
-          display_order: null // Will be set if we have it
+          display_order: design.client_display_order ?? null
         })
       }
     })
-    
+
     // Build groups from filtered designs
     clientMap.forEach((client, clientId) => {
       const clientDesigns = groupedByClient[clientId]
@@ -451,7 +451,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           client_name: client.name,
           designs: clientDesigns,
           isExpanded: true,
-          display_order: null
+          display_order: client.display_order
         })
       }
     })
