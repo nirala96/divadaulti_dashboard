@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
-import { getClients, addClient, addDesign, calculateTimeline, type Client, type Design } from "@/lib/actions"
+import { getClients, addClient, deleteClient, addDesign, calculateTimeline, type Client, type Design } from "@/lib/actions"
 import { formatDisplayDate } from "@/lib/timeline"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Upload, X, ImageIcon, Calendar, Clock, Plus } from "lucide-react"
+import { Upload, X, ImageIcon, Calendar, Clock, Plus, ChevronDown } from "lucide-react"
 
 type DesignType = 'Sampling' | 'Production'
 type DesignStatus = string
@@ -54,6 +55,10 @@ export function AddDesignForm() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
   const [showAddClient, setShowAddClient] = useState(false)
   const [newClientName, setNewClientName] = useState("")
+  const [clientDropdownOpen, setClientDropdownOpen] = useState(false)
+  const [confirmDeleteClient, setConfirmDeleteClient] = useState<Client | null>(null)
+  const [deletingClient, setDeletingClient] = useState(false)
+  const clientDropdownRef = useRef<HTMLDivElement>(null)
   const [calculatedTimeline, setCalculatedTimeline] = useState<{
     start_date: string
     end_date: string
@@ -72,6 +77,17 @@ export function AddDesignForm() {
   useEffect(() => {
     fetchClients()
   }, [])
+
+  useEffect(() => {
+    if (!clientDropdownOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (clientDropdownRef.current && !clientDropdownRef.current.contains(e.target as Node)) {
+        setClientDropdownOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [clientDropdownOpen])
 
   useEffect(() => {
     if (isSampling) {
@@ -129,6 +145,25 @@ export function AddDesignForm() {
       setNewClientName("")
     } catch (error: any) {
       alert("Error adding client: " + error.message)
+    }
+  }
+
+  const handleDeleteClient = async () => {
+    if (!confirmDeleteClient) return
+
+    setDeletingClient(true)
+    try {
+      await deleteClient(confirmDeleteClient.id)
+
+      setClients((prev) => prev.filter((c) => c.id !== confirmDeleteClient.id))
+      if (formData.client_id === confirmDeleteClient.id) {
+        setFormData({ ...formData, client_id: "" })
+      }
+      setConfirmDeleteClient(null)
+    } catch (error: any) {
+      alert("Error removing client: " + error.message)
+    } finally {
+      setDeletingClient(false)
     }
   }
 
@@ -238,24 +273,54 @@ export function AddDesignForm() {
       {/* Client Selection */}
       <div className="grid gap-2">
         <Label htmlFor="client">Select Client *</Label>
-        <Select
-          value={formData.client_id}
-          onValueChange={(value) =>
-            setFormData({ ...formData, client_id: value })
-          }
-          required
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Choose a client" />
-          </SelectTrigger>
-          <SelectContent>
-            {clients.map((client) => (
-              <SelectItem key={client.id} value={client.id}>
-                {client.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="relative" ref={clientDropdownRef}>
+          <button
+            type="button"
+            id="client"
+            onClick={() => setClientDropdownOpen((prev) => !prev)}
+            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          >
+            <span className={cn(!formData.client_id && "text-muted-foreground")}>
+              {clients.find((c) => c.id === formData.client_id)?.name || "Choose a client"}
+            </span>
+            <ChevronDown className="h-4 w-4 opacity-50" />
+          </button>
+
+          {clientDropdownOpen && (
+            <div className="absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+              {clients.length === 0 ? (
+                <div className="px-2 py-1.5 text-sm text-muted-foreground">No clients yet</div>
+              ) : (
+                clients.map((client) => (
+                  <div
+                    key={client.id}
+                    onClick={() => {
+                      setFormData({ ...formData, client_id: client.id })
+                      setClientDropdownOpen(false)
+                    }}
+                    className={cn(
+                      "flex cursor-default select-none items-center justify-between gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground",
+                      formData.client_id === client.id && "bg-accent/60"
+                    )}
+                  >
+                    <span className="truncate">{client.name}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setConfirmDeleteClient(client)
+                      }}
+                      className="flex-shrink-0 rounded p-1 text-gray-400 transition-colors hover:bg-red-100 hover:text-red-600"
+                      title={`Remove ${client.name}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
         <Button
           type="button"
           variant="outline"
@@ -505,6 +570,37 @@ export function AddDesignForm() {
               Cancel
             </Button>
             <Button onClick={handleAddNewClient}>Add Client</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Client Confirmation */}
+      <Dialog open={!!confirmDeleteClient} onOpenChange={(open) => !open && setConfirmDeleteClient(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Client</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently remove &quot;{confirmDeleteClient?.name}&quot;? This will also
+              delete all of their designs (active, completed, and on-hold). This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmDeleteClient(null)}
+              disabled={deletingClient}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteClient}
+              disabled={deletingClient}
+            >
+              {deletingClient ? "Removing..." : "Remove Permanently"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1127,6 +1127,9 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           <div className="text-sm text-gray-600">
             Total: <span className="font-semibold">{getTotalDesigns()}</span> designs
           </div>
+          <div className="text-sm text-gray-600">
+            Total: <span className="font-semibold">{clientGroups.length}</span> clients
+          </div>
         </div>
       </div>
 

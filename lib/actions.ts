@@ -103,6 +103,17 @@ export async function unholdClient(clientId: string) {
   revalidatePath('/on-hold')
 }
 
+export async function deleteClient(clientId: string) {
+  // Designs reference clients with ON DELETE CASCADE, so this also removes
+  // all designs (active, completed, and on-hold) belonging to this client.
+  await pool.query('DELETE FROM clients WHERE id = $1', [clientId])
+  revalidatePath('/')
+  revalidatePath('/orders')
+  revalidatePath('/clients')
+  revalidatePath('/completed-orders')
+  revalidatePath('/on-hold')
+}
+
 // Designs
 export async function getDesignsWithClients(): Promise<Design[]> {
   const result = await pool.query(`
