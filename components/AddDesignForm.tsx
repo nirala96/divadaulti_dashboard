@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
-import { getClients, addClient, deleteClient, addDesign, calculateTimeline, type Client, type Design } from "@/lib/actions"
+import { getActiveClients, addClient, hideClientFromOrders, addDesign, calculateTimeline, type Client, type Design } from "@/lib/actions"
 import { formatDisplayDate } from "@/lib/timeline"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -38,13 +38,7 @@ const PROCESS_STEPS: DesignStatus[] = [
   'Stitching',
   'Dye',
   'Print',
-  'Embroidery',
-  'Wash',
-  'Kaaj',
-  'Finishing',
-  'Photoshoot',
-  'Final Settlement',
-  'Dispatch'
+  'Embroidery'
 ]
 
 export function AddDesignForm() {
@@ -56,8 +50,8 @@ export function AddDesignForm() {
   const [showAddClient, setShowAddClient] = useState(false)
   const [newClientName, setNewClientName] = useState("")
   const [clientDropdownOpen, setClientDropdownOpen] = useState(false)
-  const [confirmDeleteClient, setConfirmDeleteClient] = useState<Client | null>(null)
-  const [deletingClient, setDeletingClient] = useState(false)
+  const [confirmHideClient, setConfirmHideClient] = useState<Client | null>(null)
+  const [hidingClient, setHidingClient] = useState(false)
   const clientDropdownRef = useRef<HTMLDivElement>(null)
   const [calculatedTimeline, setCalculatedTimeline] = useState<{
     start_date: string
@@ -119,7 +113,7 @@ export function AddDesignForm() {
 
   const fetchClients = async () => {
     try {
-      const data = await getClients()
+      const data = await getActiveClients()
       setClients(data)
     } catch (error) {
       console.error('Error fetching clients:', error)
@@ -148,22 +142,22 @@ export function AddDesignForm() {
     }
   }
 
-  const handleDeleteClient = async () => {
-    if (!confirmDeleteClient) return
+  const handleHideClient = async () => {
+    if (!confirmHideClient) return
 
-    setDeletingClient(true)
+    setHidingClient(true)
     try {
-      await deleteClient(confirmDeleteClient.id)
+      await hideClientFromOrders(confirmHideClient.id)
 
-      setClients((prev) => prev.filter((c) => c.id !== confirmDeleteClient.id))
-      if (formData.client_id === confirmDeleteClient.id) {
+      setClients((prev) => prev.filter((c) => c.id !== confirmHideClient.id))
+      if (formData.client_id === confirmHideClient.id) {
         setFormData({ ...formData, client_id: "" })
       }
-      setConfirmDeleteClient(null)
+      setConfirmHideClient(null)
     } catch (error: any) {
-      alert("Error removing client: " + error.message)
+      alert("Error removing client from list: " + error.message)
     } finally {
-      setDeletingClient(false)
+      setHidingClient(false)
     }
   }
 
@@ -308,10 +302,10 @@ export function AddDesignForm() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation()
-                        setConfirmDeleteClient(client)
+                        setConfirmHideClient(client)
                       }}
                       className="flex-shrink-0 rounded p-1 text-gray-400 transition-colors hover:bg-red-100 hover:text-red-600"
-                      title={`Remove ${client.name}`}
+                      title={`Remove ${client.name} from this list`}
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -574,32 +568,34 @@ export function AddDesignForm() {
         </DialogContent>
       </Dialog>
 
-      {/* Remove Client Confirmation */}
-      <Dialog open={!!confirmDeleteClient} onOpenChange={(open) => !open && setConfirmDeleteClient(null)}>
+      {/* Remove Client From Dropdown Confirmation */}
+      <Dialog open={!!confirmHideClient} onOpenChange={(open) => !open && setConfirmHideClient(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Remove Client</DialogTitle>
+            <DialogTitle>Remove Client From List</DialogTitle>
             <DialogDescription>
-              Are you sure you want to permanently remove &quot;{confirmDeleteClient?.name}&quot;? This will also
-              delete all of their designs (active, completed, and on-hold). This cannot be undone.
+              Remove &quot;{confirmHideClient?.name}&quot; from this client dropdown? They won&apos;t be available
+              when creating new orders anymore, but their record and full order history (active, completed, and
+              on-hold) stay exactly as they are and remain visible on the Clients, Completed Orders, and On Hold
+              pages.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              onClick={() => setConfirmDeleteClient(null)}
-              disabled={deletingClient}
+              onClick={() => setConfirmHideClient(null)}
+              disabled={hidingClient}
             >
               Cancel
             </Button>
             <Button
               type="button"
               variant="destructive"
-              onClick={handleDeleteClient}
-              disabled={deletingClient}
+              onClick={handleHideClient}
+              disabled={hidingClient}
             >
-              {deletingClient ? "Removing..." : "Remove Permanently"}
+              {hidingClient ? "Removing..." : "Remove From List"}
             </Button>
           </DialogFooter>
         </DialogContent>

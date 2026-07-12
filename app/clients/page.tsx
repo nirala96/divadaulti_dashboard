@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react"
 import { Sidebar } from "@/components/Sidebar"
 import { AddClientModal } from "@/components/AddClientModal"
-import { getClients, type Client } from "@/lib/actions"
-import { Link2 } from "lucide-react"
+import { getClients, unhideClientFromOrders, type Client } from "@/lib/actions"
+import { Link2, RotateCcw } from "lucide-react"
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
@@ -32,6 +32,18 @@ export default function ClientsPage() {
     navigator.clipboard.writeText(trackingUrl)
     setCopiedId(clientId)
     setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  async function handleRestoreToOrders(clientId: string) {
+    try {
+      await unhideClientFromOrders(clientId)
+      setClients((prev) =>
+        prev.map((c) => (c.id === clientId ? { ...c, hidden_from_orders: false } : c))
+      )
+    } catch (error) {
+      console.error('Error restoring client to orders list:', error)
+      alert('Failed to restore client to the orders dropdown')
+    }
   }
 
   return (
@@ -62,6 +74,7 @@ export default function ClientsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Added</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Orders Dropdown</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tracking Link</th>
                   </tr>
                 </thead>
@@ -74,6 +87,20 @@ export default function ClientsPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-gray-600">{client.phone || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-500 text-sm">
                         {new Date(client.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {client.hidden_from_orders ? (
+                          <button
+                            onClick={() => handleRestoreToOrders(client.id)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                            title="Add back to the client dropdown when creating orders"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            Removed - Restore
+                          </button>
+                        ) : (
+                          <span className="text-xs text-green-700 bg-green-50 px-2.5 py-1 rounded-full">Active</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {client.tracking_token ? (

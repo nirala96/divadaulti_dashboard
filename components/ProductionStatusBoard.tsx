@@ -18,6 +18,7 @@ import {
   calculateTimeline,
   type Design
 } from "@/lib/actions"
+import { KARIGAAR_NAMES } from "@/lib/employees"
 
 type DesignStatus = string
 type DesignType = 'Sampling' | 'Production'
@@ -188,13 +189,7 @@ const STAGES: DesignStatus[] = [
   'Stitching',
   'Dye',
   'Print',
-  'Embroidery',
-  'Wash',
-  'Kaaj',
-  'Finishing',
-  'Photoshoot',
-  'Final Settlement',
-  'Dispatch'
+  'Embroidery'
 ]
 
 const STAGE_COLORS: Record<DesignStatus, string> = {
@@ -207,13 +202,7 @@ const STAGE_COLORS: Record<DesignStatus, string> = {
   'Stitching': 'bg-pink-100 text-pink-800',
   'Dye': 'bg-rose-100 text-rose-800',
   'Print': 'bg-lime-100 text-lime-800',
-  'Kaaj': 'bg-indigo-100 text-indigo-800',
   'Embroidery': 'bg-violet-100 text-violet-800',
-  'Wash': 'bg-cyan-100 text-cyan-800',
-  'Finishing': 'bg-teal-100 text-teal-800',
-  'Photoshoot': 'bg-fuchsia-100 text-fuchsia-800',
-  'Final Settlement': 'bg-amber-100 text-amber-800',
-  'Dispatch': 'bg-emerald-100 text-emerald-800',
 }
 
 const computeMidpointPriority = (above: number | null, below: number | null) => {
@@ -276,6 +265,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [draggedDesignId, setDraggedDesignId] = useState<string | null>(null)
   const [dragOverClientId, setDragOverClientId] = useState<string | null>(null)
   const [dragOverDesignId, setDragOverDesignId] = useState<string | null>(null)
+  const [stitchingPrompt, setStitchingPrompt] = useState<{ designId: string, stage: DesignStatus } | null>(null)
+  const [selectedKarigaar, setSelectedKarigaar] = useState("")
 
   const sortDesignsForDisplay = useCallback((designs: DesignWithClient[]) => {
     return [...designs].sort((a, b) => {
@@ -560,6 +551,29 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     } catch (error: any) {
       console.error('Error updating stage status:', error)
       alert('Failed to update stage status: ' + error.message)
+    }
+  }
+
+  const requestStitchingComplete = (design: DesignWithClient, stage: DesignStatus) => {
+    setSelectedKarigaar("")
+    setStitchingPrompt({ designId: design.id, stage })
+  }
+
+  const confirmStitchingComplete = async () => {
+    if (!stitchingPrompt || !selectedKarigaar) return
+    const { designId, stage } = stitchingPrompt
+
+    updateLocalDesignState(designId, design => ({
+      ...design,
+      stage_status: { ...design.stage_status, [stage]: 'completed' }
+    }))
+    setStitchingPrompt(null)
+
+    try {
+      await updateDesignStageStatus(designId, stage, 'completed', selectedKarigaar)
+    } catch (error: any) {
+      console.error('Error marking stitching complete:', error)
+      alert('Failed to mark stitching complete: ' + error.message)
     }
   }
 
@@ -1178,6 +1192,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     onToggle={() => toggleClientExpansion(group.client_id)}
                     onUpdateStatus={updateDesignStatusLocal}
                     onUpdateStageStatus={updateStageStatus}
+                    onRequestStitchingComplete={requestStitchingComplete}
                     onTogglePriority={togglePriority}
                     onImageClick={setPreviewImage}
                     onTileClick={openNotesModal}
@@ -1404,11 +1419,52 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleDeleteDesign}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               Remove Design
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stitching Complete - Karigaar Selection */}
+      <Dialog open={!!stitchingPrompt} onOpenChange={(open) => !open && setStitchingPrompt(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Who stitched this piece?</DialogTitle>
+            <DialogDescription>
+              Select the karigaar who completed stitching. This credits the piece to their performance record.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Select value={selectedKarigaar} onValueChange={setSelectedKarigaar}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose karigaar" />
+              </SelectTrigger>
+              <SelectContent>
+                {KARIGAAR_NAMES.map((name) => (
+                  <SelectItem key={name} value={name}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setStitchingPrompt(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmStitchingComplete}
+              disabled={!selectedKarigaar}
+            >
+              Mark Complete
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1570,6 +1626,7 @@ interface ClientGroupRowProps {
   onToggle: () => void
   onUpdateStatus: (designId: string, status: DesignStatus) => void
   onUpdateStageStatus: (designId: string, stage: DesignStatus, state: StageState) => void
+  onRequestStitchingComplete: (design: DesignWithClient, stage: DesignStatus) => void
   onTogglePriority: (designId: string, currentPriority: boolean) => void
   onImageClick: (imageUrl: string) => void
   onTileClick: (design: DesignWithClient) => void
@@ -1596,8 +1653,9 @@ interface ClientGroupRowProps {
 function ClientGroupRow({ 
   group, 
   onToggle, 
-  onUpdateStatus, 
-  onUpdateStageStatus, 
+  onUpdateStatus,
+  onUpdateStageStatus,
+  onRequestStitchingComplete,
   onTogglePriority,
   onImageClick, 
   onTileClick, 
@@ -1786,7 +1844,13 @@ function ClientGroupRow({
                 <StatusIndicator
                   design={design}
                   stage={stage}
-                  onUpdateStageStatus={(newState) => onUpdateStageStatus(design.id, stage, newState)}
+                  onUpdateStageStatus={(newState) => {
+                    if (stage === 'Stitching' && newState === 'completed') {
+                      onRequestStitchingComplete(design, stage)
+                    } else {
+                      onUpdateStageStatus(design.id, stage, newState)
+                    }
+                  }}
                 />
               </td>
             ))}

@@ -14,13 +14,7 @@ const STAGES = [
   'Stitching',
   'Dye',
   'Print',
-  'Embroidery',
-  'Wash',
-  'Kaaj',
-  'Finishing',
-  'Photoshoot',
-  'Final Settlement',
-  'Dispatch'
+  'Embroidery'
 ]
 
 const STAGE_COLORS: Record<string, string> = {
@@ -32,13 +26,7 @@ const STAGE_COLORS: Record<string, string> = {
   'Stitching': 'from-pink-400 to-pink-600',
   'Dye': 'from-rose-400 to-rose-600',
   'Print': 'from-lime-400 to-lime-600',
-  'Kaaj': 'from-indigo-400 to-indigo-600',
   'Embroidery': 'from-violet-400 to-violet-600',
-  'Wash': 'from-cyan-400 to-cyan-600',
-  'Finishing': 'from-teal-400 to-teal-600',
-  'Photoshoot': 'from-fuchsia-400 to-fuchsia-600',
-  'Final Settlement': 'from-amber-400 to-amber-600',
-  'Dispatch': 'from-emerald-400 to-emerald-600',
 }
 
 const STAGE_ESTIMATED_DAYS: Record<string, number> = {
@@ -51,12 +39,6 @@ const STAGE_ESTIMATED_DAYS: Record<string, number> = {
   'Dye': 2,
   'Print': 2,
   'Embroidery': 3,
-  'Wash': 1,
-  'Kaaj': 2,
-  'Finishing': 1,
-  'Photoshoot': 1,
-  'Final Settlement': 1,
-  'Dispatch': 1,
 }
 
 type PageProps = {

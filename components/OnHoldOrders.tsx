@@ -27,13 +27,7 @@ const STAGES: DesignStatus[] = [
   'Stitching',
   'Dye',
   'Print',
-  'Embroidery',
-  'Wash',
-  'Kaaj',
-  'Finishing',
-  'Photoshoot',
-  'Final Settlement',
-  'Dispatch'
+  'Embroidery'
 ]
 
 interface DesignWithClient extends Design {

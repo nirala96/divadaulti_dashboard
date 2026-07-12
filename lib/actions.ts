@@ -7,6 +7,7 @@
 
 import pool from '@/lib/database'
 import { revalidatePath } from 'next/cache'
+import { STAGE_FIXED_EMPLOYEES } from '@/lib/employees'
 
 export type Client = {
   id: string
@@ -19,6 +20,7 @@ export type Client = {
   tracking_token: string
   is_on_hold: boolean
   hold_date: string | null
+  hidden_from_orders: boolean
 }
 
 export type Design = {
@@ -31,11 +33,25 @@ export type Design = {
   notes: string | null
   images: string[] | null
   stage_status: Record<string, string>
+  stage_started_at: Record<string, string>
   start_date: string | null
   end_date: string | null
   display_order: number
   is_priority: boolean
   created_at: string
+  client_name?: string
+}
+
+export type StageWorkLog = {
+  id: string
+  design_id: string
+  stage: string
+  employee_name: string
+  started_at: string | null
+  completed_at: string
+  duration_seconds: number | null
+  created_at: string
+  design_title?: string
   client_name?: string
 }
 
@@ -103,15 +119,32 @@ export async function unholdClient(clientId: string) {
   revalidatePath('/on-hold')
 }
 
-export async function deleteClient(clientId: string) {
-  // Designs reference clients with ON DELETE CASCADE, so this also removes
-  // all designs (active, completed, and on-hold) belonging to this client.
-  await pool.query('DELETE FROM clients WHERE id = $1', [clientId])
-  revalidatePath('/')
+// Clients marked hidden_from_orders no longer show up in the "Select Client"
+// dropdown when creating a new order, but they and their designs are untouched
+// everywhere else (Clients page, Completed Orders, On Hold, etc).
+export async function getActiveClients(): Promise<Client[]> {
+  const result = await pool.query(`
+    SELECT * FROM clients WHERE hidden_from_orders IS NOT TRUE ORDER BY display_order
+  `)
+  return result.rows
+}
+
+export async function hideClientFromOrders(clientId: string) {
+  await pool.query(
+    'UPDATE clients SET hidden_from_orders = TRUE WHERE id = $1',
+    [clientId]
+  )
   revalidatePath('/orders')
   revalidatePath('/clients')
-  revalidatePath('/completed-orders')
-  revalidatePath('/on-hold')
+}
+
+export async function unhideClientFromOrders(clientId: string) {
+  await pool.query(
+    'UPDATE clients SET hidden_from_orders = FALSE WHERE id = $1',
+    [clientId]
+  )
+  revalidatePath('/orders')
+  revalidatePath('/clients')
 }
 
 // Designs
@@ -189,19 +222,76 @@ export async function addDesign(data: {
 export async function updateDesignStageStatus(
   designId: string,
   stage: string,
-  status: string
+  status: string,
+  employeeName?: string
 ) {
+  // Starting work on a stage: stamp the start time so we can measure how
+  // long the assigned employee took once the stage is marked completed.
+  if (status === 'in-progress') {
+    await pool.query(
+      `UPDATE designs
+       SET stage_status = jsonb_set(COALESCE(stage_status, '{}'::jsonb), $2::text[], $3::jsonb),
+           stage_started_at = jsonb_set(COALESCE(stage_started_at, '{}'::jsonb), $2::text[], to_jsonb(NOW()::text))
+       WHERE id = $1`,
+      [designId, `{${stage}}`, JSON.stringify(status)]
+    )
+    revalidatePath('/')
+    return
+  }
+
+  const employee = STAGE_FIXED_EMPLOYEES[stage] || (stage === 'Stitching' ? employeeName : undefined)
+
+  if (status === 'completed' && employee) {
+    const result = await pool.query(
+      `UPDATE designs
+       SET stage_status = jsonb_set(COALESCE(stage_status, '{}'::jsonb), $2::text[], $3::jsonb)
+       WHERE id = $1
+       RETURNING stage_started_at ->> $4 AS started_at`,
+      [designId, `{${stage}}`, JSON.stringify(status), stage]
+    )
+
+    const startedAtText: string | null = result.rows[0]?.started_at ?? null
+    const completedAt = new Date()
+    const durationSeconds = startedAtText
+      ? Math.max(0, Math.round((completedAt.getTime() - new Date(startedAtText).getTime()) / 1000))
+      : null
+
+    await pool.query(
+      `INSERT INTO stage_work_logs (design_id, stage, employee_name, started_at, completed_at, duration_seconds)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [designId, stage, employee, startedAtText, completedAt.toISOString(), durationSeconds]
+    )
+
+    revalidatePath('/')
+    revalidatePath('/performance')
+    return
+  }
+
   await pool.query(
-    `UPDATE designs 
+    `UPDATE designs
      SET stage_status = jsonb_set(
-       COALESCE(stage_status, '{}'::jsonb), 
-       $2::text[], 
+       COALESCE(stage_status, '{}'::jsonb),
+       $2::text[],
        $3::jsonb
      )
      WHERE id = $1`,
     [designId, `{${stage}}`, JSON.stringify(status)]
   )
   revalidatePath('/')
+}
+
+export async function getStageWorkLogs(): Promise<StageWorkLog[]> {
+  const result = await pool.query(`
+    SELECT
+      l.*,
+      d.title AS design_title,
+      c.name AS client_name
+    FROM stage_work_logs l
+    LEFT JOIN designs d ON l.design_id = d.id
+    LEFT JOIN clients c ON d.client_id = c.id
+    ORDER BY l.completed_at DESC
+  `)
+  return result.rows
 }
 
 export async function updateDesignNotes(
@@ -274,13 +364,7 @@ export async function completeDesign(designId: string) {
     'Stitching': 'completed',
     'Dye': 'completed',
     'Print': 'completed',
-    'Embroidery': 'completed',
-    'Wash': 'completed',
-    'Kaaj': 'completed',
-    'Finishing': 'completed',
-    'Photoshoot': 'completed',
-    'Final Settlement': 'completed',
-    'Dispatch': 'completed'
+    'Embroidery': 'completed'
   }
   
   await pool.query(
@@ -535,13 +619,7 @@ export async function restoreDesign(designId: string) {
     'Stitching': 'vacant',
     'Dye': 'vacant',
     'Print': 'vacant',
-    'Embroidery': 'vacant',
-    'Wash': 'vacant',
-    'Kaaj': 'vacant',
-    'Finishing': 'vacant',
-    'Photoshoot': 'vacant',
-    'Final Settlement': 'vacant',
-    'Dispatch': 'vacant'
+    'Embroidery': 'vacant'
   }
   
   await pool.query(
