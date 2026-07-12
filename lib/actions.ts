@@ -44,13 +44,16 @@ export type Design = {
 
 export type StageWorkLog = {
   id: string
-  design_id: string
+  design_id: string | null
   stage: string
   employee_name: string
-  started_at: string | null
-  completed_at: string
+  // Server actions preserve Date instances across the server/client
+  // boundary rather than serializing to ISO strings, so these arrive as
+  // Date objects at runtime even though pg/JSON would suggest string.
+  started_at: string | Date | null
+  completed_at: string | Date
   duration_seconds: number | null
-  created_at: string
+  created_at: string | Date
   design_title?: string
   client_name?: string
 }

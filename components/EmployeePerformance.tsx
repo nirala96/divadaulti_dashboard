@@ -32,8 +32,15 @@ function formatDuration(seconds: number | null): string {
   return `${seconds}s`
 }
 
+// Dates coming back from server actions may arrive as Date instances rather
+// than strings (Next.js preserves Date objects across the server/client
+// boundary), so always coerce before doing string/date operations.
+function toDateOnly(value: string | Date): string {
+  return new Date(value).toISOString().split("T")[0]
+}
+
 // Monday-start week bucket, e.g. "2026-07-06"
-function getWeekStart(dateStr: string): string {
+function getWeekStart(dateStr: string | Date): string {
   const d = new Date(dateStr)
   const day = d.getUTCDay()
   const diff = (day === 0 ? -6 : 1) - day
@@ -97,7 +104,7 @@ export function EmployeePerformance() {
     return logs.filter((l) => {
       if (stageFilter !== "All" && l.stage !== stageFilter) return false
       if (employeeFilter !== "All" && l.employee_name !== employeeFilter) return false
-      const completedDate = l.completed_at.split("T")[0]
+      const completedDate = toDateOnly(l.completed_at)
       if (dateFrom && completedDate < dateFrom) return false
       if (dateTo && completedDate > dateTo) return false
       return true
