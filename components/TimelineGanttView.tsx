@@ -91,21 +91,15 @@ export function TimelineGanttView() {
     const tasks: GanttTask[] = designs.map((design) => {
       // Calculate progress based on current stage
       const stageOrder = [
-        "Payment Received",
         "Fabric Finalize",
+        "Trims Sourcing",
         "Pattern",
         "Grading",
         "Cutting",
         "Stitching",
         "Dye",
         "Print",
-        "Embroidery",
-        "Wash",
-        "Kaaj",
-        "Finishing",
-        "Photoshoot",
-        "Final Settlement",
-        "Dispatch"
+        "Embroidery"
       ]
       const currentStageIndex = stageOrder.indexOf(design.status)
       const progress = currentStageIndex >= 0 ? ((currentStageIndex + 1) / stageOrder.length) * 100 : 0
@@ -140,21 +134,15 @@ export function TimelineGanttView() {
           const design = task.design
           const totalDays = calculateDaysBetween(design.start_date!, design.end_date!)
           const stageOrder = [
-            "Payment Received",
             "Fabric Finalize",
+            "Trims Sourcing",
             "Pattern",
             "Grading",
             "Cutting",
             "Stitching",
             "Dye",
             "Print",
-            "Embroidery",
-            "Wash",
-            "Kaaj",
-            "Finishing",
-            "Photoshoot",
-            "Final Settlement",
-            "Dispatch"
+            "Embroidery"
           ]
           const currentStageIndex = stageOrder.indexOf(design.status)
           const daysSinceStart = calculateDaysBetween(design.start_date!, new Date().toISOString().split("T")[0])

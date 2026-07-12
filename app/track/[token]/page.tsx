@@ -6,7 +6,6 @@ import { CheckCircle2, Clock, Package, Sparkles, Circle, Minus } from 'lucide-re
 export const dynamic = 'force-dynamic'
 
 const STAGES = [
-  'Payment Received',
   'Fabric Finalize',
   'Pattern',
   'Grading',
@@ -18,7 +17,6 @@ const STAGES = [
 ]
 
 const STAGE_COLORS: Record<string, string> = {
-  'Payment Received': 'from-green-400 to-green-600',
   'Fabric Finalize': 'from-slate-400 to-slate-600',
   'Pattern': 'from-blue-400 to-blue-600',
   'Grading': 'from-purple-400 to-purple-600',
@@ -30,7 +28,6 @@ const STAGE_COLORS: Record<string, string> = {
 }
 
 const STAGE_ESTIMATED_DAYS: Record<string, number> = {
-  'Payment Received': 0,
   'Fabric Finalize': 5,
   'Pattern': 1,
   'Grading': 1,

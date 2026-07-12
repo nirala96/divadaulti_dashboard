@@ -373,7 +373,6 @@ export async function deleteDesign(designId: string) {
 export async function completeDesign(designId: string) {
   // Set all stages to completed
   const allStages = {
-    'Payment Received': 'completed',
     'Fabric Finalize': 'completed',
     'Trims Sourcing': 'completed',
     'Pattern': 'completed',
@@ -626,9 +625,8 @@ export async function getCompletedDesigns(): Promise<Design[]> {
 }
 
 export async function restoreDesign(designId: string) {
-  // Reset all stages to vacant and status to Payment Received
+  // Reset all stages to vacant and status to the first stage of the workflow
   const vacantStageStatus = {
-    'Payment Received': 'vacant',
     'Fabric Finalize': 'vacant',
     'Trims Sourcing': 'vacant',
     'Pattern': 'vacant',
@@ -639,10 +637,10 @@ export async function restoreDesign(designId: string) {
     'Print': 'vacant',
     'Embroidery': 'vacant'
   }
-  
+
   await pool.query(
-    `UPDATE designs 
-     SET stage_status = $1, status = 'Payment Received'
+    `UPDATE designs
+     SET stage_status = $1, status = 'Fabric Finalize'
      WHERE id = $2`,
     [JSON.stringify(vacantStageStatus), designId]
   )

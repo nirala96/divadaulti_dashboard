@@ -41,7 +41,6 @@ async function uploadImagesToCloudinary(files: File[]): Promise<string[]> {
   const data = await response.json()
   return data.urls
 }
-import { formatDisplayDate } from "@/lib/timeline"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
@@ -53,7 +52,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ChevronDown, ChevronRight, Calendar, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Upload, Star, Link2, PauseCircle } from "lucide-react"
+import { ChevronDown, ChevronRight, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Upload, Star, Link2, PauseCircle, Clock } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -180,7 +179,6 @@ function ImageCarousel({
 }
 
 const STAGES: DesignStatus[] = [
-  'Payment Received',
   'Fabric Finalize',
   'Trims Sourcing',
   'Pattern',
@@ -193,7 +191,6 @@ const STAGES: DesignStatus[] = [
 ]
 
 const STAGE_COLORS: Record<DesignStatus, string> = {
-  'Payment Received': 'bg-green-100 text-green-800',
   'Fabric Finalize': 'bg-slate-100 text-slate-800',
   'Trims Sourcing': 'bg-yellow-100 text-yellow-800',
   'Pattern': 'bg-blue-100 text-blue-800',
@@ -216,6 +213,16 @@ const computeMidpointPriority = (above: number | null, below: number | null) => 
     return above + 1
   }
   return 0
+}
+
+// Days since this design was added to the dashboard (not the scheduled/queued
+// start_date, which can sit in the future while waiting in the queue).
+const daysInProduction = (createdAt: string | undefined): number => {
+  if (!createdAt) return 0
+  const created = new Date(createdAt)
+  const now = new Date()
+  const diffMs = now.getTime() - created.getTime()
+  return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)))
 }
 
 type DesignWithClient = Design & {
@@ -253,7 +260,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     title: "",
     type: "Sampling" as DesignType,
     quantity: 1,
-    status: "Payment Received" as DesignStatus,
+    status: "Fabric Finalize" as DesignStatus,
     notes: "",
   })
   const [imageFiles, setImageFiles] = useState<File[]>([])
@@ -716,7 +723,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       title: "",
       type: "Sampling",
       quantity: 1,
-      status: "Payment Received",
+      status: "Fabric Finalize",
       notes: "",
     })
     setImageFiles([])
@@ -729,7 +736,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       title: "",
       type: "Sampling",
       quantity: 1,
-      status: "Payment Received",
+      status: "Fabric Finalize",
       notes: "",
     })
     setImageFiles([])
@@ -1170,9 +1177,6 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                   </th>
                 ))}
                 <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32 bg-gray-50">
-                  Timeline
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32 bg-gray-50">
                   Actions
                 </th>
               </tr>
@@ -1180,7 +1184,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
             <tbody className="bg-white divide-y divide-gray-200">
               {clientGroups.length === 0 ? (
                 <tr>
-                  <td colSpan={STAGES.length + 3} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={STAGES.length + 2} className="px-6 py-12 text-center text-gray-500">
                     No designs found. Add a client and create your first design order!
                   </td>
                 </tr>
@@ -1751,7 +1755,6 @@ function ClientGroupRow({
           <td key={stage} className="px-4 py-4"></td>
         ))}
         <td className="px-4 py-4"></td>
-        <td className="px-4 py-4"></td>
       </tr>
 
       {/* Product Rows (shown when expanded) */}
@@ -1824,11 +1827,19 @@ function ClientGroupRow({
                     {design.title}
                   </div>
                   <div className="flex items-center gap-2 mt-1">
-                    <Badge 
+                    <Badge
                       variant={design.type === 'Sampling' ? 'secondary' : 'default'}
                       className="text-xs"
                     >
                       {design.type}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className="text-xs gap-1 flex items-center"
+                      title="Days since this design was added to the dashboard"
+                    >
+                      <Clock className="h-3 w-3" />
+                      {daysInProduction(design.created_at)}d
                     </Badge>
                     {design.notes && design.notes.trim() && (
                       <span title="Has notes">
@@ -1854,24 +1865,6 @@ function ClientGroupRow({
                 />
               </td>
             ))}
-            <td className="px-4 py-4 text-center">
-              {(design.start_date || design.end_date) && (
-                <div className="text-xs text-gray-600 space-y-1">
-                  {design.start_date && (
-                    <div className="flex items-center justify-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>{formatDisplayDate(design.start_date)}</span>
-                    </div>
-                  )}
-                  {design.end_date && (
-                    <div className="flex items-center justify-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>{formatDisplayDate(design.end_date)}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </td>
             <td className="px-4 py-4">
               <div className="flex items-center justify-center gap-2">
                 <Button
@@ -1937,10 +1930,10 @@ function StatusIndicator({ design, stage, onUpdateStageStatus }: StatusIndicator
     return (
       <button
         onClick={handleClick}
-        className="inline-flex items-center justify-center w-8 h-8 bg-green-100 rounded-full hover:opacity-80 transition-opacity cursor-pointer"
+        className="inline-flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] bg-green-100 rounded-full hover:opacity-80 transition-opacity cursor-pointer"
         title="Completed. Click to reset."
       >
-        <span className="text-green-600 font-bold text-lg">✓</span>
+        <span className="text-green-600 font-bold text-2xl">✓</span>
       </button>
     )
   }
@@ -1949,10 +1942,10 @@ function StatusIndicator({ design, stage, onUpdateStageStatus }: StatusIndicator
     return (
       <button
         onClick={handleClick}
-        className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${STAGE_COLORS[stage]} hover:opacity-90 transition-opacity cursor-pointer stage-in-progress`}
+        className={`inline-flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] rounded-full ${STAGE_COLORS[stage]} hover:opacity-90 transition-opacity cursor-pointer stage-in-progress`}
         title="In Progress. Click to mark complete."
       >
-        <span className="font-bold text-lg">●</span>
+        <span className="font-bold text-2xl">●</span>
       </button>
     )
   }
@@ -1961,10 +1954,10 @@ function StatusIndicator({ design, stage, onUpdateStageStatus }: StatusIndicator
     return (
       <button
         onClick={handleClick}
-        className="inline-flex items-center justify-center w-8 h-8 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors cursor-pointer"
+        className="inline-flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] bg-gray-300 rounded-full hover:bg-gray-400 transition-colors cursor-pointer"
         title="Not Needed. Click to mark in progress."
       >
-        <span className="text-gray-600 font-bold text-xl">−</span>
+        <span className="text-gray-600 font-bold text-2xl">−</span>
       </button>
     )
   }
@@ -1973,10 +1966,10 @@ function StatusIndicator({ design, stage, onUpdateStageStatus }: StatusIndicator
   return (
     <button
       onClick={handleClick}
-      className="inline-flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
+      className="inline-flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] bg-gray-100 rounded-full hover:bg-gray-200 transition-colors cursor-pointer"
       title="Not started. Click to mark not needed."
     >
-      <span className="text-gray-400 text-lg">○</span>
+      <span className="text-gray-400 text-xl">○</span>
     </button>
   )
 }

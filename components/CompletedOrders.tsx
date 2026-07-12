@@ -21,7 +21,6 @@ type DesignType = 'Sampling' | 'Production'
 type StageState = 'vacant' | 'not-needed' | 'in-progress' | 'completed'
 
 const STAGES: DesignStatus[] = [
-  'Payment Received',
   'Fabric Finalize',
   'Pattern',
   'Grading',

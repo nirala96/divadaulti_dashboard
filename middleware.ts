@@ -7,8 +7,18 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'divadaulti2024'
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
-  // Protect all routes except /track/* and API routes
-  if (pathname.startsWith('/track') || pathname.startsWith('/api') || pathname.startsWith('/_next')) {
+  // Protect all routes except /track/*, API routes, and PWA assets
+  // (manifest/icons/service worker must always be fetchable so Chrome can
+  // evaluate installability and Android can render the app icon, even
+  // before the visitor has logged in)
+  if (
+    pathname.startsWith('/track') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/_next') ||
+    pathname === '/manifest.webmanifest' ||
+    pathname === '/sw.js' ||
+    pathname.startsWith('/icons')
+  ) {
     return NextResponse.next()
   }
   

@@ -30,7 +30,6 @@ type DesignType = 'Sampling' | 'Production'
 type DesignStatus = string
 
 const PROCESS_STEPS: DesignStatus[] = [
-  'Payment Received',
   'Fabric Finalize',
   'Pattern',
   'Grading',
@@ -64,7 +63,7 @@ export function AddDesignForm() {
     title: "",
     type: "Sampling" as DesignType,
     quantity: 1,
-    status: "Payment Received" as DesignStatus,
+    status: "Fabric Finalize" as DesignStatus,
     notes: "",
   })
 
@@ -244,7 +243,7 @@ export function AddDesignForm() {
         title: "",
         type: "Sampling",
         quantity: 1,
-        status: "Payment Received",
+        status: "Fabric Finalize",
         notes: "",
       })
       setImageFiles([])
@@ -514,7 +513,7 @@ export function AddDesignForm() {
               title: "",
               type: "Sampling",
               quantity: 1,
-              status: "Payment Received",
+              status: "Fabric Finalize",
               notes: "",
             })
             setImageFiles([])
