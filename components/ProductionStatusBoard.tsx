@@ -8,6 +8,7 @@ import {
   updateDesignStatus,
   updateDesignPriority,
   updateDesignNotes,
+  updateDesignPrice,
   updateDesignOrder,
   updateDesignImages,
   updateClientOrder,
@@ -52,7 +53,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ChevronDown, ChevronRight, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Upload, Star, Link2, PauseCircle, Clock } from "lucide-react"
+import { ChevronDown, ChevronRight, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Upload, Star, Link2, PauseCircle, Clock, IndianRupee, ClipboardPaste } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -182,7 +183,6 @@ const STAGES: DesignStatus[] = [
   'Fabric Finalize',
   'Trims Sourcing',
   'Pattern',
-  'Grading',
   'Cutting',
   'Stitching',
   'Dye',
@@ -194,7 +194,6 @@ const STAGE_COLORS: Record<DesignStatus, string> = {
   'Fabric Finalize': 'bg-slate-100 text-slate-800',
   'Trims Sourcing': 'bg-yellow-100 text-yellow-800',
   'Pattern': 'bg-blue-100 text-blue-800',
-  'Grading': 'bg-purple-100 text-purple-800',
   'Cutting': 'bg-orange-100 text-orange-800',
   'Stitching': 'bg-pink-100 text-pink-800',
   'Dye': 'bg-rose-100 text-rose-800',
@@ -225,6 +224,14 @@ const daysInProduction = (createdAt: string | undefined): number => {
   return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)))
 }
 
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0
+  }).format(amount)
+}
+
 type DesignWithClient = Design & {
   client_name?: string
   client_id?: string
@@ -250,6 +257,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [editingDesign, setEditingDesign] = useState<DesignWithClient | null>(null)
   const [notesValue, setNotesValue] = useState("")
+  const [priceValue, setPriceValue] = useState("")
   const [savingNotes, setSavingNotes] = useState(false)
   const [confirmComplete, setConfirmComplete] = useState<DesignWithClient | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<DesignWithClient | null>(null)
@@ -262,6 +270,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     quantity: 1,
     status: "Fabric Finalize" as DesignStatus,
     notes: "",
+    price: "",
   })
   const [imageFiles, setImageFiles] = useState<File[]>([])
   const [imagePreviews, setImagePreviews] = useState<string[]>([])
@@ -492,6 +501,54 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     fetchDesigns()
   }, [activeFilter, activeStageFilter, fetchDesigns])
 
+  // Let users paste a screenshot/copied image (Ctrl+V) directly into
+  // whichever image dialog is currently open, instead of only being able to
+  // pick files from the gallery. Only intercepts when the clipboard
+  // actually contains image data.
+  useEffect(() => {
+    if (!addingForClient) return
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+      const files: File[] = []
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i]
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile()
+          if (file) files.push(file)
+        }
+      }
+      if (files.length > 0) {
+        e.preventDefault()
+        addNewDesignImageFiles(files)
+      }
+    }
+    document.addEventListener('paste', handlePaste)
+    return () => document.removeEventListener('paste', handlePaste)
+  }, [addingForClient])
+
+  useEffect(() => {
+    if (!editingDesign) return
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+      const files: File[] = []
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i]
+        if (item.type.startsWith('image/')) {
+          const file = item.getAsFile()
+          if (file) files.push(file)
+        }
+      }
+      if (files.length > 0) {
+        e.preventDefault()
+        addEditImageFiles(files)
+      }
+    }
+    document.addEventListener('paste', handlePaste)
+    return () => document.removeEventListener('paste', handlePaste)
+  }, [editingDesign])
+
   const toggleClientExpansion = (clientId: string) => {
     setClientGroups(prev =>
       prev.map(group =>
@@ -607,6 +664,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const openNotesModal = (design: DesignWithClient) => {
     setEditingDesign(design)
     setNotesValue(design.notes || "")
+    setPriceValue(design.price != null ? String(design.price) : "")
     setEditImageFiles([])
     setEditImagePreviews([])
   }
@@ -614,14 +672,15 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const closeNotesModal = () => {
     setEditingDesign(null)
     setNotesValue("")
+    setPriceValue("")
     setEditImageFiles([])
     setEditImagePreviews([])
   }
 
-  const handleEditImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
+  const addEditImageFiles = (files: File[]) => {
+    if (files.length === 0) return
     setEditImageFiles(prev => [...prev, ...files])
-    
+
     // Generate previews
     files.forEach(file => {
       const reader = new FileReader()
@@ -630,6 +689,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       }
       reader.readAsDataURL(file)
     })
+  }
+
+  const handleEditImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    addEditImageFiles(Array.from(e.target.files || []))
   }
 
   const removeEditImage = (index: number) => {
@@ -653,13 +716,19 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       const existingImages = editingDesign.images || []
       const allImages = [...newImageUrls, ...existingImages]
 
+      const newPrice = priceValue.trim() === "" ? null : parseFloat(priceValue)
+
       updateLocalDesignState(editingDesign.id, design => ({
         ...design,
         notes: notesValue,
-        images: allImages
+        images: allImages,
+        price: newPrice
       }))
 
       await updateDesignNotes(editingDesign.id, notesValue, allImages)
+      if (newPrice !== editingDesign.price) {
+        await updateDesignPrice(editingDesign.id, newPrice)
+      }
 
       closeNotesModal()
     } catch (error: any) {
@@ -725,6 +794,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       quantity: 1,
       status: "Fabric Finalize",
       notes: "",
+      price: "",
     })
     setImageFiles([])
     setImagePreviews([])
@@ -738,15 +808,16 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       quantity: 1,
       status: "Fabric Finalize",
       notes: "",
+      price: "",
     })
     setImageFiles([])
     setImagePreviews([])
   }
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
+  const addNewDesignImageFiles = (files: File[]) => {
+    if (files.length === 0) return
     setImageFiles(prev => [...prev, ...files])
-    
+
     // Generate previews
     files.forEach(file => {
       const reader = new FileReader()
@@ -755,6 +826,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       }
       reader.readAsDataURL(file)
     })
+  }
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    addNewDesignImageFiles(Array.from(e.target.files || []))
   }
 
   const removeImage = (index: number) => {
@@ -787,7 +862,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         quantity: newDesignForm.quantity,
         status: newDesignForm.status,
         notes: newDesignForm.notes,
-        images: imageUrls
+        images: imageUrls,
+        price: newDesignForm.price ? parseFloat(newDesignForm.price) : null
       })
 
       const shouldShowDesign =
@@ -1260,6 +1336,19 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
+              <Label htmlFor="price-editor">Amount</Label>
+              <Input
+                id="price-editor"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="To be filled later if not known yet"
+                value={priceValue}
+                onChange={(e) => setPriceValue(e.target.value)}
+              />
+            </div>
+
+            <div className="grid gap-2">
               <Label htmlFor="notes-editor">Notes</Label>
               <textarea
                 id="notes-editor"
@@ -1291,6 +1380,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                   <span className="text-sm text-gray-600">{editImageFiles.length} new image{editImageFiles.length !== 1 ? 's' : ''} selected</span>
                 )}
               </div>
+              <p className="text-xs text-gray-400 flex items-center gap-1.5">
+                <ClipboardPaste className="h-3.5 w-3.5" />
+                Tip: copy an image and press Ctrl+V (Cmd+V on Mac) to add it instantly.
+              </p>
 
               {/* Current Images */}
               {editingDesign && editingDesign.images && editingDesign.images.length > 0 && (
@@ -1498,6 +1591,20 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
               />
             </div>
 
+            {/* Amount */}
+            <div className="grid gap-2">
+              <Label htmlFor="design-price">Amount</Label>
+              <Input
+                id="design-price"
+                type="number"
+                min="0"
+                step="0.01"
+                value={newDesignForm.price}
+                onChange={(e) => setNewDesignForm({ ...newDesignForm, price: e.target.value })}
+                placeholder="To be filled later if not known yet"
+              />
+            </div>
+
             {/* Type */}
             <div className="grid gap-2">
               <Label htmlFor="design-type">Type *</Label>
@@ -1580,6 +1687,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                   <span className="text-sm text-gray-600">{imageFiles.length} image{imageFiles.length !== 1 ? 's' : ''} selected</span>
                 )}
               </div>
+              <p className="text-xs text-gray-400 flex items-center gap-1.5">
+                <ClipboardPaste className="h-3.5 w-3.5" />
+                Tip: copy an image and press Ctrl+V (Cmd+V on Mac) to add it instantly.
+              </p>
 
               {/* Image Previews */}
               {imagePreviews.length > 0 && (
@@ -1840,6 +1951,18 @@ function ClientGroupRow({
                     >
                       <Clock className="h-3 w-3" />
                       {daysInProduction(design.created_at)}d
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs gap-1 flex items-center cursor-pointer ${design.price == null ? 'text-gray-400 border-dashed' : ''}`}
+                      title={design.price != null ? 'Amount for this design. Click to edit.' : 'Amount not filled yet. Click to add.'}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onTileClick(design)
+                      }}
+                    >
+                      <IndianRupee className="h-3 w-3" />
+                      {design.price != null ? formatCurrency(design.price) : 'Add amount'}
                     </Badge>
                     {design.notes && design.notes.trim() && (
                       <span title="Has notes">

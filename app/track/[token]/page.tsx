@@ -8,7 +8,6 @@ export const dynamic = 'force-dynamic'
 const STAGES = [
   'Fabric Finalize',
   'Pattern',
-  'Grading',
   'Cutting',
   'Stitching',
   'Dye',
@@ -19,7 +18,6 @@ const STAGES = [
 const STAGE_COLORS: Record<string, string> = {
   'Fabric Finalize': 'from-slate-400 to-slate-600',
   'Pattern': 'from-blue-400 to-blue-600',
-  'Grading': 'from-purple-400 to-purple-600',
   'Cutting': 'from-orange-400 to-orange-600',
   'Stitching': 'from-pink-400 to-pink-600',
   'Dye': 'from-rose-400 to-rose-600',
@@ -30,7 +28,6 @@ const STAGE_COLORS: Record<string, string> = {
 const STAGE_ESTIMATED_DAYS: Record<string, number> = {
   'Fabric Finalize': 5,
   'Pattern': 1,
-  'Grading': 1,
   'Cutting': 1,
   'Stitching': 2,
   'Dye': 2,

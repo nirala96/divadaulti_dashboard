@@ -21,7 +21,6 @@ const STAGES: DesignStatus[] = [
   'Fabric Finalize',
   'Trims Sourcing',
   'Pattern',
-  'Grading',
   'Cutting',
   'Stitching',
   'Dye',

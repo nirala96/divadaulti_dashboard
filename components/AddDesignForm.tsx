@@ -24,7 +24,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Upload, X, ImageIcon, Calendar, Clock, Plus, ChevronDown } from "lucide-react"
+import { Upload, X, ImageIcon, Calendar, Clock, Plus, ChevronDown, ClipboardPaste } from "lucide-react"
 
 type DesignType = 'Sampling' | 'Production'
 type DesignStatus = string
@@ -32,7 +32,6 @@ type DesignStatus = string
 const PROCESS_STEPS: DesignStatus[] = [
   'Fabric Finalize',
   'Pattern',
-  'Grading',
   'Cutting',
   'Stitching',
   'Dye',
@@ -65,10 +64,36 @@ export function AddDesignForm() {
     quantity: 1,
     status: "Fabric Finalize" as DesignStatus,
     notes: "",
+    price: "",
   })
 
   useEffect(() => {
     fetchClients()
+  }, [])
+
+  // Let users paste a screenshot/copied image (Ctrl+V) directly instead of
+  // only being able to pick files from the gallery. Only intercepts the
+  // paste when the clipboard actually contains image data, so pasting text
+  // into Title/Notes fields is unaffected.
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+      const files: File[] = []
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i]
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile()
+          if (file) files.push(file)
+        }
+      }
+      if (files.length > 0) {
+        e.preventDefault()
+        addImageFiles(files)
+      }
+    }
+    document.addEventListener("paste", handlePaste)
+    return () => document.removeEventListener("paste", handlePaste)
   }, [])
 
   useEffect(() => {
@@ -160,8 +185,8 @@ export function AddDesignForm() {
     }
   }
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
+  const addImageFiles = (files: File[]) => {
+    if (files.length === 0) return
     setImageFiles((prev) => [...prev, ...files])
 
     // Create previews
@@ -172,6 +197,10 @@ export function AddDesignForm() {
       }
       reader.readAsDataURL(file)
     })
+  }
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    addImageFiles(Array.from(e.target.files || []))
   }
 
   const removeImage = (index: number) => {
@@ -226,7 +255,8 @@ export function AddDesignForm() {
         quantity: formData.quantity,
         status: formData.status,
         notes: formData.notes,
-        images: imageUrls
+        images: imageUrls,
+        price: formData.price ? parseFloat(formData.price) : null
       })
 
       alert(
@@ -245,6 +275,7 @@ export function AddDesignForm() {
         quantity: 1,
         status: "Fabric Finalize",
         notes: "",
+        price: "",
       })
       setImageFiles([])
       setImagePreviews([])
@@ -336,6 +367,21 @@ export function AddDesignForm() {
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           required
         />
+      </div>
+
+      {/* Amount */}
+      <div className="grid gap-2">
+        <Label htmlFor="price">Amount</Label>
+        <Input
+          id="price"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="To be filled later if not known yet"
+          value={formData.price}
+          onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+        />
+        <p className="text-xs text-gray-500">Optional: price for this specific design/order</p>
       </div>
 
       {/* Sampling/Production Toggle */}
@@ -463,6 +509,10 @@ export function AddDesignForm() {
             {imageFiles.length} image(s) selected
           </p>
         </div>
+        <p className="text-xs text-gray-400 flex items-center gap-1.5">
+          <ClipboardPaste className="h-3.5 w-3.5" />
+          Tip: copy an image and press Ctrl+V (Cmd+V on Mac) anywhere on this page to add it instantly.
+        </p>
 
         {/* Image Previews */}
         {imagePreviews.length > 0 && (
@@ -493,7 +543,7 @@ export function AddDesignForm() {
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
             <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
             <p className="text-sm text-gray-500">
-              No images selected. Click "Upload Images" to add design images.
+              No images selected. Click "Upload Images" or paste (Ctrl+V) to add design images.
             </p>
           </div>
         )}
@@ -515,6 +565,7 @@ export function AddDesignForm() {
               quantity: 1,
               status: "Fabric Finalize",
               notes: "",
+              price: "",
             })
             setImageFiles([])
             setImagePreviews([])

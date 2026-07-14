@@ -32,6 +32,7 @@ export type Design = {
   status: string
   notes: string | null
   images: string[] | null
+  price: number | null
   stage_status: Record<string, string>
   stage_started_at: Record<string, string>
   start_date: string | null
@@ -199,14 +200,16 @@ export async function addDesign(data: {
   status: string
   notes?: string
   images?: string[]
+  price?: number | null
 }) {
   const result = await pool.query(
     `INSERT INTO designs (
-      client_id, title, type, quantity, status, notes, images, 
-      stage_status, display_order
+      client_id, title, type, quantity, status, notes, images,
+      stage_status, display_order, price
     )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 
-      (SELECT COALESCE(MAX(display_order), 0) + 1 FROM designs WHERE client_id = $1)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
+      (SELECT COALESCE(MAX(display_order), 0) + 1 FROM designs WHERE client_id = $1),
+      $9
     )
     RETURNING *`,
     [
@@ -217,11 +220,20 @@ export async function addDesign(data: {
       data.status,
       data.notes || null,
       data.images || null,
-      JSON.stringify({ [data.status]: 'in-progress' })
+      JSON.stringify({ [data.status]: 'in-progress' }),
+      data.price ?? null
     ]
   )
   revalidatePath('/')
   return result.rows[0]
+}
+
+export async function updateDesignPrice(designId: string, price: number | null) {
+  await pool.query(
+    'UPDATE designs SET price = $1 WHERE id = $2',
+    [price, designId]
+  )
+  revalidatePath('/')
 }
 
 export async function updateDesignStageStatus(
@@ -378,7 +390,6 @@ export async function completeDesign(designId: string) {
     'Fabric Finalize': 'completed',
     'Trims Sourcing': 'completed',
     'Pattern': 'completed',
-    'Grading': 'completed',
     'Cutting': 'completed',
     'Stitching': 'completed',
     'Dye': 'completed',
@@ -632,7 +643,6 @@ export async function restoreDesign(designId: string) {
     'Fabric Finalize': 'vacant',
     'Trims Sourcing': 'vacant',
     'Pattern': 'vacant',
-    'Grading': 'vacant',
     'Cutting': 'vacant',
     'Stitching': 'vacant',
     'Dye': 'vacant',
