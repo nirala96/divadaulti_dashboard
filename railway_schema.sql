@@ -17,7 +17,7 @@ CREATE TABLE clients (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   name TEXT NOT NULL,
   contact_person TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
+  email TEXT NOT NULL,
   phone TEXT,
   display_order DOUBLE PRECISION DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
