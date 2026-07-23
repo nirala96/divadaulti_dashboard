@@ -9,6 +9,7 @@ import {
   updateDesignPriority,
   updateDesignNotes,
   updateDesignPrice,
+  updateDesignDetails,
   updateDesignOrder,
   updateDesignImages,
   updateClientOrder,
@@ -53,7 +54,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ChevronDown, ChevronRight, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Upload, Star, Link2, PauseCircle, Clock, IndianRupee, ClipboardPaste } from "lucide-react"
+import { ChevronDown, ChevronRight, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Pencil, Upload, Star, Link2, PauseCircle, Clock, IndianRupee, ClipboardPaste } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -258,6 +259,9 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [editingDesign, setEditingDesign] = useState<DesignWithClient | null>(null)
   const [notesValue, setNotesValue] = useState("")
   const [priceValue, setPriceValue] = useState("")
+  const [titleValue, setTitleValue] = useState("")
+  const [typeValue, setTypeValue] = useState<DesignType>("Sampling")
+  const [quantityValue, setQuantityValue] = useState(1)
   const [savingNotes, setSavingNotes] = useState(false)
   const [confirmComplete, setConfirmComplete] = useState<DesignWithClient | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<DesignWithClient | null>(null)
@@ -665,6 +669,9 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     setEditingDesign(design)
     setNotesValue(design.notes || "")
     setPriceValue(design.price != null ? String(design.price) : "")
+    setTitleValue(design.title)
+    setTypeValue(design.type)
+    setQuantityValue(design.quantity)
     setEditImageFiles([])
     setEditImagePreviews([])
   }
@@ -673,6 +680,9 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     setEditingDesign(null)
     setNotesValue("")
     setPriceValue("")
+    setTitleValue("")
+    setTypeValue("Sampling")
+    setQuantityValue(1)
     setEditImageFiles([])
     setEditImagePreviews([])
   }
@@ -702,7 +712,11 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
 
   const saveNotes = async () => {
     if (!editingDesign) return
-    
+    if (!titleValue.trim()) {
+      alert("Design title cannot be empty")
+      return
+    }
+
     setSavingNotes(true)
     try {
       // Upload new images if any
@@ -717,17 +731,33 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       const allImages = [...newImageUrls, ...existingImages]
 
       const newPrice = priceValue.trim() === "" ? null : parseFloat(priceValue)
+      const trimmedTitle = titleValue.trim()
+      const newQuantity = typeValue === 'Sampling' ? 1 : quantityValue
 
       updateLocalDesignState(editingDesign.id, design => ({
         ...design,
         notes: notesValue,
         images: allImages,
-        price: newPrice
+        price: newPrice,
+        title: trimmedTitle,
+        type: typeValue,
+        quantity: newQuantity
       }))
 
       await updateDesignNotes(editingDesign.id, notesValue, allImages)
       if (newPrice !== editingDesign.price) {
         await updateDesignPrice(editingDesign.id, newPrice)
+      }
+      if (
+        trimmedTitle !== editingDesign.title ||
+        typeValue !== editingDesign.type ||
+        newQuantity !== editingDesign.quantity
+      ) {
+        await updateDesignDetails(editingDesign.id, {
+          title: trimmedTitle,
+          type: typeValue,
+          quantity: newQuantity
+        })
       }
 
       closeNotesModal()
@@ -1324,17 +1354,61 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
 
       {/* Notes Modal */}
       <Dialog open={!!editingDesign} onOpenChange={closeNotesModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Edit Design: {editingDesign?.title}
+              <Pencil className="h-5 w-5" />
+              Edit Design
             </DialogTitle>
             <DialogDescription>
-              Update notes and add images for this design.
+              Update the details, notes and images for this design.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="title-editor">Design Title *</Label>
+              <Input
+                id="title-editor"
+                placeholder="e.g., Summer Collection Dress"
+                value={titleValue}
+                onChange={(e) => setTitleValue(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="type-editor">Type</Label>
+                <Select
+                  value={typeValue}
+                  onValueChange={(value: DesignType) => {
+                    setTypeValue(value)
+                    if (value === 'Sampling') setQuantityValue(1)
+                  }}
+                >
+                  <SelectTrigger id="type-editor">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Sampling">Sampling</SelectItem>
+                    <SelectItem value="Production">Production</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {typeValue === 'Production' && (
+                <div className="grid gap-2">
+                  <Label htmlFor="quantity-editor">Quantity</Label>
+                  <Input
+                    id="quantity-editor"
+                    type="number"
+                    min="1"
+                    value={quantityValue}
+                    onChange={(e) => setQuantityValue(parseInt(e.target.value) || 1)}
+                  />
+                </div>
+              )}
+            </div>
+
             <div className="grid gap-2">
               <Label htmlFor="price-editor">Amount</Label>
               <Input
@@ -1432,8 +1506,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
             {editingDesign && (
               <div className="text-xs text-gray-500 space-y-1">
                 <div><strong>Client:</strong> {editingDesign.client_name}</div>
-                <div><strong>Type:</strong> {editingDesign.type}</div>
-                <div><strong>Status:</strong> {editingDesign.status}</div>
+                <div><strong>Current Stage:</strong> {editingDesign.status}</div>
               </div>
             )}
           </div>
@@ -1928,9 +2001,9 @@ function ClientGroupRow({
                       onTileClick(design)
                     }}
                     className="w-7 h-7 flex-shrink-0 bg-blue-500 hover:bg-blue-600 text-white rounded flex items-center justify-center transition-colors shadow-sm"
-                    title="Add/manage images"
+                    title="Edit design"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Pencil className="h-4 w-4" />
                   </button>
                 </div>
                 <div className="min-w-0 flex-1 cursor-pointer hover:text-blue-600" onClick={() => onTileClick(design)}>

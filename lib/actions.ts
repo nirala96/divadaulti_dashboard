@@ -236,6 +236,19 @@ export async function updateDesignPrice(designId: string, price: number | null) 
   revalidatePath('/')
 }
 
+export async function updateDesignDetails(
+  designId: string,
+  data: { title: string; type: 'Sampling' | 'Production'; quantity: number }
+) {
+  await pool.query(
+    'UPDATE designs SET title = $1, type = $2, quantity = $3 WHERE id = $4',
+    [data.title, data.type, data.quantity, designId]
+  )
+  revalidatePath('/')
+  revalidatePath('/orders')
+  revalidatePath('/completed-orders')
+}
+
 export async function updateDesignStageStatus(
   designId: string,
   stage: string,
