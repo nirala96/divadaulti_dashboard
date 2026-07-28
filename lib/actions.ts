@@ -168,6 +168,16 @@ export async function getDesignsWithClients(): Promise<Design[]> {
   return result.rows
 }
 
+export async function getCompletedDesignCountsByClient(): Promise<{ client_id: string; count: number }[]> {
+  const result = await pool.query(`
+    SELECT client_id, COUNT(*)::int AS count
+    FROM designs
+    WHERE status = 'Dispatch'
+    GROUP BY client_id
+  `)
+  return result.rows
+}
+
 export async function getHeldClientsWithDesigns(): Promise<Design[]> {
   const result = await pool.query(`
     SELECT 
@@ -402,12 +412,13 @@ export async function completeDesign(designId: string) {
   const allStages = {
     'Fabric Finalize': 'completed',
     'Trims Sourcing': 'completed',
-    'Pattern': 'completed',
-    'Cutting': 'completed',
-    'Stitching': 'completed',
     'Dye': 'completed',
     'Print': 'completed',
-    'Embroidery': 'completed'
+    'Pattern': 'completed',
+    'Embroidery': 'completed',
+    'Cutting': 'completed',
+    'Stitching': 'completed',
+    'Finishing': 'completed'
   }
   
   await pool.query(
@@ -655,12 +666,13 @@ export async function restoreDesign(designId: string) {
   const vacantStageStatus = {
     'Fabric Finalize': 'vacant',
     'Trims Sourcing': 'vacant',
-    'Pattern': 'vacant',
-    'Cutting': 'vacant',
-    'Stitching': 'vacant',
     'Dye': 'vacant',
     'Print': 'vacant',
-    'Embroidery': 'vacant'
+    'Pattern': 'vacant',
+    'Embroidery': 'vacant',
+    'Cutting': 'vacant',
+    'Stitching': 'vacant',
+    'Finishing': 'vacant'
   }
 
   await pool.query(

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react"
 import { compressImage } from "@/lib/imageUtils"
 import {
   getDesignsWithClients,
+  getCompletedDesignCountsByClient,
   updateDesignStageStatus,
   updateDesignStatus,
   updateDesignPriority,
@@ -21,6 +22,7 @@ import {
   type Design
 } from "@/lib/actions"
 import { KARIGAAR_NAMES } from "@/lib/employees"
+import { ImagePreviewDialog } from "@/components/ImagePreviewDialog"
 
 type DesignStatus = string
 type DesignType = 'Sampling' | 'Production'
@@ -183,23 +185,25 @@ function ImageCarousel({
 const STAGES: DesignStatus[] = [
   'Fabric Finalize',
   'Trims Sourcing',
-  'Pattern',
-  'Cutting',
-  'Stitching',
   'Dye',
   'Print',
-  'Embroidery'
+  'Pattern',
+  'Embroidery',
+  'Cutting',
+  'Stitching',
+  'Finishing'
 ]
 
 const STAGE_COLORS: Record<DesignStatus, string> = {
   'Fabric Finalize': 'bg-slate-100 text-slate-800',
   'Trims Sourcing': 'bg-yellow-100 text-yellow-800',
-  'Pattern': 'bg-blue-100 text-blue-800',
-  'Cutting': 'bg-orange-100 text-orange-800',
-  'Stitching': 'bg-pink-100 text-pink-800',
   'Dye': 'bg-rose-100 text-rose-800',
   'Print': 'bg-lime-100 text-lime-800',
+  'Pattern': 'bg-blue-100 text-blue-800',
   'Embroidery': 'bg-violet-100 text-violet-800',
+  'Cutting': 'bg-orange-100 text-orange-800',
+  'Stitching': 'bg-pink-100 text-pink-800',
+  'Finishing': 'bg-cyan-100 text-cyan-800',
 }
 
 const computeMidpointPriority = (above: number | null, below: number | null) => {
@@ -244,6 +248,7 @@ type ClientGroup = {
   designs: DesignWithClient[]
   isExpanded: boolean
   display_order: number | null
+  completed_count: number
 }
 
 interface ProductionStatusBoardProps {
@@ -392,7 +397,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     }
   }
 
-  const processDesigns = useCallback(async (designsData: Design[]) => {
+  const processDesigns = useCallback(async (designsData: Design[], dispatchedCounts: Record<string, number>) => {
     // Transform data to include client name and id
     const designsWithClients: DesignWithClient[] = (designsData || []).map((design: any) => ({
       ...design,
@@ -424,10 +429,16 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     })
 
     // Sort designs within each client group by priority, then display_order
+    // Designs that naturally reached all-stages-completed but haven't been
+    // dispatched yet still count as "completed" for the header badge, even
+    // though they haven't moved to the Completed Orders page.
+    const naturallyCompletedCounts: Record<string, number> = {}
     Object.keys(groupedByClient).forEach(clientId => {
+      naturallyCompletedCounts[clientId] = groupedByClient[clientId].filter(d => isDesignCompleted(d)).length
+
       // Filter out completed designs - they now appear in separate Completed Orders page
       groupedByClient[clientId] = groupedByClient[clientId].filter(d => !isDesignCompleted(d))
-      
+
       groupedByClient[clientId].sort((a, b) => {
         // Priority designs first
         const aPriority = a.is_priority ? 1 : 0
@@ -464,7 +475,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           client_name: client.name,
           designs: clientDesigns,
           isExpanded: true,
-          display_order: client.display_order
+          display_order: client.display_order,
+          completed_count: (dispatchedCounts[clientId] || 0) + (naturallyCompletedCounts[clientId] || 0)
         })
       }
     })
@@ -490,9 +502,17 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const fetchDesigns = useCallback(async () => {
     setLoading(true)
     try {
-      // Fetch active designs with clients using server action
-      const designsData = await getDesignsWithClients()
-      await processDesigns(designsData)
+      // Fetch active designs plus per-client completed-design counts (for the
+      // "N completed" badge) using server actions
+      const [designsData, completedCountsData] = await Promise.all([
+        getDesignsWithClients(),
+        getCompletedDesignCountsByClient()
+      ])
+      const dispatchedCounts: Record<string, number> = {}
+      completedCountsData.forEach(row => {
+        dispatchedCounts[row.client_id] = row.count
+      })
+      await processDesigns(designsData, dispatchedCounts)
     } catch (error) {
       console.error('Error fetching designs:', error)
     } finally {
@@ -771,12 +791,30 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
 
   const handleCompleteDesign = async () => {
     if (!confirmComplete) return
-    
-    removeDesignFromLocalState(confirmComplete.id)
+
+    const { id: designId, client_id: clientId } = confirmComplete
+
+    // Drop the design from its client's active row list and bump that
+    // client's "completed" badge count in the same update, so a client with
+    // remaining active designs stays visible with a running completed tally
+    // instead of the design just silently disappearing.
+    setClientGroups(prevGroups =>
+      prevGroups
+        .map(group =>
+          group.client_id === clientId
+            ? {
+                ...group,
+                designs: group.designs.filter(d => d.id !== designId),
+                completed_count: group.completed_count + 1
+              }
+            : group
+        )
+        .filter(group => group.designs.length > 0)
+    )
     setConfirmComplete(null)
 
     try {
-      await completeDesign(confirmComplete.id)
+      await completeDesign(designId)
     } catch (error: any) {
       console.error('Error completing design:', error)
       alert('Failed to complete design: ' + error.message)
@@ -924,7 +962,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
               client_name: addingForClient.name,
               designs: sortDesignsForDisplay([newDesign]),
               isExpanded: true,
-              display_order: null
+              display_order: null,
+              completed_count: 0
             }
           ]
         })
@@ -1332,25 +1371,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         </div>
 
       {/* Image Preview Modal */}
-      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Design Image</DialogTitle>
-          </DialogHeader>
-          {previewImage && (
-            <div className="relative w-full h-[600px]">
-              <Image
-                src={previewImage}
-                alt="Design preview"
-                fill
-                className="object-contain"
-                sizes="(max-width: 1024px) 100vw, 1024px"
-                unoptimized
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ImagePreviewDialog imageUrl={previewImage} onClose={() => setPreviewImage(null)} />
 
       {/* Notes Modal */}
       <Dialog open={!!editingDesign} onOpenChange={closeNotesModal}>
@@ -1894,7 +1915,18 @@ function ClientGroupRow({
               )}
             </span>
             <div className="flex-1" onClick={onToggle}>
-              <div className="text-sm font-bold text-gray-900">{group.client_name}</div>
+              <div className="flex items-center gap-2">
+                <div className="text-sm font-bold text-gray-900">{group.client_name}</div>
+                {group.completed_count > 0 && (
+                  <span
+                    className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700"
+                    title={`${group.completed_count} design${group.completed_count !== 1 ? 's' : ''} completed for this client`}
+                  >
+                    <CheckCircle2 className="h-3 w-3" />
+                    {group.completed_count} completed
+                  </span>
+                )}
+              </div>
               <div className="text-xs text-gray-500">{group.designs.length} product{group.designs.length !== 1 ? 's' : ''}</div>
             </div>
             <Button

@@ -7,32 +7,38 @@ export const dynamic = 'force-dynamic'
 
 const STAGES = [
   'Fabric Finalize',
-  'Pattern',
-  'Cutting',
-  'Stitching',
+  'Trims Sourcing',
   'Dye',
   'Print',
-  'Embroidery'
+  'Pattern',
+  'Embroidery',
+  'Cutting',
+  'Stitching',
+  'Finishing'
 ]
 
 const STAGE_COLORS: Record<string, string> = {
   'Fabric Finalize': 'from-slate-400 to-slate-600',
-  'Pattern': 'from-blue-400 to-blue-600',
-  'Cutting': 'from-orange-400 to-orange-600',
-  'Stitching': 'from-pink-400 to-pink-600',
+  'Trims Sourcing': 'from-yellow-400 to-yellow-600',
   'Dye': 'from-rose-400 to-rose-600',
   'Print': 'from-lime-400 to-lime-600',
+  'Pattern': 'from-blue-400 to-blue-600',
   'Embroidery': 'from-violet-400 to-violet-600',
+  'Cutting': 'from-orange-400 to-orange-600',
+  'Stitching': 'from-pink-400 to-pink-600',
+  'Finishing': 'from-cyan-400 to-cyan-600',
 }
 
 const STAGE_ESTIMATED_DAYS: Record<string, number> = {
   'Fabric Finalize': 5,
-  'Pattern': 1,
-  'Cutting': 1,
-  'Stitching': 2,
+  'Trims Sourcing': 2,
   'Dye': 2,
   'Print': 2,
+  'Pattern': 1,
   'Embroidery': 3,
+  'Cutting': 1,
+  'Stitching': 2,
+  'Finishing': 1,
 }
 
 type PageProps = {

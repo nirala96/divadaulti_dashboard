@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ChevronDown, ChevronRight, ImageIcon, FileText, PauseCircle, PlayCircle } from "lucide-react"
 import Image from "next/image"
+import { ImagePreviewDialog } from "@/components/ImagePreviewDialog"
 import {
   Dialog,
   DialogContent,
@@ -20,12 +21,13 @@ type DesignStatus = string
 const STAGES: DesignStatus[] = [
   'Fabric Finalize',
   'Trims Sourcing',
-  'Pattern',
-  'Cutting',
-  'Stitching',
   'Dye',
   'Print',
-  'Embroidery'
+  'Pattern',
+  'Embroidery',
+  'Cutting',
+  'Stitching',
+  'Finishing'
 ]
 
 interface DesignWithClient extends Design {
@@ -273,25 +275,7 @@ export function OnHoldOrders() {
       </div>
 
       {/* Image Preview Modal */}
-      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Design Image</DialogTitle>
-          </DialogHeader>
-          {previewImage && (
-            <div className="relative w-full h-[600px]">
-              <Image
-                src={previewImage}
-                alt="Design preview"
-                fill
-                className="object-contain"
-                sizes="(max-width: 1024px) 100vw, 1024px"
-                unoptimized
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <ImagePreviewDialog imageUrl={previewImage} onClose={() => setPreviewImage(null)} />
 
       {/* View Notes Modal */}
       <Dialog open={!!viewingNotes} onOpenChange={() => setViewingNotes(null)}>

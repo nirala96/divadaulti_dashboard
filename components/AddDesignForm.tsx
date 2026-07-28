@@ -31,12 +31,14 @@ type DesignStatus = string
 
 const PROCESS_STEPS: DesignStatus[] = [
   'Fabric Finalize',
-  'Pattern',
-  'Cutting',
-  'Stitching',
+  'Trims Sourcing',
   'Dye',
   'Print',
-  'Embroidery'
+  'Pattern',
+  'Embroidery',
+  'Cutting',
+  'Stitching',
+  'Finishing'
 ]
 
 export function AddDesignForm() {

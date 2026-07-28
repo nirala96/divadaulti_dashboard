@@ -93,12 +93,13 @@ export function TimelineGanttView() {
       const stageOrder = [
         "Fabric Finalize",
         "Trims Sourcing",
-        "Pattern",
-        "Cutting",
-        "Stitching",
         "Dye",
         "Print",
-        "Embroidery"
+        "Pattern",
+        "Embroidery",
+        "Cutting",
+        "Stitching",
+        "Finishing"
       ]
       const currentStageIndex = stageOrder.indexOf(design.status)
       const progress = currentStageIndex >= 0 ? ((currentStageIndex + 1) / stageOrder.length) * 100 : 0
@@ -135,12 +136,13 @@ export function TimelineGanttView() {
           const stageOrder = [
             "Fabric Finalize",
             "Trims Sourcing",
-            "Pattern",
-            "Cutting",
-            "Stitching",
             "Dye",
             "Print",
-            "Embroidery"
+            "Pattern",
+            "Embroidery",
+            "Cutting",
+            "Stitching",
+            "Finishing"
           ]
           const currentStageIndex = stageOrder.indexOf(design.status)
           const daysSinceStart = calculateDaysBetween(design.start_date!, new Date().toISOString().split("T")[0])
