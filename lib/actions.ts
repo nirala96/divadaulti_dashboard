@@ -40,6 +40,7 @@ export type Design = {
   display_order: number
   is_priority: boolean
   created_at: string
+  hidden_from_dashboard?: boolean
   client_name?: string
   client_display_order?: number | null
 }
@@ -168,19 +169,46 @@ export async function getDesignsWithClients(): Promise<Design[]> {
   return result.rows
 }
 
-export async function getCompletedDesignSummaryByClient(): Promise<
-  { client_id: string; count: number; thumbnails: (string | null)[] }[]
-> {
-  const result = await pool.query(`
+export async function getCompletedDesignSummaryByClient(
+  type?: 'Sampling' | 'Production'
+): Promise<{ client_id: string; count: number; thumbnails: { id: string; url: string | null }[] }[]> {
+  const result = await pool.query(
+    `
     SELECT
       client_id,
       COUNT(*)::int AS count,
-      array_agg(images[1] ORDER BY end_date DESC NULLS LAST) AS thumbnails
+      array_agg(
+        jsonb_build_object('id', id, 'url', images[1])
+        ORDER BY end_date DESC NULLS LAST
+      ) AS thumbnails
     FROM designs
     WHERE status = 'Dispatch'
+      AND hidden_from_dashboard IS NOT TRUE
+      AND ($1::text IS NULL OR type = $1)
     GROUP BY client_id
-  `)
+  `,
+    [type || null]
+  )
   return result.rows
+}
+
+// Dismisses a completed design's thumbnail/count from the dashboard's
+// "N completed" summary without touching the design itself - it stays fully
+// intact and visible on the Completed Orders page.
+export async function hideCompletedDesignFromDashboard(designId: string) {
+  await pool.query(
+    'UPDATE designs SET hidden_from_dashboard = TRUE WHERE id = $1',
+    [designId]
+  )
+  revalidatePath('/')
+}
+
+export async function unhideCompletedDesignFromDashboard(designId: string) {
+  await pool.query(
+    'UPDATE designs SET hidden_from_dashboard = FALSE WHERE id = $1',
+    [designId]
+  )
+  revalidatePath('/')
 }
 
 export async function getHeldClientsWithDesigns(): Promise<Design[]> {

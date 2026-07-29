@@ -5,6 +5,7 @@ import { compressImage } from "@/lib/imageUtils"
 import {
   getDesignsWithClients,
   getCompletedDesignSummaryByClient,
+  hideCompletedDesignFromDashboard,
   updateDesignStageStatus,
   updateDesignStatus,
   updateDesignPriority,
@@ -249,7 +250,7 @@ type ClientGroup = {
   isExpanded: boolean
   display_order: number | null
   completed_count: number
-  completed_thumbnails: string[]
+  completed_thumbnails: { id: string; url: string }[]
 }
 
 interface ProductionStatusBoardProps {
@@ -258,6 +259,7 @@ interface ProductionStatusBoardProps {
 
 export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardProps) {
   const [clientGroups, setClientGroups] = useState<ClientGroup[]>([])
+  const [completedTotal, setCompletedTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<DesignType | 'All'>(filter)
   const [activeStageFilter, setActiveStageFilter] = useState<DesignStatus | null>(null)
@@ -400,7 +402,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
 
   const processDesigns = useCallback(async (
     designsData: Design[],
-    dispatchedSummary: Record<string, { count: number; thumbnails: string[] }>
+    dispatchedSummary: Record<string, { count: number; thumbnails: { id: string; url: string }[] }>
   ) => {
     // Transform data to include client name and id
     const designsWithClients: DesignWithClient[] = (designsData || []).map((design: any) => ({
@@ -437,13 +439,14 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     // dispatched yet still count as "completed" for the header badge, even
     // though they haven't moved to the Completed Orders page.
     const naturallyCompletedCounts: Record<string, number> = {}
-    const naturallyCompletedThumbnails: Record<string, string[]> = {}
+    const naturallyCompletedThumbnails: Record<string, { id: string; url: string }[]> = {}
     Object.keys(groupedByClient).forEach(clientId => {
-      const naturallyCompleted = groupedByClient[clientId].filter(d => isDesignCompleted(d))
+      const naturallyCompleted = groupedByClient[clientId]
+        .filter(d => isDesignCompleted(d) && !d.hidden_from_dashboard)
       naturallyCompletedCounts[clientId] = naturallyCompleted.length
       naturallyCompletedThumbnails[clientId] = naturallyCompleted
-        .map(d => d.images?.[0])
-        .filter((url): url is string => !!url)
+        .filter(d => !!d.images?.[0])
+        .map(d => ({ id: d.id, url: d.images![0] }))
 
       // Filter out completed designs - they now appear in separate Completed Orders page
       groupedByClient[clientId] = groupedByClient[clientId].filter(d => !isDesignCompleted(d))
@@ -460,6 +463,13 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         return orderA - orderB
       })
     })
+
+    // Total completed count across ALL clients (not just ones still shown on
+    // the board) - a client whose last design just got completed drops off
+    // `groups` entirely, so this has to be summed independently of that.
+    const totalNaturallyCompleted = Object.values(naturallyCompletedCounts).reduce((sum, n) => sum + n, 0)
+    const totalDispatched = Object.values(dispatchedSummary).reduce((sum, s) => sum + s.count, 0)
+    setCompletedTotal(totalNaturallyCompleted + totalDispatched)
 
     // Create client groups using the designs data
     const groups: ClientGroup[] = []
@@ -519,13 +529,13 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       // + thumbnails, for the "N completed" badge) using server actions
       const [designsData, completedSummaryData] = await Promise.all([
         getDesignsWithClients(),
-        getCompletedDesignSummaryByClient()
+        getCompletedDesignSummaryByClient(activeFilter === 'All' ? undefined : activeFilter)
       ])
-      const dispatchedSummary: Record<string, { count: number; thumbnails: string[] }> = {}
+      const dispatchedSummary: Record<string, { count: number; thumbnails: { id: string; url: string }[] }> = {}
       completedSummaryData.forEach(row => {
         dispatchedSummary[row.client_id] = {
           count: row.count,
-          thumbnails: row.thumbnails.filter((url): url is string => !!url)
+          thumbnails: row.thumbnails.filter((t): t is { id: string; url: string } => !!t.url)
         }
       })
       await processDesigns(designsData, dispatchedSummary)
@@ -534,7 +544,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     } finally {
       setLoading(false)
     }
-  }, [processDesigns])
+  }, [processDesigns, activeFilter])
 
   useEffect(() => {
     console.log('🔄 Fetching designs for filter:', activeFilter, activeStageFilter)
@@ -808,8 +818,12 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const handleCompleteDesign = async () => {
     if (!confirmComplete) return
 
-    const { id: designId, client_id: clientId, images } = confirmComplete
+    const { id: designId, client_id: clientId, images, type: designType } = confirmComplete
     const thumbnail = images?.[0]
+
+    if (activeFilter === 'All' || designType === activeFilter) {
+      setCompletedTotal(prev => prev + 1)
+    }
 
     // Drop the design from its client's active row list and bump that
     // client's "completed" badge count (plus its thumbnail) in the same
@@ -824,7 +838,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                 designs: group.designs.filter(d => d.id !== designId),
                 completed_count: group.completed_count + 1,
                 completed_thumbnails: thumbnail
-                  ? [thumbnail, ...group.completed_thumbnails]
+                  ? [{ id: designId, url: thumbnail }, ...group.completed_thumbnails]
                   : group.completed_thumbnails
               }
             : group
@@ -838,6 +852,31 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     } catch (error: any) {
       console.error('Error completing design:', error)
       alert('Failed to complete design: ' + error.message)
+    }
+  }
+
+  // Dismisses a completed design's thumbnail from the dashboard summary only
+  // - the design itself is untouched and stays fully visible on the
+  // Completed Orders page.
+  const handleHideCompletedThumbnail = async (clientId: string, designId: string) => {
+    setClientGroups(prevGroups =>
+      prevGroups.map(group =>
+        group.client_id === clientId
+          ? {
+              ...group,
+              completed_count: Math.max(0, group.completed_count - 1),
+              completed_thumbnails: group.completed_thumbnails.filter(t => t.id !== designId)
+            }
+          : group
+      )
+    )
+    setCompletedTotal(prev => Math.max(0, prev - 1))
+
+    try {
+      await hideCompletedDesignFromDashboard(designId)
+    } catch (error: any) {
+      console.error('Error hiding completed design thumbnail:', error)
+      alert('Failed to hide thumbnail: ' + error.message)
     }
   }
 
@@ -1312,7 +1351,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
             </div>
           )}
           <div className="text-sm text-gray-600">
-            Total: <span className="font-semibold">{getTotalDesigns()}</span> designs
+            Active: <span className="font-semibold">{getTotalDesigns()}</span> designs
+          </div>
+          <div className="text-sm text-green-700">
+            Completed: <span className="font-semibold">{completedTotal}</span> designs
           </div>
           <div className="text-sm text-gray-600">
             Total: <span className="font-semibold">{clientGroups.length}</span> clients
@@ -1384,6 +1426,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     draggedDesignId={draggedDesignId}
                     dragOverDesignId={dragOverDesignId}
                     onCopyTrackingLink={handleOpenTracking}
+                    onHideCompletedThumbnail={handleHideCompletedThumbnail}
                   />
                 ))
               )}
@@ -1878,21 +1921,23 @@ interface ClientGroupRowProps {
   draggedDesignId: string | null
   dragOverDesignId: string | null
   onCopyTrackingLink: (clientId: string) => void
+  onHideCompletedThumbnail: (clientId: string, designId: string) => void
 }
 
-function ClientGroupRow({ 
-  group, 
-  onToggle, 
+function ClientGroupRow({
+  group,
+  onToggle,
   onUpdateStatus,
   onUpdateStageStatus,
   onRequestStitchingComplete,
   onTogglePriority,
-  onImageClick, 
-  onTileClick, 
-  onCompleteClick, 
-  onDeleteClick, 
-  onAddDesign, 
+  onImageClick,
+  onTileClick,
+  onCompleteClick,
+  onDeleteClick,
+  onAddDesign,
   onHoldClient,
+  onHideCompletedThumbnail,
   isOverdue,
   onClientDragStart,
   onClientDragOver,
@@ -1950,23 +1995,33 @@ function ClientGroupRow({
               </div>
               {group.completed_thumbnails.length > 0 && (
                 <div className="flex items-center gap-1 mt-1 max-w-full overflow-x-auto">
-                  {group.completed_thumbnails.map((url, idx) => (
+                  {group.completed_thumbnails.map((thumb) => (
                     <div
-                      key={idx}
-                      className="relative w-6 h-6 flex-shrink-0 rounded overflow-hidden border border-green-200 cursor-pointer hover:opacity-80 transition-opacity"
+                      key={thumb.id}
+                      className="group/thumb relative w-6 h-6 flex-shrink-0 rounded overflow-hidden border border-green-200 cursor-pointer hover:opacity-80 transition-opacity"
                       onClick={(e) => {
                         e.stopPropagation()
-                        onImageClick(url)
+                        onImageClick(thumb.url)
                       }}
                     >
                       <Image
-                        src={url}
+                        src={thumb.url}
                         alt="Completed design"
                         fill
                         className="object-cover"
                         sizes="24px"
                         unoptimized
                       />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onHideCompletedThumbnail(group.client_id, thumb.id)
+                        }}
+                        className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover/thumb:opacity-100 transition-opacity"
+                        title="Already shipped separately - remove from here (stays in Completed Orders)"
+                      >
+                        <X className="h-3.5 w-3.5 text-white" />
+                      </button>
                     </div>
                   ))}
                 </div>
