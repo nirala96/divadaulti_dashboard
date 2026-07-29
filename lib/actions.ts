@@ -168,9 +168,14 @@ export async function getDesignsWithClients(): Promise<Design[]> {
   return result.rows
 }
 
-export async function getCompletedDesignCountsByClient(): Promise<{ client_id: string; count: number }[]> {
+export async function getCompletedDesignSummaryByClient(): Promise<
+  { client_id: string; count: number; thumbnails: (string | null)[] }[]
+> {
   const result = await pool.query(`
-    SELECT client_id, COUNT(*)::int AS count
+    SELECT
+      client_id,
+      COUNT(*)::int AS count,
+      array_agg(images[1] ORDER BY end_date DESC NULLS LAST) AS thumbnails
     FROM designs
     WHERE status = 'Dispatch'
     GROUP BY client_id

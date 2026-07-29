@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react"
 import { compressImage } from "@/lib/imageUtils"
 import {
   getDesignsWithClients,
-  getCompletedDesignCountsByClient,
+  getCompletedDesignSummaryByClient,
   updateDesignStageStatus,
   updateDesignStatus,
   updateDesignPriority,
@@ -249,6 +249,7 @@ type ClientGroup = {
   isExpanded: boolean
   display_order: number | null
   completed_count: number
+  completed_thumbnails: string[]
 }
 
 interface ProductionStatusBoardProps {
@@ -397,7 +398,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     }
   }
 
-  const processDesigns = useCallback(async (designsData: Design[], dispatchedCounts: Record<string, number>) => {
+  const processDesigns = useCallback(async (
+    designsData: Design[],
+    dispatchedSummary: Record<string, { count: number; thumbnails: string[] }>
+  ) => {
     // Transform data to include client name and id
     const designsWithClients: DesignWithClient[] = (designsData || []).map((design: any) => ({
       ...design,
@@ -433,8 +437,13 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     // dispatched yet still count as "completed" for the header badge, even
     // though they haven't moved to the Completed Orders page.
     const naturallyCompletedCounts: Record<string, number> = {}
+    const naturallyCompletedThumbnails: Record<string, string[]> = {}
     Object.keys(groupedByClient).forEach(clientId => {
-      naturallyCompletedCounts[clientId] = groupedByClient[clientId].filter(d => isDesignCompleted(d)).length
+      const naturallyCompleted = groupedByClient[clientId].filter(d => isDesignCompleted(d))
+      naturallyCompletedCounts[clientId] = naturallyCompleted.length
+      naturallyCompletedThumbnails[clientId] = naturallyCompleted
+        .map(d => d.images?.[0])
+        .filter((url): url is string => !!url)
 
       // Filter out completed designs - they now appear in separate Completed Orders page
       groupedByClient[clientId] = groupedByClient[clientId].filter(d => !isDesignCompleted(d))
@@ -476,7 +485,11 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           designs: clientDesigns,
           isExpanded: true,
           display_order: client.display_order,
-          completed_count: (dispatchedCounts[clientId] || 0) + (naturallyCompletedCounts[clientId] || 0)
+          completed_count: (dispatchedSummary[clientId]?.count || 0) + (naturallyCompletedCounts[clientId] || 0),
+          completed_thumbnails: [
+            ...(naturallyCompletedThumbnails[clientId] || []),
+            ...(dispatchedSummary[clientId]?.thumbnails || [])
+          ]
         })
       }
     })
@@ -502,17 +515,20 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const fetchDesigns = useCallback(async () => {
     setLoading(true)
     try {
-      // Fetch active designs plus per-client completed-design counts (for the
-      // "N completed" badge) using server actions
-      const [designsData, completedCountsData] = await Promise.all([
+      // Fetch active designs plus per-client completed-design summary (count
+      // + thumbnails, for the "N completed" badge) using server actions
+      const [designsData, completedSummaryData] = await Promise.all([
         getDesignsWithClients(),
-        getCompletedDesignCountsByClient()
+        getCompletedDesignSummaryByClient()
       ])
-      const dispatchedCounts: Record<string, number> = {}
-      completedCountsData.forEach(row => {
-        dispatchedCounts[row.client_id] = row.count
+      const dispatchedSummary: Record<string, { count: number; thumbnails: string[] }> = {}
+      completedSummaryData.forEach(row => {
+        dispatchedSummary[row.client_id] = {
+          count: row.count,
+          thumbnails: row.thumbnails.filter((url): url is string => !!url)
+        }
       })
-      await processDesigns(designsData, dispatchedCounts)
+      await processDesigns(designsData, dispatchedSummary)
     } catch (error) {
       console.error('Error fetching designs:', error)
     } finally {
@@ -792,12 +808,13 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const handleCompleteDesign = async () => {
     if (!confirmComplete) return
 
-    const { id: designId, client_id: clientId } = confirmComplete
+    const { id: designId, client_id: clientId, images } = confirmComplete
+    const thumbnail = images?.[0]
 
     // Drop the design from its client's active row list and bump that
-    // client's "completed" badge count in the same update, so a client with
-    // remaining active designs stays visible with a running completed tally
-    // instead of the design just silently disappearing.
+    // client's "completed" badge count (plus its thumbnail) in the same
+    // update, so a client with remaining active designs stays visible with a
+    // running completed tally instead of the design just silently disappearing.
     setClientGroups(prevGroups =>
       prevGroups
         .map(group =>
@@ -805,7 +822,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
             ? {
                 ...group,
                 designs: group.designs.filter(d => d.id !== designId),
-                completed_count: group.completed_count + 1
+                completed_count: group.completed_count + 1,
+                completed_thumbnails: thumbnail
+                  ? [thumbnail, ...group.completed_thumbnails]
+                  : group.completed_thumbnails
               }
             : group
         )
@@ -963,7 +983,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
               designs: sortDesignsForDisplay([newDesign]),
               isExpanded: true,
               display_order: null,
-              completed_count: 0
+              completed_count: 0,
+              completed_thumbnails: []
             }
           ]
         })
@@ -1927,8 +1948,50 @@ function ClientGroupRow({
                   </span>
                 )}
               </div>
+              {group.completed_thumbnails.length > 0 && (
+                <div className="flex items-center gap-1 mt-1 max-w-full overflow-x-auto">
+                  {group.completed_thumbnails.map((url, idx) => (
+                    <div
+                      key={idx}
+                      className="relative w-6 h-6 flex-shrink-0 rounded overflow-hidden border border-green-200 cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onImageClick(url)
+                      }}
+                    >
+                      <Image
+                        src={url}
+                        alt="Completed design"
+                        fill
+                        className="object-cover"
+                        sizes="24px"
+                        unoptimized
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="text-xs text-gray-500">{group.designs.length} product{group.designs.length !== 1 ? 's' : ''}</div>
             </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 w-7 p-0 hover:bg-blue-100"
+              onClick={(e) => {
+                e.stopPropagation()
+                onAddDesign(group.client_id, group.client_name)
+              }}
+              title="Add new design for this client"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </td>
+        {STAGES.map(stage => (
+          <td key={stage} className="px-4 py-4"></td>
+        ))}
+        <td className="px-4 py-4">
+          <div className="flex items-center justify-center gap-2">
             <Button
               size="sm"
               variant="ghost"
@@ -1953,24 +2016,8 @@ function ClientGroupRow({
             >
               <PauseCircle className="h-4 w-4 text-orange-600" />
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 w-7 p-0 hover:bg-blue-100"
-              onClick={(e) => {
-                e.stopPropagation()
-                onAddDesign(group.client_id, group.client_name)
-              }}
-              title="Add new design for this client"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
           </div>
         </td>
-        {STAGES.map(stage => (
-          <td key={stage} className="px-4 py-4"></td>
-        ))}
-        <td className="px-4 py-4"></td>
       </tr>
 
       {/* Product Rows (shown when expanded) */}
