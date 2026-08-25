@@ -26,6 +26,7 @@ import { KARIGAAR_NAMES } from "@/lib/employees"
 import { ImagePreviewDialog } from "@/components/ImagePreviewDialog"
 import { MerchandiserTag } from "@/components/MerchandiserTag"
 import { EditMerchandiserDialog } from "@/components/EditMerchandiserDialog"
+import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
 
 type DesignStatus = string
 type DesignType = 'Sampling' | 'Production'
@@ -1046,12 +1047,6 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     }
   }
 
-  const knownMerchandisers = useMemo(() => {
-    const names = new Set<string>()
-    clientGroups.forEach(g => g.merchandiser && names.add(g.merchandiser))
-    return Array.from(names).sort()
-  }, [clientGroups])
-
   const visibleClientGroups = useMemo(() => {
     if (!activeMerchandiserFilter) return clientGroups
     return clientGroups.filter(g => g.merchandiser === activeMerchandiserFilter)
@@ -1390,29 +1385,27 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       </div>
 
       {/* Merchandiser Filter */}
-      {knownMerchandisers.length > 0 && (
-        <div className="flex items-center gap-3 bg-white p-4 rounded-lg shadow flex-wrap">
-          <span className="text-sm font-medium text-gray-700">Filter by Merchandiser:</span>
-          <div className="flex gap-2 flex-wrap items-center">
-            <Button
-              variant={activeMerchandiserFilter === null ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActiveMerchandiserFilter(null)}
+      <div className="flex items-center gap-3 bg-white p-4 rounded-lg shadow flex-wrap">
+        <span className="text-sm font-medium text-gray-700">Filter by Merchandiser:</span>
+        <div className="flex gap-2 flex-wrap items-center">
+          <Button
+            variant={activeMerchandiserFilter === null ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setActiveMerchandiserFilter(null)}
+          >
+            All
+          </Button>
+          {MERCHANDISER_NAMES.map(name => (
+            <button
+              key={name}
+              onClick={() => setActiveMerchandiserFilter(activeMerchandiserFilter === name ? null : name)}
+              className={activeMerchandiserFilter === name ? "ring-2 ring-offset-1 ring-gray-400 rounded-full" : ""}
             >
-              All
-            </Button>
-            {knownMerchandisers.map(name => (
-              <button
-                key={name}
-                onClick={() => setActiveMerchandiserFilter(activeMerchandiserFilter === name ? null : name)}
-                className={activeMerchandiserFilter === name ? "ring-2 ring-offset-1 ring-gray-400 rounded-full" : ""}
-              >
-                <MerchandiserTag name={name} />
-              </button>
-            ))}
-          </div>
+              <MerchandiserTag name={name} />
+            </button>
+          ))}
         </div>
-      )}
+      </div>
 
       {/* CRM-Style Table */}
       <div className="bg-white rounded-lg shadow">
@@ -1498,7 +1491,6 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           clientId={editingMerchandiserFor.id}
           clientName={editingMerchandiserFor.name}
           currentMerchandiser={editingMerchandiserFor.merchandiser}
-          knownMerchandisers={knownMerchandisers}
           open={!!editingMerchandiserFor}
           onOpenChange={(open) => {
             if (!open) setEditingMerchandiserFor(null)

@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/Sidebar"
 import { AddClientModal } from "@/components/AddClientModal"
 import { EditMerchandiserDialog } from "@/components/EditMerchandiserDialog"
 import { MerchandiserTag } from "@/components/MerchandiserTag"
+import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
 import { getClients, unhideClientFromOrders, type Client } from "@/lib/actions"
 import { Link2, RotateCcw, Tag } from "lucide-react"
 
@@ -14,12 +15,6 @@ export default function ClientsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [merchandiserFilter, setMerchandiserFilter] = useState<string | null>(null)
   const [editingMerchandiserFor, setEditingMerchandiserFor] = useState<Client | null>(null)
-
-  const knownMerchandisers = useMemo(() => {
-    const names = new Set<string>()
-    clients.forEach((c) => c.merchandiser && names.add(c.merchandiser))
-    return Array.from(names).sort()
-  }, [clients])
 
   const visibleClients = useMemo(() => {
     if (!merchandiserFilter) return clients
@@ -71,32 +66,30 @@ export default function ClientsPage() {
             <AddClientModal onClientAdded={fetchClients} />
           </div>
 
-          {knownMerchandisers.length > 0 && (
-            <div className="flex items-center gap-3 mb-4 bg-white p-4 rounded-lg shadow flex-wrap">
-              <span className="text-sm font-medium text-gray-700">Filter by Merchandiser:</span>
-              <div className="flex gap-2 flex-wrap items-center">
+          <div className="flex items-center gap-3 mb-4 bg-white p-4 rounded-lg shadow flex-wrap">
+            <span className="text-sm font-medium text-gray-700">Filter by Merchandiser:</span>
+            <div className="flex gap-2 flex-wrap items-center">
+              <button
+                onClick={() => setMerchandiserFilter(null)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  merchandiserFilter === null
+                    ? "bg-gray-900 text-white border-gray-900"
+                    : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                All
+              </button>
+              {MERCHANDISER_NAMES.map((name) => (
                 <button
-                  onClick={() => setMerchandiserFilter(null)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                    merchandiserFilter === null
-                      ? "bg-gray-900 text-white border-gray-900"
-                      : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
-                  }`}
+                  key={name}
+                  onClick={() => setMerchandiserFilter(merchandiserFilter === name ? null : name)}
+                  className={merchandiserFilter === name ? "ring-2 ring-offset-1 ring-gray-400 rounded-full" : ""}
                 >
-                  All
+                  <MerchandiserTag name={name} />
                 </button>
-                {knownMerchandisers.map((name) => (
-                  <button
-                    key={name}
-                    onClick={() => setMerchandiserFilter(merchandiserFilter === name ? null : name)}
-                    className={merchandiserFilter === name ? "ring-2 ring-offset-1 ring-gray-400 rounded-full" : ""}
-                  >
-                    <MerchandiserTag name={name} />
-                  </button>
-                ))}
-              </div>
+              ))}
             </div>
-          )}
+          </div>
 
           {loading ? (
             <div className="bg-white rounded-lg shadow p-6">
@@ -196,7 +189,6 @@ export default function ClientsPage() {
           clientId={editingMerchandiserFor.id}
           clientName={editingMerchandiserFor.name}
           currentMerchandiser={editingMerchandiserFor.merchandiser}
-          knownMerchandisers={knownMerchandisers}
           open={!!editingMerchandiserFor}
           onOpenChange={(open) => {
             if (!open) setEditingMerchandiserFor(null)

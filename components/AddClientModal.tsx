@@ -14,7 +14,17 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
 import { Plus } from "lucide-react"
+
+const UNASSIGNED = "__unassigned__"
 
 interface AddClientModalProps {
   onClientAdded?: () => void
@@ -27,7 +37,7 @@ export function AddClientModal({ onClientAdded }: AddClientModalProps) {
     name: "",
     contact_person: "",
     email: "",
-    merchandiser: "",
+    merchandiser: UNASSIGNED,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,10 +45,13 @@ export function AddClientModal({ onClientAdded }: AddClientModalProps) {
     setLoading(true)
 
     try {
-      await addClient(formData)
+      await addClient({
+        ...formData,
+        merchandiser: formData.merchandiser === UNASSIGNED ? undefined : formData.merchandiser,
+      })
 
       alert("Client added successfully!")
-      setFormData({ name: "", contact_person: "", email: "", merchandiser: "" })
+      setFormData({ name: "", contact_person: "", email: "", merchandiser: UNASSIGNED })
       setOpen(false)
       onClientAdded?.() // Call the callback to refresh the list
     } catch (error: any) {
@@ -104,14 +117,22 @@ export function AddClientModal({ onClientAdded }: AddClientModalProps) {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="merchandiser">Merchandiser</Label>
-              <Input
-                id="merchandiser"
-                placeholder="e.g. Anjali"
+              <Select
                 value={formData.merchandiser}
-                onChange={(e) =>
-                  setFormData({ ...formData, merchandiser: e.target.value })
-                }
-              />
+                onValueChange={(value) => setFormData({ ...formData, merchandiser: value })}
+              >
+                <SelectTrigger id="merchandiser">
+                  <SelectValue placeholder="Select merchandiser" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
+                  {MERCHANDISER_NAMES.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
