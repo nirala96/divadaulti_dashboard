@@ -1,15 +1,30 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Sidebar } from "@/components/Sidebar"
 import { AddClientModal } from "@/components/AddClientModal"
+import { EditMerchandiserDialog } from "@/components/EditMerchandiserDialog"
+import { MerchandiserTag } from "@/components/MerchandiserTag"
 import { getClients, unhideClientFromOrders, type Client } from "@/lib/actions"
-import { Link2, RotateCcw } from "lucide-react"
+import { Link2, RotateCcw, Tag } from "lucide-react"
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [merchandiserFilter, setMerchandiserFilter] = useState<string | null>(null)
+  const [editingMerchandiserFor, setEditingMerchandiserFor] = useState<Client | null>(null)
+
+  const knownMerchandisers = useMemo(() => {
+    const names = new Set<string>()
+    clients.forEach((c) => c.merchandiser && names.add(c.merchandiser))
+    return Array.from(names).sort()
+  }, [clients])
+
+  const visibleClients = useMemo(() => {
+    if (!merchandiserFilter) return clients
+    return clients.filter((c) => c.merchandiser === merchandiserFilter)
+  }, [clients, merchandiserFilter])
 
   useEffect(() => {
     fetchClients()
@@ -55,7 +70,34 @@ export default function ClientsPage() {
             <h1 className="text-3xl font-bold text-gray-900">Clients</h1>
             <AddClientModal onClientAdded={fetchClients} />
           </div>
-          
+
+          {knownMerchandisers.length > 0 && (
+            <div className="flex items-center gap-3 mb-4 bg-white p-4 rounded-lg shadow flex-wrap">
+              <span className="text-sm font-medium text-gray-700">Filter by Merchandiser:</span>
+              <div className="flex gap-2 flex-wrap items-center">
+                <button
+                  onClick={() => setMerchandiserFilter(null)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    merchandiserFilter === null
+                      ? "bg-gray-900 text-white border-gray-900"
+                      : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  All
+                </button>
+                {knownMerchandisers.map((name) => (
+                  <button
+                    key={name}
+                    onClick={() => setMerchandiserFilter(merchandiserFilter === name ? null : name)}
+                    className={merchandiserFilter === name ? "ring-2 ring-offset-1 ring-gray-400 rounded-full" : ""}
+                  >
+                    <MerchandiserTag name={name} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="bg-white rounded-lg shadow p-6">
               <p className="text-gray-600">Loading clients...</p>
@@ -63,6 +105,10 @@ export default function ClientsPage() {
           ) : clients.length === 0 ? (
             <div className="bg-white rounded-lg shadow p-6">
               <p className="text-gray-600">No clients yet. Add your first client using the button above.</p>
+            </div>
+          ) : visibleClients.length === 0 ? (
+            <div className="bg-white rounded-lg shadow p-6">
+              <p className="text-gray-600">No clients tagged to "{merchandiserFilter}".</p>
             </div>
           ) : (
             <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -73,18 +119,35 @@ export default function ClientsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Person</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Merchandiser</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Added</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Orders Dropdown</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tracking Link</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {clients.map((client) => (
+                  {visibleClients.map((client) => (
                     <tr key={client.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{client.name}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-600">{client.contact_person || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-600">{client.email || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-600">{client.phone || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {client.merchandiser ? (
+                          <MerchandiserTag
+                            name={client.merchandiser}
+                            onClick={() => setEditingMerchandiserFor(client)}
+                          />
+                        ) : (
+                          <button
+                            onClick={() => setEditingMerchandiserFor(client)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-gray-400 border border-dashed border-gray-300 hover:border-gray-400 hover:text-gray-600 transition-colors"
+                          >
+                            <Tag className="w-3 h-3" />
+                            Add
+                          </button>
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-500 text-sm">
                         {new Date(client.created_at).toLocaleDateString()}
                       </td>
@@ -127,6 +190,24 @@ export default function ClientsPage() {
           )}
         </div>
       </main>
+
+      {editingMerchandiserFor && (
+        <EditMerchandiserDialog
+          clientId={editingMerchandiserFor.id}
+          clientName={editingMerchandiserFor.name}
+          currentMerchandiser={editingMerchandiserFor.merchandiser}
+          knownMerchandisers={knownMerchandisers}
+          open={!!editingMerchandiserFor}
+          onOpenChange={(open) => {
+            if (!open) setEditingMerchandiserFor(null)
+          }}
+          onSaved={(merchandiser) => {
+            setClients((prev) =>
+              prev.map((c) => (c.id === editingMerchandiserFor.id ? { ...c, merchandiser } : c))
+            )
+          }}
+        />
+      )}
     </div>
   )
 }

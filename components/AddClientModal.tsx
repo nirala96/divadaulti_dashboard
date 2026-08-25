@@ -27,6 +27,7 @@ export function AddClientModal({ onClientAdded }: AddClientModalProps) {
     name: "",
     contact_person: "",
     email: "",
+    merchandiser: "",
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,7 +38,7 @@ export function AddClientModal({ onClientAdded }: AddClientModalProps) {
       await addClient(formData)
 
       alert("Client added successfully!")
-      setFormData({ name: "", contact_person: "", email: "" })
+      setFormData({ name: "", contact_person: "", email: "", merchandiser: "" })
       setOpen(false)
       onClientAdded?.() // Call the callback to refresh the list
     } catch (error: any) {
@@ -99,6 +100,17 @@ export function AddClientModal({ onClientAdded }: AddClientModalProps) {
                   setFormData({ ...formData, email: e.target.value })
                 }
                 required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="merchandiser">Merchandiser</Label>
+              <Input
+                id="merchandiser"
+                placeholder="e.g. Anjali"
+                value={formData.merchandiser}
+                onChange={(e) =>
+                  setFormData({ ...formData, merchandiser: e.target.value })
+                }
               />
             </div>
           </div>

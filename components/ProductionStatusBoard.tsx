@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback } from "react"
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { compressImage } from "@/lib/imageUtils"
 import {
   getDesignsWithClients,
@@ -24,6 +24,8 @@ import {
 } from "@/lib/actions"
 import { KARIGAAR_NAMES } from "@/lib/employees"
 import { ImagePreviewDialog } from "@/components/ImagePreviewDialog"
+import { MerchandiserTag } from "@/components/MerchandiserTag"
+import { EditMerchandiserDialog } from "@/components/EditMerchandiserDialog"
 
 type DesignStatus = string
 type DesignType = 'Sampling' | 'Production'
@@ -57,7 +59,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ChevronDown, ChevronRight, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Pencil, Upload, Star, Link2, PauseCircle, Clock, IndianRupee, ClipboardPaste } from "lucide-react"
+import { ChevronDown, ChevronRight, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Pencil, Upload, Star, Link2, PauseCircle, Clock, IndianRupee, ClipboardPaste, Tag } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -246,6 +248,7 @@ type DesignWithClient = Design & {
 type ClientGroup = {
   client_id: string
   client_name: string
+  merchandiser: string | null
   designs: DesignWithClient[]
   isExpanded: boolean
   display_order: number | null
@@ -263,6 +266,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [loading, setLoading] = useState(true)
   const [activeFilter, setActiveFilter] = useState<DesignType | 'All'>(filter)
   const [activeStageFilter, setActiveStageFilter] = useState<DesignStatus | null>(null)
+  const [activeMerchandiserFilter, setActiveMerchandiserFilter] = useState<string | null>(null)
+  const [editingMerchandiserFor, setEditingMerchandiserFor] = useState<{ id: string, name: string, merchandiser: string | null } | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [editingDesign, setEditingDesign] = useState<DesignWithClient | null>(null)
   const [notesValue, setNotesValue] = useState("")
@@ -475,12 +480,13 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     const groups: ClientGroup[] = []
     
     // Get unique clients from designs
-    const clientMap = new Map<string, { name: string, display_order: number | null }>()
+    const clientMap = new Map<string, { name: string, display_order: number | null, merchandiser: string | null }>()
     designsWithClients.forEach(design => {
       if (!clientMap.has(design.client_id)) {
         clientMap.set(design.client_id, {
           name: design.client_name || 'Unknown Client',
-          display_order: design.client_display_order ?? null
+          display_order: design.client_display_order ?? null,
+          merchandiser: design.client_merchandiser ?? null
         })
       }
     })
@@ -492,6 +498,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         groups.push({
           client_id: clientId,
           client_name: client.name,
+          merchandiser: client.merchandiser,
           designs: clientDesigns,
           isExpanded: true,
           display_order: client.display_order,
@@ -1019,6 +1026,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
             {
               client_id: addingForClient.id,
               client_name: addingForClient.name,
+              merchandiser: null,
               designs: sortDesignsForDisplay([newDesign]),
               isExpanded: true,
               display_order: null,
@@ -1038,8 +1046,27 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     }
   }
 
+  const knownMerchandisers = useMemo(() => {
+    const names = new Set<string>()
+    clientGroups.forEach(g => g.merchandiser && names.add(g.merchandiser))
+    return Array.from(names).sort()
+  }, [clientGroups])
+
+  const visibleClientGroups = useMemo(() => {
+    if (!activeMerchandiserFilter) return clientGroups
+    return clientGroups.filter(g => g.merchandiser === activeMerchandiserFilter)
+  }, [clientGroups, activeMerchandiserFilter])
+
+  const handleMerchandiserSaved = useCallback((clientId: string, merchandiser: string | null) => {
+    setClientGroups(prevGroups =>
+      prevGroups.map(group =>
+        group.client_id === clientId ? { ...group, merchandiser } : group
+      )
+    )
+  }, [])
+
   const getTotalDesigns = () => {
-    return clientGroups.reduce((sum, group) => sum + group.designs.length, 0)
+    return visibleClientGroups.reduce((sum, group) => sum + group.designs.length, 0)
   }
 
   const toggleStageFilter = (stage: DesignStatus) => {
@@ -1331,7 +1358,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
             variant="outline"
             size="sm"
             onClick={collapseAllClients}
-            disabled={clientGroups.length === 0}
+            disabled={visibleClientGroups.length === 0}
             title="Collapse all client sections"
           >
             Collapse All
@@ -1357,10 +1384,35 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
             Completed: <span className="font-semibold">{completedTotal}</span> designs
           </div>
           <div className="text-sm text-gray-600">
-            Total: <span className="font-semibold">{clientGroups.length}</span> clients
+            Total: <span className="font-semibold">{visibleClientGroups.length}</span> clients
           </div>
         </div>
       </div>
+
+      {/* Merchandiser Filter */}
+      {knownMerchandisers.length > 0 && (
+        <div className="flex items-center gap-3 bg-white p-4 rounded-lg shadow flex-wrap">
+          <span className="text-sm font-medium text-gray-700">Filter by Merchandiser:</span>
+          <div className="flex gap-2 flex-wrap items-center">
+            <Button
+              variant={activeMerchandiserFilter === null ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveMerchandiserFilter(null)}
+            >
+              All
+            </Button>
+            {knownMerchandisers.map(name => (
+              <button
+                key={name}
+                onClick={() => setActiveMerchandiserFilter(activeMerchandiserFilter === name ? null : name)}
+                className={activeMerchandiserFilter === name ? "ring-2 ring-offset-1 ring-gray-400 rounded-full" : ""}
+              >
+                <MerchandiserTag name={name} />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* CRM-Style Table */}
       <div className="bg-white rounded-lg shadow">
@@ -1390,14 +1442,16 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {clientGroups.length === 0 ? (
+              {visibleClientGroups.length === 0 ? (
                 <tr>
                   <td colSpan={STAGES.length + 2} className="px-6 py-12 text-center text-gray-500">
-                    No designs found. Add a client and create your first design order!
+                    {clientGroups.length === 0
+                      ? "No designs found. Add a client and create your first design order!"
+                      : `No clients tagged to "${activeMerchandiserFilter}".`}
                   </td>
                 </tr>
               ) : (
-                clientGroups.map(group => (
+                visibleClientGroups.map(group => (
                   <ClientGroupRow
                     key={group.client_id}
                     group={group}
@@ -1412,6 +1466,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     onDeleteClick={setConfirmDelete}
                     onAddDesign={openAddDesignDialog}
                     onHoldClient={handleHoldClient}
+                    onEditMerchandiser={(id, name, merchandiser) => setEditingMerchandiserFor({ id, name, merchandiser })}
                     isOverdue={isOverdue}
                     onClientDragStart={handleClientDragStart}
                     onClientDragOver={handleClientDragOver}
@@ -1436,6 +1491,23 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
 
       {/* Image Preview Modal */}
       <ImagePreviewDialog imageUrl={previewImage} onClose={() => setPreviewImage(null)} />
+
+      {/* Merchandiser Tag Modal */}
+      {editingMerchandiserFor && (
+        <EditMerchandiserDialog
+          clientId={editingMerchandiserFor.id}
+          clientName={editingMerchandiserFor.name}
+          currentMerchandiser={editingMerchandiserFor.merchandiser}
+          knownMerchandisers={knownMerchandisers}
+          open={!!editingMerchandiserFor}
+          onOpenChange={(open) => {
+            if (!open) setEditingMerchandiserFor(null)
+          }}
+          onSaved={(merchandiser) => {
+            handleMerchandiserSaved(editingMerchandiserFor.id, merchandiser)
+          }}
+        />
+      )}
 
       {/* Notes Modal */}
       <Dialog open={!!editingDesign} onOpenChange={closeNotesModal}>
@@ -1907,6 +1979,7 @@ interface ClientGroupRowProps {
   onDeleteClick: (design: DesignWithClient) => void
   onAddDesign: (clientId: string, clientName: string) => void
   onHoldClient: (clientId: string, clientName: string) => void
+  onEditMerchandiser: (clientId: string, clientName: string, merchandiser: string | null) => void
   isOverdue: (design: DesignWithClient) => boolean
   onClientDragStart: (clientId: string) => void
   onClientDragOver: (e: React.DragEvent, clientId: string) => void
@@ -1937,6 +2010,7 @@ function ClientGroupRow({
   onDeleteClick,
   onAddDesign,
   onHoldClient,
+  onEditMerchandiser,
   onHideCompletedThumbnail,
   isOverdue,
   onClientDragStart,
@@ -1983,6 +2057,27 @@ function ClientGroupRow({
             <div className="flex-1" onClick={onToggle}>
               <div className="flex items-center gap-2">
                 <div className="text-sm font-bold text-gray-900">{group.client_name}</div>
+                {group.merchandiser ? (
+                  <MerchandiserTag
+                    name={group.merchandiser}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onEditMerchandiser(group.client_id, group.client_name, group.merchandiser)
+                    }}
+                  />
+                ) : (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onEditMerchandiser(group.client_id, group.client_name, null)
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-gray-400 border border-dashed border-gray-300 hover:border-gray-400 hover:text-gray-600 transition-colors"
+                    title="Tag a merchandiser"
+                  >
+                    <Tag className="w-3 h-3" />
+                    Tag
+                  </button>
+                )}
                 {group.completed_count > 0 && (
                   <span
                     className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700"

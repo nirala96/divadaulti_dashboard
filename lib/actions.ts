@@ -21,6 +21,7 @@ export type Client = {
   is_on_hold: boolean
   hold_date: string | null
   hidden_from_orders: boolean
+  merchandiser: string | null
 }
 
 export type Design = {
@@ -43,6 +44,7 @@ export type Design = {
   hidden_from_dashboard?: boolean
   client_name?: string
   client_display_order?: number | null
+  client_merchandiser?: string | null
 }
 
 export type StageWorkLog = {
@@ -82,18 +84,30 @@ export async function addClient(data: {
   contact_person: string
   email: string
   phone?: string
+  merchandiser?: string
 }) {
   // Generate unique tracking token using crypto
   const crypto = require('crypto')
   const trackingToken = crypto.randomBytes(16).toString('hex')
-  
+
   const result = await pool.query(
-    `INSERT INTO clients (name, contact_person, email, phone, display_order, tracking_token)
-     VALUES ($1, $2, $3, $4, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM clients), $5)
+    `INSERT INTO clients (name, contact_person, email, phone, display_order, tracking_token, merchandiser)
+     VALUES ($1, $2, $3, $4, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM clients), $5, $6)
      RETURNING *`,
-    [data.name, data.contact_person, data.email, data.phone || null, trackingToken]
+    [data.name, data.contact_person, data.email, data.phone || null, trackingToken, data.merchandiser?.trim() || null]
   )
   revalidatePath('/')
+  revalidatePath('/clients')
+  return result.rows[0]
+}
+
+export async function updateClientMerchandiser(clientId: string, merchandiser: string | null) {
+  const result = await pool.query(
+    'UPDATE clients SET merchandiser = $1 WHERE id = $2 RETURNING *',
+    [merchandiser?.trim() || null, clientId]
+  )
+  revalidatePath('/')
+  revalidatePath('/clients')
   return result.rows[0]
 }
 
@@ -159,7 +173,8 @@ export async function getDesignsWithClients(): Promise<Design[]> {
     SELECT
       d.*,
       c.name as client_name,
-      c.display_order as client_display_order
+      c.display_order as client_display_order,
+      c.merchandiser as client_merchandiser
     FROM designs d
     LEFT JOIN clients c ON d.client_id = c.id
     WHERE (c.is_on_hold IS NULL OR c.is_on_hold = FALSE)
