@@ -9,7 +9,8 @@ import {
 } from "@/lib/actions"
 import { MerchandiserTag } from "@/components/MerchandiserTag"
 import { PATTERN_MASTER, CUTTING_MASTER, KARIGAAR_NAMES } from "@/lib/employees"
-import { Scissors, Shirt, PenTool, Star, Loader2 } from "lucide-react"
+import { Scissors, Shirt, PenTool, Star, Loader2, ImageIcon } from "lucide-react"
+import Image from "next/image"
 import {
   Dialog,
   DialogContent,
@@ -226,22 +227,40 @@ export default function TodaysPlanBoard() {
                       className={`rounded-md border p-3 ${design.is_priority ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-semibold text-sm text-gray-900 truncate">
-                              {design.client_name}
-                            </span>
-                            {design.client_merchandiser && (
-                              <MerchandiserTag name={design.client_merchandiser} />
-                            )}
-                          </div>
-                          <div className="text-sm text-gray-600 truncate">{design.title}</div>
-                          <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
-                            <span>{design.type}</span>
-                            <span>&middot;</span>
-                            <span>Qty {design.quantity}</span>
-                            <span>&middot;</span>
-                            <span>{daysWaiting(design.created_at)}d waiting</span>
+                        <div className="flex items-start gap-2 min-w-0">
+                          {design.images && design.images.length > 0 ? (
+                            <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden bg-gray-100">
+                              <Image
+                                src={design.images[0]}
+                                alt={design.title}
+                                fill
+                                className="object-cover"
+                                sizes="48px"
+                                unoptimized
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-12 h-12 flex-shrink-0 rounded bg-gray-100 flex items-center justify-center">
+                              <ImageIcon className="h-5 w-5 text-gray-300" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-semibold text-sm text-gray-900 truncate">
+                                {design.client_name}
+                              </span>
+                              {design.client_merchandiser && (
+                                <MerchandiserTag name={design.client_merchandiser} />
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-600 truncate">{design.title}</div>
+                            <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
+                              <span>{design.type}</span>
+                              <span>&middot;</span>
+                              <span>Qty {design.quantity}</span>
+                              <span>&middot;</span>
+                              <span>{daysWaiting(design.created_at)}d waiting</span>
+                            </div>
                           </div>
                         </div>
                         <button
