@@ -2084,7 +2084,7 @@ function ClientGroupRow({
                 )}
               </div>
               {group.completed_thumbnails.length > 0 && (
-                <div className="flex items-center gap-1 mt-1 max-w-full overflow-x-auto">
+                <div className="flex items-center gap-1 mt-1 w-px min-w-full overflow-x-auto">
                   {group.completed_thumbnails.map((thumb) => (
                     <div
                       key={thumb.id}
