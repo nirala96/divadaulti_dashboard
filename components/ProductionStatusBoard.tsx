@@ -1320,90 +1320,93 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
 
   return (
     <div className="space-y-6">
-      {/* Filter Toggle */}
-      <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-lg shadow">
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-gray-700">Filter by Type:</span>
-          <div className="flex gap-2">
-          <Button
-            variant={activeFilter === 'All' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveFilter('All')}
-          >
-            All Designs
-          </Button>
-          <Button
-            variant={activeFilter === 'Sampling' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveFilter('Sampling')}
-          >
-            Sampling Only
-          </Button>
-          <Button
-            variant={activeFilter === 'Production' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveFilter('Production')}
-          >
-            Production Only
-          </Button>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={collapseAllClients}
-            disabled={visibleClientGroups.length === 0}
-            title="Collapse all client sections"
-          >
-            Collapse All
-          </Button>
-          {activeStageFilter && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-md border border-blue-200">
-              <span className="text-sm text-blue-700">
-                Stage: <strong>{activeStageFilter}</strong> (incomplete)
-              </span>
-              <button
-                onClick={() => setActiveStageFilter(null)}
-                className="text-blue-500 hover:text-blue-700 transition-colors"
-                title="Clear stage filter"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-          <div className="text-sm text-gray-600">
-            Active: <span className="font-semibold">{getTotalDesigns()}</span> designs
-          </div>
-          <div className="text-sm text-green-700">
-            Completed: <span className="font-semibold">{completedTotal}</span> designs
-          </div>
-          <div className="text-sm text-gray-600">
-            Total: <span className="font-semibold">{visibleClientGroups.length}</span> clients
-          </div>
-        </div>
-      </div>
-
-      {/* Merchandiser Filter */}
-      <div className="flex items-center gap-3 bg-white p-4 rounded-lg shadow flex-wrap">
-        <span className="text-sm font-medium text-gray-700">Filter by Merchandiser:</span>
-        <div className="flex gap-2 flex-wrap items-center">
-          <Button
-            variant={activeMerchandiserFilter === null ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveMerchandiserFilter(null)}
-          >
-            All
-          </Button>
-          {MERCHANDISER_NAMES.map(name => (
-            <button
-              key={name}
-              onClick={() => setActiveMerchandiserFilter(activeMerchandiserFilter === name ? null : name)}
-              className={activeMerchandiserFilter === name ? "ring-2 ring-offset-1 ring-gray-400 rounded-full" : ""}
+      {/* Filter Bar */}
+      <div className="bg-white p-4 rounded-lg shadow space-y-3">
+        {/* Merchandiser Filter */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm font-medium text-gray-700">Filter by Merchandiser:</span>
+          <div className="flex gap-2 flex-wrap items-center">
+            <Button
+              variant={activeMerchandiserFilter === null ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveMerchandiserFilter(null)}
             >
-              <MerchandiserTag name={name} />
-            </button>
-          ))}
+              All
+            </Button>
+            {MERCHANDISER_NAMES.map(name => (
+              <button
+                key={name}
+                onClick={() => setActiveMerchandiserFilter(activeMerchandiserFilter === name ? null : name)}
+                className={activeMerchandiserFilter === name ? "ring-2 ring-offset-1 ring-gray-400 rounded-full" : ""}
+              >
+                <MerchandiserTag name={name} />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Type Filter */}
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-gray-700">Filter by Type:</span>
+            <div className="flex gap-2">
+            <Button
+              variant={activeFilter === 'All' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveFilter('All')}
+            >
+              All Designs
+            </Button>
+            <Button
+              variant={activeFilter === 'Sampling' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveFilter('Sampling')}
+            >
+              Sampling Only
+            </Button>
+            <Button
+              variant={activeFilter === 'Production' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveFilter('Production')}
+            >
+              Production Only
+            </Button>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={collapseAllClients}
+              disabled={visibleClientGroups.length === 0}
+              title="Collapse all client sections"
+            >
+              Collapse All
+            </Button>
+            {activeStageFilter && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-md border border-blue-200">
+                <span className="text-sm text-blue-700">
+                  Stage: <strong>{activeStageFilter}</strong> (incomplete)
+                </span>
+                <button
+                  onClick={() => setActiveStageFilter(null)}
+                  className="text-blue-500 hover:text-blue-700 transition-colors"
+                  title="Clear stage filter"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+            <div className="text-sm text-gray-600">
+              Active: <span className="font-semibold">{getTotalDesigns()}</span> designs
+            </div>
+            <div className="text-sm text-green-700">
+              Completed: <span className="font-semibold">{completedTotal}</span> designs
+            </div>
+            <div className="text-sm text-gray-600">
+              Total: <span className="font-semibold">{visibleClientGroups.length}</span> clients
+            </div>
+          </div>
         </div>
       </div>
 
