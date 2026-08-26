@@ -9,7 +9,7 @@ import {
 } from "@/lib/actions"
 import { MerchandiserTag } from "@/components/MerchandiserTag"
 import { PATTERN_MASTER, CUTTING_MASTER, KARIGAAR_NAMES } from "@/lib/employees"
-import { Scissors, Shirt, PenTool, Star, Loader2, ImageIcon } from "lucide-react"
+import { Scissors, Shirt, PenTool, Star, Loader2, ImageIcon, Droplet, Printer } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -29,7 +29,7 @@ import {
 import { Button } from "@/components/ui/button"
 
 type StageState = 'vacant' | 'not-needed' | 'in-progress' | 'completed'
-type ColumnKey = 'pattern' | 'cutting' | 'stitching'
+type ColumnKey = 'dye' | 'print' | 'pattern' | 'cutting' | 'stitching'
 
 const stageState = (design: Design, stage: string): StageState =>
   (design.stage_status?.[stage] as StageState) || 'vacant'
@@ -39,18 +39,30 @@ const stageState = (design: Design, stage: string): StageState =>
 const isCleared = (state: StageState) => state === 'completed' || state === 'not-needed'
 const isPending = (state: StageState) => state === 'vacant' || state === 'in-progress'
 
-// A design lands in exactly one column: the first pending stage in the
-// Pattern -> Cutting -> Stitching chain. Once that stage clears, the design
-// is recomputed into the next column (or drops off the board entirely once
-// Stitching clears too).
-function bucketFor(design: Design): ColumnKey | null {
-  if (isPending(stageState(design, 'Pattern'))) return 'pattern'
-  if (isPending(stageState(design, 'Cutting'))) return 'cutting'
-  if (isPending(stageState(design, 'Stitching'))) return 'stitching'
-  return null
-}
-
-const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; icon: any; accent: string }[] = [
+// Dye/Print are independent department queues that run in parallel with
+// pattern-making, so a design can sit in more than one column at once.
+// Cutting only opens up once fabric, dye, print and pattern have all
+// cleared - matches must be checked per column rather than picking a
+// single bucket.
+const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; icon: any; accent: string; matches: (d: Design) => boolean }[] = [
+  {
+    key: 'dye',
+    stage: 'Dye',
+    title: 'In Dye',
+    hint: 'Currently with the dye unit',
+    icon: Droplet,
+    accent: 'border-rose-300 bg-rose-50 text-rose-800',
+    matches: (d) => isPending(stageState(d, 'Dye')),
+  },
+  {
+    key: 'print',
+    stage: 'Print',
+    title: 'In Print',
+    hint: 'Currently with the print unit',
+    icon: Printer,
+    accent: 'border-lime-300 bg-lime-50 text-lime-800',
+    matches: (d) => isPending(stageState(d, 'Print')),
+  },
   {
     key: 'pattern',
     stage: 'Pattern',
@@ -58,14 +70,21 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     hint: 'New orders waiting on a pattern',
     icon: PenTool,
     accent: 'border-blue-300 bg-blue-50 text-blue-800',
+    matches: (d) => isPending(stageState(d, 'Pattern')),
   },
   {
     key: 'cutting',
     stage: 'Cutting',
     title: 'Ready to Cut',
-    hint: 'Pattern is ready — cut today',
+    hint: 'Fabric, dye, print and pattern all done',
     icon: Scissors,
     accent: 'border-orange-300 bg-orange-50 text-orange-800',
+    matches: (d) =>
+      isCleared(stageState(d, 'Fabric Finalize')) &&
+      isCleared(stageState(d, 'Dye')) &&
+      isCleared(stageState(d, 'Print')) &&
+      isCleared(stageState(d, 'Pattern')) &&
+      isPending(stageState(d, 'Cutting')),
   },
   {
     key: 'stitching',
@@ -74,6 +93,7 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     hint: 'Cut and waiting on a karigaar',
     icon: Shirt,
     accent: 'border-pink-300 bg-pink-50 text-pink-800',
+    matches: (d) => isCleared(stageState(d, 'Cutting')) && isPending(stageState(d, 'Stitching')),
   },
 ]
 
@@ -104,16 +124,11 @@ export default function TodaysPlanBoard() {
   }, [])
 
   const columns = useMemo(() => {
-    const buckets: Record<ColumnKey, Design[]> = { pattern: [], cutting: [], stitching: [] }
-    for (const design of designs) {
-      const bucket = bucketFor(design)
-      if (bucket) buckets[bucket].push(design)
+    const result = {} as Record<ColumnKey, Design[]>
+    for (const column of COLUMNS) {
+      result[column.key] = sortForColumn(designs.filter(column.matches))
     }
-    return {
-      pattern: sortForColumn(buckets.pattern),
-      cutting: sortForColumn(buckets.cutting),
-      stitching: sortForColumn(buckets.stitching),
-    }
+    return result
   }, [designs])
 
   const applyLocalStageUpdate = (designId: string, stage: string, state: StageState) => {
@@ -188,16 +203,16 @@ export default function TodaysPlanBoard() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Today&apos;s Plan</h1>
         <p className="text-sm text-gray-500 mt-1">
-          What needs a pattern, what&apos;s ready to cut, and what&apos;s ready to stitch — right now.
+          What&apos;s in dye, what&apos;s in print, what needs a pattern, what&apos;s ready to cut, and what&apos;s ready to stitch — right now.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="flex gap-5 overflow-x-auto pb-4">
         {COLUMNS.map(column => {
           const items = columns[column.key]
           const Icon = column.icon
           return (
-            <div key={column.key} className="flex flex-col bg-white rounded-lg border border-gray-200 min-h-[200px]">
+            <div key={column.key} className="flex flex-col bg-white rounded-lg border border-gray-200 min-h-[200px] w-[300px] flex-shrink-0">
               <div className={`flex items-center justify-between px-4 py-3 rounded-t-lg border-b ${column.accent}`}>
                 <div className="flex items-center gap-2">
                   <Icon className="h-5 w-5" />
