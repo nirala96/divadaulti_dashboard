@@ -1,7 +1,7 @@
 import { getClientByTrackingToken } from '@/lib/actions'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
-import { CheckCircle2, Clock, Package, Sparkles, Circle, Minus } from 'lucide-react'
+import { CheckCircle2, Clock, Package, Sparkles, Circle } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,35 +52,32 @@ function getStageStatus(stageStatus: Record<string, string>, stage: string): Sta
 }
 
 function StageProgress({ stage, status, color, estimatedDays }: { stage: string, status: StageState, color: string, estimatedDays: number }) {
-  const isCompleted = status === 'completed'
+  // Clients see "not needed" stages as simply done - showing the distinction
+  // invites "why am I being charged if this wasn't needed?" confusion, when
+  // it's really just an internal shorthand for "nothing to do here".
+  const isCompleted = status === 'completed' || status === 'not-needed'
   const isInProgress = status === 'in-progress'
-  const isNotNeeded = status === 'not-needed'
-  const isVacant = status === 'vacant'
-  
+
   return (
     <div className="flex items-center gap-4">
       <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
         isCompleted ? 'bg-gradient-to-br from-green-500 to-green-700 shadow-lg' :
         isInProgress ? `bg-gradient-to-br ${color} animate-pulse shadow-md` :
-        isNotNeeded ? 'bg-gray-300' :
         'bg-gray-100 border-2 border-gray-300'
       }`}>
         {isCompleted ? (
           <CheckCircle2 className="w-7 h-7 text-white" />
         ) : isInProgress ? (
           <Clock className="w-6 h-6 text-white" />
-        ) : isNotNeeded ? (
-          <Minus className="w-6 h-6 text-gray-600" />
         ) : (
           <Circle className="w-6 h-6 text-gray-400" />
         )}
       </div>
-      
+
       <div className="flex-1">
         <h3 className={`font-semibold ${
           isCompleted ? 'text-green-700' :
           isInProgress ? 'text-blue-700' :
-          isNotNeeded ? 'text-gray-500' :
           'text-gray-400'
         }`}>
           {stage}
@@ -91,7 +88,6 @@ function StageProgress({ stage, status, color, estimatedDays }: { stage: string,
         }`}>
           {isCompleted ? '✓ Completed' :
            isInProgress ? 'In Progress...' :
-           isNotNeeded ? 'Not Needed' :
            'Not Started'}
           {estimatedDays > 0 && !isCompleted && (
             <span className="text-gray-500 ml-2">
