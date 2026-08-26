@@ -9,7 +9,7 @@ import {
 } from "@/lib/actions"
 import { MerchandiserTag } from "@/components/MerchandiserTag"
 import { PATTERN_MASTER, CUTTING_MASTER, KARIGAAR_NAMES } from "@/lib/employees"
-import { Scissors, Shirt, PenTool, Star, Loader2, ImageIcon, Droplet, Printer } from "lucide-react"
+import { Scissors, Shirt, PenTool, Star, Loader2, ImageIcon, Droplet, Printer, PackageCheck, Sparkles } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -29,7 +29,7 @@ import {
 import { Button } from "@/components/ui/button"
 
 type StageState = 'vacant' | 'not-needed' | 'in-progress' | 'completed'
-type ColumnKey = 'dye' | 'print' | 'pattern' | 'cutting' | 'stitching'
+type ColumnKey = 'finishing' | 'stitching' | 'cutting' | 'pattern' | 'embroidery' | 'dye' | 'print'
 
 const stageState = (design: Design, stage: string): StageState =>
   (design.stage_status?.[stage] as StageState) || 'vacant'
@@ -39,12 +39,63 @@ const stageState = (design: Design, stage: string): StageState =>
 const isCleared = (state: StageState) => state === 'completed' || state === 'not-needed'
 const isPending = (state: StageState) => state === 'vacant' || state === 'in-progress'
 
-// Dye/Print are independent department queues that run in parallel with
-// pattern-making, so a design can sit in more than one column at once.
-// Cutting only opens up once fabric, dye, print and pattern have all
-// cleared - matches must be checked per column rather than picking a
-// single bucket.
+// Columns run right-to-left through the pipeline: start from what's closest
+// to shipping (Finishing) and work back through whatever is still blocking
+// it (Stitching, Cutting, Pattern, Embroidery, Dye, Print). Dye/Print/
+// Embroidery are independent department queues that run in parallel with
+// pattern-making, so a design can sit in more than one column at once -
+// membership is checked per column rather than picking a single bucket.
 const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; icon: any; accent: string; matches: (d: Design) => boolean }[] = [
+  {
+    key: 'finishing',
+    stage: 'Finishing',
+    title: 'Ready to Finish',
+    hint: 'Stitched — final step before shipping',
+    icon: PackageCheck,
+    accent: 'border-cyan-300 bg-cyan-50 text-cyan-800',
+    matches: (d) => isCleared(stageState(d, 'Stitching')) && isPending(stageState(d, 'Finishing')),
+  },
+  {
+    key: 'stitching',
+    stage: 'Stitching',
+    title: 'Ready to Stitch',
+    hint: 'Cut and waiting on a karigaar',
+    icon: Shirt,
+    accent: 'border-pink-300 bg-pink-50 text-pink-800',
+    matches: (d) => isCleared(stageState(d, 'Cutting')) && isPending(stageState(d, 'Stitching')),
+  },
+  {
+    key: 'cutting',
+    stage: 'Cutting',
+    title: 'Ready to Cut',
+    hint: 'Fabric, dye, print and pattern all done',
+    icon: Scissors,
+    accent: 'border-orange-300 bg-orange-50 text-orange-800',
+    matches: (d) =>
+      isCleared(stageState(d, 'Fabric Finalize')) &&
+      isCleared(stageState(d, 'Dye')) &&
+      isCleared(stageState(d, 'Print')) &&
+      isCleared(stageState(d, 'Pattern')) &&
+      isPending(stageState(d, 'Cutting')),
+  },
+  {
+    key: 'pattern',
+    stage: 'Pattern',
+    title: 'Pattern to Make',
+    hint: 'New orders waiting on a pattern',
+    icon: PenTool,
+    accent: 'border-blue-300 bg-blue-50 text-blue-800',
+    matches: (d) => isPending(stageState(d, 'Pattern')),
+  },
+  {
+    key: 'embroidery',
+    stage: 'Embroidery',
+    title: 'In Embroidery',
+    hint: 'Currently with the embroidery unit',
+    icon: Sparkles,
+    accent: 'border-violet-300 bg-violet-50 text-violet-800',
+    matches: (d) => isPending(stageState(d, 'Embroidery')),
+  },
   {
     key: 'dye',
     stage: 'Dye',
@@ -62,38 +113,6 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     icon: Printer,
     accent: 'border-lime-300 bg-lime-50 text-lime-800',
     matches: (d) => isPending(stageState(d, 'Print')),
-  },
-  {
-    key: 'pattern',
-    stage: 'Pattern',
-    title: 'Pattern to Make',
-    hint: 'New orders waiting on a pattern',
-    icon: PenTool,
-    accent: 'border-blue-300 bg-blue-50 text-blue-800',
-    matches: (d) => isPending(stageState(d, 'Pattern')),
-  },
-  {
-    key: 'cutting',
-    stage: 'Cutting',
-    title: 'Ready to Cut',
-    hint: 'Fabric, dye, print and pattern all done',
-    icon: Scissors,
-    accent: 'border-orange-300 bg-orange-50 text-orange-800',
-    matches: (d) =>
-      isCleared(stageState(d, 'Fabric Finalize')) &&
-      isCleared(stageState(d, 'Dye')) &&
-      isCleared(stageState(d, 'Print')) &&
-      isCleared(stageState(d, 'Pattern')) &&
-      isPending(stageState(d, 'Cutting')),
-  },
-  {
-    key: 'stitching',
-    stage: 'Stitching',
-    title: 'Ready to Stitch',
-    hint: 'Cut and waiting on a karigaar',
-    icon: Shirt,
-    accent: 'border-pink-300 bg-pink-50 text-pink-800',
-    matches: (d) => isCleared(stageState(d, 'Cutting')) && isPending(stageState(d, 'Stitching')),
   },
 ]
 
@@ -203,7 +222,7 @@ export default function TodaysPlanBoard() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Today&apos;s Plan</h1>
         <p className="text-sm text-gray-500 mt-1">
-          What&apos;s in dye, what&apos;s in print, what needs a pattern, what&apos;s ready to cut, and what&apos;s ready to stitch — right now.
+          What&apos;s ready to ship first, then what&apos;s blocking it — finishing, stitching, cutting, pattern, embroidery, dye, print.
         </p>
       </div>
 
