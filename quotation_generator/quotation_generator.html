@@ -60,6 +60,14 @@
   .saved-item .si-meta{font-size:11.5px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .saved-item .si-del{background:none;border:none;color:#b33;cursor:pointer;font-size:14px;padding:2px 6px;flex-shrink:0;}
   .saved-item .si-del:hover{color:#800;}
+  .saved-panel-footer{
+    display:flex;gap:6px;padding:8px 4px 4px;margin-top:4px;border-top:1px solid var(--border);
+  }
+  .saved-panel-footer button{
+    flex:1;background:#fff;border:1px solid var(--border);color:var(--primary);
+    border-radius:5px;padding:6px 4px;font-size:11.5px;cursor:pointer;font-family:inherit;
+  }
+  .saved-panel-footer button:hover{background:var(--lavender);}
 
   .sheet{
     max-width:1100px;
@@ -112,6 +120,38 @@
   .party{flex:1;background:var(--lavender);border:1px solid var(--border);border-radius:6px;padding:14px 16px;}
   .party h4{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:var(--accent);}
   .party .editable{display:block;font-size:13.5px;margin-bottom:2px;min-height:18px;}
+
+  .cust-gstin-row{margin-top:10px;}
+  .cust-gstin-row label{font-size:11px;color:#777;display:block;margin-bottom:3px;}
+  .req-star{color:#b33;font-weight:600;}
+  #custGstin{
+    width:170px;border:1px solid var(--border);border-radius:5px;padding:6px 8px;
+    font-size:13px;font-family:inherit;letter-spacing:0.5px;
+  }
+  #custGstin.invalid{border-color:#c33;background:#fff5f5;}
+  #custGstin.valid{border-color:#2a8a4a;background:#f4fbf6;}
+  .gstin-msg{font-size:11px;margin-top:4px;min-height:14px;}
+  .gstin-msg.ok{color:#2a8a4a;}
+  .gstin-msg.bad{color:#c33;}
+  .gstin-verify-link{display:inline-block;margin-top:6px;font-size:11px;color:var(--primary);text-decoration:none;}
+  .gstin-verify-link:hover{text-decoration:underline;}
+  .gstin-fetch-btn{
+    background:var(--primary);color:#fff;border:none;border-radius:5px;
+    padding:7px 10px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;
+  }
+  .gstin-fetch-btn:disabled{background:#ccc;cursor:default;}
+  .gstin-fetch-btn:not(:disabled):hover{opacity:0.9;}
+  .gstin-fetch-result{
+    margin-top:8px;font-size:12px;background:var(--lavender);border-radius:6px;
+    padding:10px 12px;line-height:1.7;
+  }
+  .gstin-fetch-result .gfr-row{display:flex;gap:6px;}
+  .gstin-fetch-result .gfr-label{color:#777;min-width:70px;flex-shrink:0;}
+  .gstin-fetch-result button{
+    margin-top:6px;background:#fff;border:1px solid var(--border);color:var(--primary);
+    border-radius:5px;padding:5px 9px;font-size:11px;cursor:pointer;font-family:inherit;
+  }
+  .gstin-fetch-result.error{color:#b33;background:#fff5f5;}
   .payment-options{display:flex;flex-direction:column;gap:8px;}
   .pay-opt{display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;}
   .pay-opt input{cursor:pointer;accent-color:var(--primary);}
@@ -193,6 +233,12 @@
     line-height:1;padding:4px;
   }
   .rm-row:hover{color:#800;}
+  .paid-check{cursor:pointer;accent-color:var(--primary);width:16px;height:16px;}
+  tr.row-paid{background:#f4f9f5;}
+  tr.row-paid .desc, tr.row-paid .amt-val{text-decoration:line-through;color:#999;}
+  tr.row-paid .amt-val:after{
+    content:" (Paid)"; text-decoration:none; font-size:10.5px; color:#2a8a4a; font-weight:600;
+  }
 
   #addRowBtn{
     background:#fff;border:1.5px dashed var(--primary);color:var(--primary);
@@ -220,6 +266,16 @@
   .terms h4{font-size:12px;text-transform:uppercase;color:var(--accent);margin:0 0 6px;}
   .terms .editable{font-size:12.5px;color:#555;white-space:pre-wrap;line-height:1.6;min-height:40px;}
 
+  .note-toggle-row{
+    display:flex;align-items:center;justify-content:flex-end;gap:8px;
+    font-size:12.5px;color:#666;margin-top:12px;
+  }
+  .note-block{margin-top:8px;}
+  #customNoteText:empty:before{
+    content: attr(data-placeholder);
+    color:#aaa;
+  }
+
   .footer-sign{
     display:flex;justify-content:space-between;margin-top:36px;
   }
@@ -227,6 +283,10 @@
   .sign-line{border-top:1px solid #999;width:180px;margin-bottom:6px;padding-top:36px;}
 
   @media print{
+    .gstin-verify-link, .gstin-msg, .req-star, .gstin-fetch-btn, .gstin-fetch-result{display:none !important;}
+    #custGstin{border:none !important;background:none !important;padding:0;}
+    #custGstin::placeholder, input.desc::placeholder{color:transparent !important;}
+    #customNoteText:empty:before{content:none !important;}
     body{background:#fff;padding:0;}
     .toolbar, .rm-row, #addRowBtn{display:none !important;}
     .sheet{box-shadow:none;border:none;padding:0;max-width:100%;}
@@ -236,6 +296,7 @@
     .payment-final{display:block !important;}
     .gst-toggle-row{display:none !important;}
     .fx-toggle-row{display:none !important;}
+    .note-toggle-row{display:none !important;}
   }
 
   @media (max-width:700px){
@@ -294,18 +355,28 @@
     <div class="party">
       <h4>Quotation For</h4>
       <div class="editable" contenteditable="true" style="font-size:16px;font-weight:600;" id="customerName">Customer Name</div>
+      <div class="cust-gstin-row" id="custGstinRow" style="display:none;">
+        <label for="custGstin">Customer GSTIN <span class="req-star">*required</span></label>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="text" id="custGstin" maxlength="15" placeholder="e.g. 27AAPFU0939F1ZV" style="text-transform:uppercase;">
+          <button type="button" id="fetchGstinBtn" class="gstin-fetch-btn" disabled>Fetch Business Details</button>
+        </div>
+        <div id="custGstinMsg" class="gstin-msg"></div>
+        <a id="custGstinVerifyLink" href="https://services.gst.gov.in/services/searchtp" target="_blank" rel="noopener" class="gstin-verify-link">Verify on GST Portal ↗</a>
+        <div id="gstinFetchResult" class="gstin-fetch-result" style="display:none;"></div>
+      </div>
     </div>
     <div class="party">
       <h4>Payment Terms</h4>
       <div class="payment-options">
         <label class="pay-opt">
-          <input type="radio" name="paymentTerm" value="100"> 100% advance
+          <input type="radio" name="paymentTerm" value="100" checked> 100% advance
         </label>
         <label class="pay-opt">
           <input type="radio" name="paymentTerm" value="50-50"> 50% advance, 50% before dispatch
         </label>
         <label class="pay-opt">
-          <input type="radio" name="paymentTerm" value="70-30" checked> 70% advance, 30% before dispatch
+          <input type="radio" name="paymentTerm" value="70-30"> 70% advance, 30% before dispatch
         </label>
       </div>
       <div class="payment-final" id="paymentFinal"></div>
@@ -339,6 +410,14 @@
       </label>
       <input type="number" class="fx-rate" id="gbpRate" value="128.6" min="0" step="0.01" title="₹ per 1 GBP">
     </div>
+    <div class="fx-toggle" id="aedToggleWrap">
+      <span>Show AED</span>
+      <label class="switch">
+        <input type="checkbox" id="aedToggle">
+        <span class="slider"></span>
+      </label>
+      <input type="number" class="fx-rate" id="aedRate" value="25.95" min="0" step="0.01" title="₹ per 1 AED">
+    </div>
   </div>
 
   <table>
@@ -350,6 +429,7 @@
         <th style="width:70px;">Unit</th>
         <th class="num" style="width:110px;">Rate (₹)</th>
         <th class="num" style="width:120px;">Amount (₹)</th>
+        <th class="num" style="width:55px;">Paid</th>
         <th style="width:30px;"></th>
       </tr>
     </thead>
@@ -359,7 +439,12 @@
   <button id="addRowBtn">+ Add Item</button>
 
   <div class="gst-toggle-row">
-    <span>Include GST</span>
+    <span>Sample Amount Adjustment</span>
+    <label class="switch">
+      <input type="checkbox" id="discountToggle">
+      <span class="slider"></span>
+    </label>
+    <span style="margin-left:16px;">Include GST</span>
     <label class="switch">
       <input type="checkbox" id="gstToggle">
       <span class="slider"></span>
@@ -367,9 +452,10 @@
   </div>
   <div class="totals" id="totalsBox">
     <div class="totals-row"><span>Subtotal</span><span class="tv"><span id="subtotal">₹0.00</span><div class="totals-fx" id="subtotalFx"></div></span></div>
-    <div class="totals-row"><span class="editable" contenteditable="true" id="discountLabel" style="padding:2px 4px;">Sample Amount Adjustment</span><input type="number" class="cell" id="discountAmt" value="0" style="width:90px;"></div>
-    <div class="totals-row" id="gstRateRow" style="display:none;"><span>GST (%)</span><input type="number" class="cell" id="gstPct" value="18" min="0" style="width:70px;"></div>
+    <div class="totals-row" id="discountRow" style="display:none;"><span class="editable" contenteditable="true" id="discountLabel" style="padding:2px 4px;">Sample Amount Adjustment</span><input type="number" class="cell" id="discountAmt" value="0" style="width:90px;"></div>
+    <div class="totals-row" id="gstRateRow" style="display:none;"><span>GST (%)</span><input type="number" class="cell" id="gstPct" value="5" min="0" style="width:70px;"></div>
     <div class="totals-row" id="gstAmtRow" style="display:none;"><span>GST Amount</span><span class="tv"><span id="gstAmt">₹0.00</span><div class="totals-fx" id="gstAmtFx"></div></span></div>
+    <div class="totals-row" id="paidRow" style="display:none;"><span>Already Paid</span><span class="tv"><span id="paidAmt">- ₹0.00</span><div class="totals-fx" id="paidAmtFx"></div></span></div>
     <div class="totals-row grand"><span>Grand Total</span><span class="tv"><span id="grandTotal">₹0.00</span><div class="totals-fx" id="grandTotalFx"></div></span></div>
   </div>
 
@@ -379,6 +465,18 @@
 2. Quantities can be revised as per requirement; rates may vary for revised quantities.
 3. Shipping charges are to be borne by the customer. Exact shipping cost will be shared at the time of dispatch once weight and shipping rates are known; customer may also arrange their own shipping/transport.
 4. Quotation valid as per validity mentioned above.</div>
+  </div>
+
+  <div class="note-toggle-row">
+    <span>Add custom note for this quotation</span>
+    <label class="switch">
+      <input type="checkbox" id="customNoteToggle">
+      <span class="slider"></span>
+    </label>
+  </div>
+  <div class="terms note-block" id="customNoteBlock" style="display:none;">
+    <h4>Additional Notes</h4>
+    <div class="editable" contenteditable="true" id="customNoteText" data-placeholder="e.g. On 50 pcs, full sampling cost adjusted. On 30 pcs, 60% of sampling price adjusted."></div>
   </div>
 
   <div class="footer-sign">
@@ -396,7 +494,6 @@
 
 <script>
 const itemsBody = document.getElementById('itemsBody');
-const STORAGE_KEY = 'quotation_generator_library_v2';
 
 function rowTemplate(data){
   data = data || {};
@@ -419,9 +516,13 @@ function rowTemplate(data){
       <span class="amt-val">₹0.00</span>
       <div class="amt-fx"></div>
     </td>
+    <td class="num" style="text-align:center;">
+      <input type="checkbox" class="paid-check" ${data.paid ? 'checked' : ''} title="Mark this item as already paid — its amount will be deducted from the total">
+    </td>
     <td><button class="rm-row" title="Remove row">✕</button></td>
   `;
   itemsBody.appendChild(tr);
+  if(data.paid) tr.classList.add('row-paid');
 
   const imgBox = tr.querySelector('.item-img');
   const imgInput = tr.querySelector('input[type=file]');
@@ -443,6 +544,11 @@ function rowTemplate(data){
     inp.addEventListener('input', recalc);
   });
 
+  tr.querySelector('.paid-check').addEventListener('change', (e)=>{
+    tr.classList.toggle('row-paid', e.target.checked);
+    recalc();
+  });
+
   recalc();
 }
 
@@ -457,22 +563,26 @@ function getFxState(){
     usdOn: document.getElementById('usdToggle').checked,
     eurOn: document.getElementById('eurToggle').checked,
     gbpOn: document.getElementById('gbpToggle').checked,
+    aedOn: document.getElementById('aedToggle').checked,
     usdRate: parseFloat(document.getElementById('usdRate').value) || 0,
     eurRate: parseFloat(document.getElementById('eurRate').value) || 0,
     gbpRate: parseFloat(document.getElementById('gbpRate').value) || 0,
+    aedRate: parseFloat(document.getElementById('aedRate').value) || 0,
   };
 }
 
 function fxText(amountINR, fx){
   const parts = [];
-  if(fx.usdOn && fx.usdRate > 0) parts.push('≈ $' + Math.ceil(amountINR / fx.usdRate).toLocaleString('en-US'));
-  if(fx.eurOn && fx.eurRate > 0) parts.push('≈ €' + Math.ceil(amountINR / fx.eurRate).toLocaleString('en-US'));
-  if(fx.gbpOn && fx.gbpRate > 0) parts.push('≈ £' + Math.ceil(amountINR / fx.gbpRate).toLocaleString('en-US'));
+  if(fx.usdOn && fx.usdRate > 0) parts.push('≈ USD ' + Math.ceil(amountINR / fx.usdRate).toLocaleString('en-US'));
+  if(fx.eurOn && fx.eurRate > 0) parts.push('≈ EUR ' + Math.ceil(amountINR / fx.eurRate).toLocaleString('en-US'));
+  if(fx.gbpOn && fx.gbpRate > 0) parts.push('≈ GBP ' + Math.ceil(amountINR / fx.gbpRate).toLocaleString('en-US'));
+  if(fx.aedOn && fx.aedRate > 0) parts.push('≈ AED ' + Math.ceil(amountINR / fx.aedRate).toLocaleString('en-US'));
   return parts.join(' · ');
 }
 
 function recalc(){
   let subtotal = 0;
+  let paidAmt = 0;
   const fx = getFxState();
 
   itemsBody.querySelectorAll('tr').forEach(tr=>{
@@ -481,12 +591,14 @@ function recalc(){
     const amt = qty * rate;
     tr.querySelector('.amt-val').textContent = currency(amt);
     subtotal += amt;
+    if(tr.querySelector('.paid-check').checked) paidAmt += amt;
 
     tr.querySelector('.rate-fx').textContent = fxText(rate, fx);
     tr.querySelector('.amt-fx').textContent = fxText(amt, fx);
   });
-  const discountAmt = parseFloat(document.getElementById('discountAmt').value) || 0;
-  const adjustedSubtotal = subtotal - discountAmt;
+  const discountOn = document.getElementById('discountToggle').checked;
+  const discountAmt = discountOn ? (parseFloat(document.getElementById('discountAmt').value) || 0) : 0;
+  const adjustedSubtotal = subtotal - discountAmt - paidAmt;
 
   const gstOn = document.getElementById('gstToggle').checked;
   const gstPct = gstOn ? (parseFloat(document.getElementById('gstPct').value) || 0) : 0;
@@ -497,10 +609,15 @@ function recalc(){
   document.getElementById('gstAmt').textContent = currency(gstAmt);
   document.getElementById('grandTotal').textContent = currency(grand);
 
+  document.getElementById('paidRow').style.display = paidAmt > 0 ? 'flex' : 'none';
+  document.getElementById('paidAmt').textContent = '- ' + currency(paidAmt);
+
   document.getElementById('subtotalFx').textContent = fxText(subtotal, fx);
   document.getElementById('gstAmtFx').textContent = fxText(gstAmt, fx);
   document.getElementById('grandTotalFx').textContent = fxText(grand, fx);
+  document.getElementById('paidAmtFx').textContent = fxText(paidAmt, fx);
 
+  autoSetPaymentTerm(subtotal);
   updatePaymentFinal(grand, fx);
 }
 
@@ -511,6 +628,7 @@ function applyGstVisibility(){
   document.getElementById('gstRateRow').style.display = on ? 'flex' : 'none';
   document.getElementById('gstAmtRow').style.display = on ? 'flex' : 'none';
   document.getElementById('gstinLine').style.display = on ? 'block' : 'none';
+  document.getElementById('custGstinRow').style.display = on ? 'block' : 'none';
 }
 
 document.getElementById('gstToggle').addEventListener('change', ()=>{
@@ -518,21 +636,153 @@ document.getElementById('gstToggle').addEventListener('change', ()=>{
   recalc();
 });
 document.getElementById('gstPct').addEventListener('input', recalc);
+
+function applyDiscountVisibility(){
+  const on = document.getElementById('discountToggle').checked;
+  document.getElementById('discountRow').style.display = on ? 'flex' : 'none';
+}
+document.getElementById('discountToggle').addEventListener('change', ()=>{
+  applyDiscountVisibility();
+  recalc();
+});
+applyDiscountVisibility();
 applyGstVisibility();
+
+// GSTIN format + checksum validation (same algorithm GSTN uses for the check
+// digit), fully client-side — no API/internet needed, and no data leaves
+// the browser. There is no free, keyless, CORS-enabled public API for live
+// GSTIN → business-name lookup, so real-time online verification isn't
+// something this tool can safely auto-fetch; instead, "Verify on GST Portal"
+// opens the official government lookup so you can confirm it in one click.
+function validateGSTIN(gstin){
+  gstin = (gstin || '').toUpperCase().trim();
+  if(!gstin) return { valid: null, reason: '' };
+  if(!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(gstin)){
+    return { valid: false, reason: 'Doesn\'t match the standard 15-character GSTIN format.' };
+  }
+  const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  let sum = 0;
+  for(let i = 0; i < 14; i++){
+    const factor = (i % 2 === 0) ? 1 : 2;
+    const value = charset.indexOf(gstin[i]);
+    const product = factor * value;
+    sum += Math.floor(product / 36) + (product % 36);
+  }
+  const checkDigit = charset[(36 - (sum % 36)) % 36];
+  if(checkDigit !== gstin[14]){
+    return { valid: false, reason: 'Format looks right, but the check digit doesn\'t match — please double-check for a typo.' };
+  }
+  return { valid: true, reason: 'Valid GSTIN format.' };
+}
+
+function updateCustGstinFeedback(){
+  const input = document.getElementById('custGstin');
+  const msg = document.getElementById('custGstinMsg');
+  const link = document.getElementById('custGstinVerifyLink');
+  const val = input.value.toUpperCase().trim();
+  input.value = val;
+  input.classList.remove('valid', 'invalid');
+  if(!val){
+    msg.textContent = '';
+    msg.className = 'gstin-msg';
+  }else{
+    const result = validateGSTIN(val);
+    if(result.valid){
+      input.classList.add('valid');
+      msg.textContent = '✓ ' + result.reason;
+      msg.className = 'gstin-msg ok';
+    }else{
+      input.classList.add('invalid');
+      msg.textContent = '⚠ ' + result.reason;
+      msg.className = 'gstin-msg bad';
+    }
+  }
+  document.getElementById('fetchGstinBtn').disabled = !(validateGSTIN(val).valid);
+  document.getElementById('gstinFetchResult').style.display = 'none';
+  link.href = 'https://services.gst.gov.in/services/searchtp';
+}
+document.getElementById('custGstin').addEventListener('input', updateCustGstinFeedback);
+
+// Business-detail lookup via gstincheck.co.in (needs an account API key —
+// free tier is 20 lookups total, then it needs topping up). Fetch only runs
+// on an explicit button click, never automatically, to avoid burning through
+// a limited quota just from typing.
+const GSTIN_LOOKUP_API_KEY = '1fb9bd291a629be24d3f4be25bd0c0d6';
+
+document.getElementById('fetchGstinBtn').addEventListener('click', async ()=>{
+  const gstin = document.getElementById('custGstin').value.trim();
+  const resultEl = document.getElementById('gstinFetchResult');
+  const btn = document.getElementById('fetchGstinBtn');
+  if(!validateGSTIN(gstin).valid) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Fetching…';
+  resultEl.className = 'gstin-fetch-result';
+  resultEl.style.display = 'block';
+  resultEl.textContent = 'Looking up business details…';
+
+  try{
+    const res = await fetch(`https://sheet.gstincheck.co.in/check/${GSTIN_LOOKUP_API_KEY}/${gstin}`);
+    const data = await res.json();
+
+    if(!data.flag || !data.data || Object.keys(data.data).length === 0){
+      resultEl.className = 'gstin-fetch-result error';
+      const reason = data.message || data.errorCode || 'No details returned.';
+      resultEl.textContent = `Couldn't fetch details: ${reason}` +
+        (data.errorCode === 'CREDIT_NOT_AVAILABLE' ? ' — this API key is out of free lookups; top it up or get a new key to keep using this.' : '');
+    }else{
+      const d = data.data;
+      const legalName = d.lgnm || '';
+      const tradeName = d.tradeNam || '';
+      const status = d.sts || '';
+      const addr = d.pradr && d.pradr.addr ? d.pradr.addr : {};
+      const addrParts = [addr.bno, addr.flno, addr.bnm, addr.st, addr.loc, addr.dst, addr.stcd, addr.pncd].filter(Boolean);
+      const addrStr = addrParts.join(', ');
+
+      resultEl.innerHTML = `
+        <div class="gfr-row"><span class="gfr-label">Legal Name</span><span>${legalName || '—'}</span></div>
+        <div class="gfr-row"><span class="gfr-label">Trade Name</span><span>${tradeName || '—'}</span></div>
+        <div class="gfr-row"><span class="gfr-label">Status</span><span>${status || '—'}</span></div>
+        <div class="gfr-row"><span class="gfr-label">Address</span><span>${addrStr || '—'}</span></div>
+        <button type="button" id="applyGstinDetailsBtn">Use this name for Customer</button>
+      `;
+      const nameToUse = tradeName || legalName;
+      if(nameToUse){
+        document.getElementById('applyGstinDetailsBtn').addEventListener('click', ()=>{
+          document.getElementById('customerName').textContent = nameToUse;
+        });
+      }
+    }
+  }catch(err){
+    resultEl.className = 'gstin-fetch-result error';
+    resultEl.textContent = 'Could not reach the lookup service (network issue, or blocked by browser).';
+  }finally{
+    btn.disabled = false;
+    btn.textContent = 'Fetch Business Details';
+  }
+});
+
+// Custom per-quotation note (e.g. one-off sampling-cost adjustment terms) —
+// off by default, so it doesn't show up on quotations that don't need it.
+document.getElementById('customNoteToggle').addEventListener('change', ()=>{
+  document.getElementById('customNoteBlock').style.display =
+    document.getElementById('customNoteToggle').checked ? 'block' : 'none';
+});
 
 function applyFxVisibility(){
   document.getElementById('usdToggleWrap').classList.toggle('on', document.getElementById('usdToggle').checked);
   document.getElementById('eurToggleWrap').classList.toggle('on', document.getElementById('eurToggle').checked);
   document.getElementById('gbpToggleWrap').classList.toggle('on', document.getElementById('gbpToggle').checked);
+  document.getElementById('aedToggleWrap').classList.toggle('on', document.getElementById('aedToggle').checked);
 }
 
-['usdToggle','eurToggle','gbpToggle'].forEach(id=>{
+['usdToggle','eurToggle','gbpToggle','aedToggle'].forEach(id=>{
   document.getElementById(id).addEventListener('change', ()=>{
     applyFxVisibility();
     recalc();
   });
 });
-['usdRate','eurRate','gbpRate'].forEach(id=>{
+['usdRate','eurRate','gbpRate','aedRate'].forEach(id=>{
   document.getElementById(id).addEventListener('input', recalc);
 });
 applyFxVisibility();
@@ -549,15 +799,17 @@ async function tryFrankfurter(){
   if(!res.ok) throw new Error('bad response');
   const data = await res.json();
   if(!data.rates || !data.rates.USD || !data.rates.EUR || !data.rates.GBP) throw new Error('missing rates');
-  return { usdRate: 1 / data.rates.USD, eurRate: 1 / data.rates.EUR, gbpRate: 1 / data.rates.GBP, date: data.date, source: 'European Central Bank (frankfurter.app)' };
+  // Note: ECB/Frankfurter doesn't publish AED, so aedRate is left unset here —
+  // fetchLiveRates() fills it in separately from jsDelivr when this source is used.
+  return { usdRate: 1 / data.rates.USD, eurRate: 1 / data.rates.EUR, gbpRate: 1 / data.rates.GBP, aedRate: null, date: data.date, source: 'European Central Bank (frankfurter.app)' };
 }
 
 async function tryJsDelivr(){
   const res = await fetch('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/inr.json');
   if(!res.ok) throw new Error('bad response');
   const data = await res.json();
-  if(!data.inr || !data.inr.usd || !data.inr.eur || !data.inr.gbp) throw new Error('missing rates');
-  return { usdRate: 1 / data.inr.usd, eurRate: 1 / data.inr.eur, gbpRate: 1 / data.inr.gbp, date: data.date, source: 'jsDelivr currency-api' };
+  if(!data.inr || !data.inr.usd || !data.inr.eur || !data.inr.gbp || !data.inr.aed) throw new Error('missing rates');
+  return { usdRate: 1 / data.inr.usd, eurRate: 1 / data.inr.eur, gbpRate: 1 / data.inr.gbp, aedRate: 1 / data.inr.aed, date: data.date, source: 'jsDelivr currency-api' };
 }
 
 async function fetchLiveRates(){
@@ -576,10 +828,18 @@ async function fetchLiveRates(){
       result = null;
     }
   }
+  if(result && !result.aedRate){
+    // AED wasn't in the first source (e.g. Frankfurter) — grab it from jsDelivr specifically.
+    try{
+      const aedResult = await tryJsDelivr();
+      result.aedRate = aedResult.aedRate;
+    }catch(err3){ /* leave AED field as-is; still editable */ }
+  }
   if(result){
     document.getElementById('usdRate').value = result.usdRate.toFixed(2);
     document.getElementById('eurRate').value = result.eurRate.toFixed(2);
     document.getElementById('gbpRate').value = result.gbpRate.toFixed(2);
+    if(result.aedRate) document.getElementById('aedRate').value = result.aedRate.toFixed(2);
     statusEl.className = 'fx-status live';
     statusEl.textContent = `Live rates as of ${result.date} (source: ${result.source})`;
     recalc();
@@ -612,8 +872,24 @@ function updatePaymentFinal(grand, fx){
   }).join('');
 }
 
+// Payment term defaults to 100% advance, but auto-switches to 70/30 once the
+// order value (subtotal) crosses ₹50,000 — unless the person has manually
+// picked an option themselves, in which case we stop overriding their choice.
+const PAYMENT_AUTO_THRESHOLD = 50000;
+let paymentTermManual = false;
+
+function autoSetPaymentTerm(subtotal){
+  if(paymentTermManual) return;
+  const target = subtotal > PAYMENT_AUTO_THRESHOLD ? '70-30' : '100';
+  const radio = document.querySelector(`input[name="paymentTerm"][value="${target}"]`);
+  if(radio && !radio.checked) radio.checked = true;
+}
+
 document.querySelectorAll('input[name="paymentTerm"]').forEach(r=>{
-  r.addEventListener('change', recalc);
+  r.addEventListener('change', ()=>{
+    paymentTermManual = true;
+    recalc();
+  });
 });
 
 document.getElementById('addRowBtn').addEventListener('click', ()=> rowTemplate());
@@ -658,41 +934,98 @@ logoInput.addEventListener('change', (e)=>{
 logoBox.addEventListener('mouseenter', ()=>{ hoveredBox = logoBox; hoveredInput = logoInput; });
 logoBox.addEventListener('mouseleave', ()=>{ if(hoveredBox === logoBox){ hoveredBox = null; hoveredInput = null; } });
 
+// Bumps the trailing number in the Quotation No (e.g. QT-2026-004 -> QT-2026-005),
+// keeping the same zero-padded width. Runs after every Print/Save PDF click so
+// each printed quotation gets a fresh number without needing "New Quotation".
+function bumpQuoteNo(){
+  const el = document.getElementById('quoteNo');
+  const current = el.textContent.trim();
+  const m = current.match(/^(.*?)(\d+)$/);
+  if(!m) return;
+  const prefix = m[1];
+  const digits = m[2];
+  const next = (parseInt(digits, 10) + 1).toString().padStart(digits.length, '0');
+  el.textContent = prefix + next;
+}
+
 const _originalTitle = document.title;
 document.getElementById('printBtn').addEventListener('click', ()=>{
+  if(document.getElementById('gstToggle').checked){
+    const gstinVal = document.getElementById('custGstin').value.trim();
+    const check = validateGSTIN(gstinVal);
+    if(!gstinVal){
+      if(!confirm('GST is enabled but Customer GSTIN is empty. Print anyway?')) return;
+    }else if(!check.valid){
+      if(!confirm('Customer GSTIN doesn\'t look valid (' + check.reason + '). Print anyway?')) return;
+    }
+  }
   const rawName = (document.getElementById('customerName').textContent || 'Quotation').trim();
   const safeName = rawName.replace(/[^a-zA-Z0-9 _-]/g, '').trim().replace(/\s+/g, '_') || 'Client';
   document.title = `${safeName}_Quotation`;
   window.print();
   setTimeout(()=>{ document.title = _originalTitle; }, 1000);
+  bumpQuoteNo();
 });
 
-// Saved quotations library (browser localStorage, per-device).
-// Every quotation is kept under its own Quotation No, and is overwritten
-// (kept up to date) each time you hit "Save Quotation" after editing it.
-function getLibrary(){
-  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
-  catch(err){ return {}; }
+// Saved quotations - persisted server-side (shared across every device/user
+// on this dashboard) instead of browser localStorage, and automatically
+// pruned 7 days after the last time a given quotation number was saved.
+async function fetchLibraryList(){
+  try{
+    const res = await fetch('/api/quotations');
+    if(!res.ok) return [];
+    return await res.json(); // [{quote_no, customer_name, grand_total, saved_at}, ...]
+  }catch(err){
+    return [];
+  }
+}
+
+async function fetchQuotationData(quoteNo){
+  try{
+    const res = await fetch('/api/quotations/' + encodeURIComponent(quoteNo));
+    if(!res.ok) return null;
+    return await res.json();
+  }catch(err){
+    return null;
+  }
+}
+
+async function saveQuotationToServer(data){
+  try{
+    const res = await fetch('/api/quotations', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(data)
+    });
+    return res.ok;
+  }catch(err){
+    return false;
+  }
+}
+
+async function deleteQuotationFromServer(quoteNo){
+  try{
+    const res = await fetch('/api/quotations/' + encodeURIComponent(quoteNo), { method: 'DELETE' });
+    return res.ok;
+  }catch(err){
+    return false;
+  }
 }
 
 // Quotation numbers always increase: QT-<year>-<seq>, seq = 1 higher than the
-// highest one saved so far this year (across all clients), so every new
-// quotation you start automatically picks up from wherever you left off.
-function getNextQuoteNo(){
+// highest one saved so far this year (shared across the whole team), so
+// every new quotation automatically picks up from wherever things were left.
+async function getNextQuoteNo(){
   const year = new Date().getFullYear();
-  const lib = getLibrary();
+  const entries = await fetchLibraryList();
   let maxNum = 0;
-  Object.keys(lib).forEach(key=>{
-    const m = key.match(/^QT-(\d{4})-(\d+)$/);
+  entries.forEach(entry=>{
+    const m = (entry.quote_no || '').match(/^QT-(\d{4})-(\d+)$/);
     if(m && parseInt(m[1], 10) === year){
       maxNum = Math.max(maxNum, parseInt(m[2], 10));
     }
   });
   return 'QT-' + year + '-' + String(maxNum + 1).padStart(3, '0');
-}
-
-function setLibrary(lib){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(lib));
 }
 
 function serialize(){
@@ -705,20 +1038,23 @@ function serialize(){
       qty: tr.querySelector('.qty').value,
       unit: tr.querySelector('.unit').value,
       rate: tr.querySelector('.rate').value,
+      paid: tr.querySelector('.paid-check').checked,
     });
   });
   const logoImg = logoBox.querySelector('img');
   return {
     quoteNo: document.getElementById('quoteNo').textContent.trim(),
     customerName: document.getElementById('customerName').textContent.trim(),
+    custGstin: document.getElementById('custGstin').value.trim(),
     quoteDate: document.getElementById('quoteDate').textContent.trim(),
     grandTotal: document.getElementById('grandTotal').textContent,
     savedAt: new Date().toISOString(),
     items,
     logo: logoImg ? logoImg.src : '',
-    paymentTerm: (document.querySelector('input[name="paymentTerm"]:checked') || {}).value || '70-30',
+    paymentTerm: (document.querySelector('input[name="paymentTerm"]:checked') || {}).value || '100',
     gstOn: document.getElementById('gstToggle').checked,
     gstPct: document.getElementById('gstPct').value,
+    discountOn: document.getElementById('discountToggle').checked,
     discountLabel: document.getElementById('discountLabel').textContent.trim(),
     discountAmt: document.getElementById('discountAmt').value,
     usdOn: document.getElementById('usdToggle').checked,
@@ -727,18 +1063,25 @@ function serialize(){
     eurRate: document.getElementById('eurRate').value,
     gbpOn: document.getElementById('gbpToggle').checked,
     gbpRate: document.getElementById('gbpRate').value,
+    aedOn: document.getElementById('aedToggle').checked,
+    aedRate: document.getElementById('aedRate').value,
+    customNoteOn: document.getElementById('customNoteToggle').checked,
+    customNoteText: document.getElementById('customNoteText').innerHTML,
   };
 }
 
 function loadQuotationData(data){
   itemsBody.innerHTML = '';
   (data.items || []).forEach(it => rowTemplate(it));
-  const pt = data.paymentTerm || '70-30';
+  const pt = data.paymentTerm || '100';
   const ptRadio = document.querySelector(`input[name="paymentTerm"][value="${pt}"]`);
   if(ptRadio) ptRadio.checked = true;
+  paymentTermManual = true; // respect the choice that was saved with this quotation
   document.getElementById('gstToggle').checked = !!data.gstOn;
-  document.getElementById('gstPct').value = data.gstPct ?? 18;
+  document.getElementById('gstPct').value = data.gstPct ?? 5;
   applyGstVisibility();
+  document.getElementById('discountToggle').checked = !!data.discountOn;
+  applyDiscountVisibility();
   document.getElementById('discountLabel').textContent = data.discountLabel || 'Sample Amount Adjustment';
   document.getElementById('discountAmt').value = data.discountAmt ?? 0;
   document.getElementById('usdToggle').checked = !!data.usdOn;
@@ -747,64 +1090,151 @@ function loadQuotationData(data){
   document.getElementById('eurRate').value = data.eurRate ?? 108.5;
   document.getElementById('gbpToggle').checked = !!data.gbpOn;
   document.getElementById('gbpRate').value = data.gbpRate ?? 128.6;
+  document.getElementById('aedToggle').checked = !!data.aedOn;
+  document.getElementById('aedRate').value = data.aedRate ?? 25.95;
   applyFxVisibility();
+  document.getElementById('customNoteToggle').checked = !!data.customNoteOn;
+  document.getElementById('customNoteText').innerHTML = data.customNoteText || '';
+  document.getElementById('customNoteBlock').style.display = data.customNoteOn ? 'block' : 'none';
   if(data.logo){
     logoBox.innerHTML = `<img src="${data.logo}">`;
     logoBox.appendChild(logoInput);
   }
   document.getElementById('quoteNo').textContent = data.quoteNo || '';
   document.getElementById('customerName').textContent = data.customerName || 'Customer Name';
+  document.getElementById('custGstin').value = data.custGstin || '';
+  updateCustGstinFeedback();
   if(data.quoteDate) document.getElementById('quoteDate').textContent = data.quoteDate;
   recalc();
 }
 
-document.getElementById('saveBtn').addEventListener('click', ()=>{
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
   const quoteNo = document.getElementById('quoteNo').textContent.trim();
   if(!quoteNo){ alert('Please enter a Quotation No before saving.'); return; }
+  const btn = document.getElementById('saveBtn');
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
   try{
-    const lib = getLibrary();
-    lib[quoteNo] = serialize();
-    setLibrary(lib);
-    alert(`Quotation "${quoteNo}" saved. It will stay saved (and update each time you save again) until you edit and save it next.`);
+    const ok = await saveQuotationToServer(serialize());
+    if(ok){
+      alert(`Quotation "${quoteNo}" saved. It stays available (and updates each time you save again) for 7 days.`);
+    }else{
+      alert('Could not save. Please check your connection and try again.');
+    }
   }catch(err){
-    alert('Could not save (data may be too large). Try using fewer / smaller images.');
+    alert('Could not save. Please check your connection and try again.');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = originalLabel;
   }
 });
 
-function renderSavedPanel(){
+async function renderSavedPanel(){
   const panel = document.getElementById('savedPanel');
-  const lib = getLibrary();
-  const entries = Object.values(lib).sort((a,b)=> (b.savedAt||'').localeCompare(a.savedAt||''));
-  if(entries.length === 0){
-    panel.innerHTML = '<div class="empty">No saved quotations yet.</div>';
-    return;
-  }
+  panel.innerHTML = '<div class="empty">Loading…</div>';
+  const entries = await fetchLibraryList();
   panel.innerHTML = '';
-  entries.forEach(entry=>{
-    const row = document.createElement('div');
-    row.className = 'saved-item';
-    const dateStr = entry.savedAt ? new Date(entry.savedAt).toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'}) : '';
-    row.innerHTML = `
-      <div class="si-info">
-        <div class="si-no">${entry.quoteNo || '(no number)'}</div>
-        <div class="si-meta">${entry.customerName || ''} · ${entry.grandTotal || ''} · ${dateStr}</div>
-      </div>
-      <button class="si-del" title="Delete">✕</button>
-    `;
-    row.querySelector('.si-info').addEventListener('click', ()=>{
-      if(!confirm(`Load quotation "${entry.quoteNo}"? This will replace what's currently on screen.`)) return;
-      loadQuotationData(entry);
-      panel.classList.remove('open');
+  if(entries.length === 0){
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = 'No saved quotations yet.';
+    panel.appendChild(empty);
+  }else{
+    entries.forEach(entry=>{
+      const row = document.createElement('div');
+      row.className = 'saved-item';
+      const dateStr = entry.saved_at ? new Date(entry.saved_at).toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'}) : '';
+      row.innerHTML = `
+        <div class="si-info">
+          <div class="si-no">${entry.quote_no || '(no number)'}</div>
+          <div class="si-meta">${entry.customer_name || ''} · ${entry.grand_total || ''} · ${dateStr}</div>
+        </div>
+        <button class="si-del" title="Delete">✕</button>
+      `;
+      row.querySelector('.si-info').addEventListener('click', async ()=>{
+        if(!confirm(`Load quotation "${entry.quote_no}"? This will replace what's currently on screen.`)) return;
+        const data = await fetchQuotationData(entry.quote_no);
+        if(!data){ alert('Could not load that quotation.'); return; }
+        loadQuotationData(data);
+        panel.classList.remove('open');
+      });
+      row.querySelector('.si-del').addEventListener('click', async (e)=>{
+        e.stopPropagation();
+        if(!confirm(`Delete saved quotation "${entry.quote_no}"? This cannot be undone.`)) return;
+        await deleteQuotationFromServer(entry.quote_no);
+        renderSavedPanel();
+      });
+      panel.appendChild(row);
     });
-    row.querySelector('.si-del').addEventListener('click', (e)=>{
-      e.stopPropagation();
-      if(!confirm(`Delete saved quotation "${entry.quoteNo}"? This cannot be undone.`)) return;
-      const l = getLibrary();
-      delete l[entry.quoteNo];
-      setLibrary(l);
-      renderSavedPanel();
+  }
+
+  // Backup footer: export everything saved (server-side) to a real JSON
+  // file you keep yourself, and import it back in - restoring each entry
+  // to the server - since a shared server table is still one accidental
+  // deletion or migration away from needing a manual safety copy.
+  const footer = document.createElement('div');
+  footer.className = 'saved-panel-footer';
+  footer.innerHTML = `
+    <button id="exportLibBtn" title="Download all saved quotations as a JSON backup file">⬇ Export backup</button>
+    <button id="importLibBtn" title="Restore quotations from a previously exported JSON backup file">⬆ Import backup</button>
+  `;
+  panel.appendChild(footer);
+
+  footer.querySelector('#exportLibBtn').addEventListener('click', async (e)=>{
+    e.stopPropagation();
+    const btn = e.currentTarget;
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Preparing…';
+    try{
+      const list = await fetchLibraryList();
+      const full = {};
+      for(const entry of list){
+        const data = await fetchQuotationData(entry.quote_no);
+        if(data) full[entry.quote_no] = data;
+      }
+      const blob = new Blob([JSON.stringify(full, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'quotations_backup_' + new Date().toISOString().slice(0,10) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }finally{
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
+  });
+
+  footer.querySelector('#importLibBtn').addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json';
+    input.addEventListener('change', ()=>{
+      const file = input.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = async (ev)=>{
+        try{
+          const imported = JSON.parse(ev.target.result);
+          const entries = Object.values(imported);
+          let ok = 0;
+          for(const data of entries){
+            if(data && data.quoteNo && await saveQuotationToServer(data)) ok++;
+          }
+          alert(`Backup imported. ${ok} of ${entries.length} quotation(s) restored (existing ones with the same Quotation No were updated).`);
+          renderSavedPanel();
+        }catch(err){
+          alert('Could not read that file — make sure it\'s a JSON backup exported from this tool.');
+        }
+      };
+      reader.readAsText(file);
     });
-    panel.appendChild(row);
+    input.click();
   });
 }
 
@@ -822,24 +1252,35 @@ document.addEventListener('click', (e)=>{
   }
 });
 
-document.getElementById('newBtn').addEventListener('click', ()=>{
-  if(!confirm('Start a new blank quotation? (Anything already saved stays in "Saved Quotations" — this only clears the screen.)')) return;
+document.getElementById('newBtn').addEventListener('click', async ()=>{
+  if(!confirm('Start a new blank quotation? (Anything already saved stays in "Saved Quotations" for 7 days — this only clears the screen.)')) return;
   itemsBody.innerHTML = '';
   rowTemplate();
-  document.getElementById('quoteNo').textContent = getNextQuoteNo();
+  document.getElementById('quoteNo').textContent = await getNextQuoteNo();
   document.getElementById('customerName').textContent = 'Customer Name';
+  document.getElementById('custGstin').value = '';
+  updateCustGstinFeedback();
+  document.getElementById('discountToggle').checked = false;
+  applyDiscountVisibility();
   document.getElementById('discountLabel').textContent = 'Sample Amount Adjustment';
   document.getElementById('discountAmt').value = 0;
   document.getElementById('usdToggle').checked = false;
   document.getElementById('eurToggle').checked = false;
   document.getElementById('gbpToggle').checked = false;
+  document.getElementById('aedToggle').checked = false;
   applyFxVisibility();
+  document.getElementById('customNoteToggle').checked = false;
+  document.getElementById('customNoteText').innerHTML = '';
+  document.getElementById('customNoteBlock').style.display = 'none';
+  paymentTermManual = false;
+  const defaultPtRadio = document.querySelector('input[name="paymentTerm"][value="100"]');
+  if(defaultPtRadio) defaultPtRadio.checked = true;
   recalc();
 });
 
 // init
 document.getElementById('quoteDate').textContent = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
-document.getElementById('quoteNo').textContent = getNextQuoteNo();
+getNextQuoteNo().then(n => { document.getElementById('quoteNo').textContent = n; });
 rowTemplate({desc:'Item / Product Name', qty:100, unit:'pcs', rate:150});
 rowTemplate({desc:'Item / Product Name', qty:500, unit:'pcs', rate:95});
 </script>
