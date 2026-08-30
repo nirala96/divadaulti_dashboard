@@ -30,6 +30,7 @@ export type Design = {
   title: string
   type: 'Sampling' | 'Production'
   quantity: number
+  completed_quantity: number
   status: string
   notes: string | null
   images: string[] | null
@@ -444,6 +445,14 @@ export async function updateDesignPriority(designId: string, isPriority: boolean
   await pool.query(
     'UPDATE designs SET is_priority = $1 WHERE id = $2',
     [isPriority, designId]
+  )
+  revalidatePath('/')
+}
+
+export async function updateDesignCompletedQuantity(designId: string, completedQuantity: number) {
+  await pool.query(
+    'UPDATE designs SET completed_quantity = $1 WHERE id = $2',
+    [completedQuantity, designId]
   )
   revalidatePath('/')
 }

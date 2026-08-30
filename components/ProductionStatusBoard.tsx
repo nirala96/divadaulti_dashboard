@@ -9,6 +9,7 @@ import {
   updateDesignStageStatus,
   updateDesignStatus,
   updateDesignPriority,
+  updateDesignCompletedQuantity,
   updateDesignNotes,
   updateDesignPrice,
   updateDesignDetails,
@@ -276,6 +277,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [titleValue, setTitleValue] = useState("")
   const [typeValue, setTypeValue] = useState<DesignType>("Sampling")
   const [quantityValue, setQuantityValue] = useState(1)
+  const [completedQtyValue, setCompletedQtyValue] = useState(0)
   const [savingNotes, setSavingNotes] = useState(false)
   const [confirmComplete, setConfirmComplete] = useState<DesignWithClient | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<DesignWithClient | null>(null)
@@ -726,6 +728,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     setTitleValue(design.title)
     setTypeValue(design.type)
     setQuantityValue(design.quantity)
+    setCompletedQtyValue(design.completed_quantity || 0)
     setEditImageFiles([])
     setEditImagePreviews([])
   }
@@ -737,6 +740,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     setTitleValue("")
     setTypeValue("Sampling")
     setQuantityValue(1)
+    setCompletedQtyValue(0)
     setEditImageFiles([])
     setEditImagePreviews([])
   }
@@ -787,6 +791,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       const newPrice = priceValue.trim() === "" ? null : parseFloat(priceValue)
       const trimmedTitle = titleValue.trim()
       const newQuantity = typeValue === 'Sampling' ? 1 : quantityValue
+      const newCompletedQty = Math.max(0, Math.min(completedQtyValue, newQuantity))
 
       updateLocalDesignState(editingDesign.id, design => ({
         ...design,
@@ -795,7 +800,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         price: newPrice,
         title: trimmedTitle,
         type: typeValue,
-        quantity: newQuantity
+        quantity: newQuantity,
+        completed_quantity: newCompletedQty
       }))
 
       await updateDesignNotes(editingDesign.id, notesValue, allImages)
@@ -812,6 +818,9 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           type: typeValue,
           quantity: newQuantity
         })
+      }
+      if (newCompletedQty !== (editingDesign.completed_quantity || 0)) {
+        await updateDesignCompletedQuantity(editingDesign.id, newCompletedQty)
       }
 
       closeNotesModal()
@@ -1561,6 +1570,21 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
               )}
             </div>
 
+            {typeValue === 'Production' && (
+              <div className="grid gap-2">
+                <Label htmlFor="completed-qty-editor">Pieces Completed</Label>
+                <Input
+                  id="completed-qty-editor"
+                  type="number"
+                  min="0"
+                  max={quantityValue}
+                  value={completedQtyValue}
+                  onChange={(e) => setCompletedQtyValue(Math.max(0, Math.min(parseInt(e.target.value) || 0, quantityValue)))}
+                />
+                <p className="text-xs text-gray-400">Out of {quantityValue} total pieces for this design.</p>
+              </div>
+            )}
+
             <div className="grid gap-2">
               <Label htmlFor="price-editor">Amount</Label>
               <Input
@@ -2261,6 +2285,20 @@ function ClientGroupRow({
                       <IndianRupee className="h-3 w-3" />
                       {design.price != null ? formatCurrency(design.price) : 'Add amount'}
                     </Badge>
+                    {design.type === 'Production' && design.quantity > 1 && (
+                      <Badge
+                        variant="outline"
+                        className="text-xs gap-1 flex items-center cursor-pointer"
+                        title="Pieces completed out of total. Click to update."
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onTileClick(design)
+                        }}
+                      >
+                        <Package2 className="h-3 w-3" />
+                        {design.completed_quantity || 0}/{design.quantity} pcs
+                      </Badge>
+                    )}
                     {design.notes && design.notes.trim() && (
                       <span title="Has notes">
                         <FileText className="h-3 w-3 text-blue-500" />
