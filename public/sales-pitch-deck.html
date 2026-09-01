@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sales Pitch Deck — Q&amp;A Script</title>
+<style>
+  :root{
+    --bg:#f4f1ec; --card:#fff; --ink:#1c1c1c; --muted:#6b6b6b; --line:#e2ddd4;
+    --reply-bg:#e7f6ec; --reply-br:#2e9e5b; --reply-ink:#14572f;
+    --note-bg:#fdf1dc;  --note-br:#e0a12a;  --note-ink:#6d4a06;
+    --case-bg:#e9f0fb;  --case-br:#3b6fd4;  --case-ink:#1c3d80;
+    --ref-bg:#f3ecfa;   --ref-br:#8250c4;   --ref-ink:#4a2380;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:28px 16px 90px;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.55}
+  .wrap{max-width:860px;margin:0 auto}
+  header h1{font-size:26px;margin:0 0 6px;letter-spacing:-.4px}
+  header p{margin:0;color:var(--muted);font-size:14px}
+
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 20px}
+  .chip{font-size:12px;font-weight:600;padding:5px 11px;border-radius:999px;border:1px solid}
+  .chip.reply{background:var(--reply-bg);border-color:var(--reply-br);color:var(--reply-ink)}
+  .chip.note{background:var(--note-bg);border-color:var(--note-br);color:var(--note-ink)}
+  .chip.case{background:var(--case-bg);border-color:var(--case-br);color:var(--case-ink)}
+  .chip.ref{background:var(--ref-bg);border-color:var(--ref-br);color:var(--ref-ink)}
+
+  .bar{position:sticky;top:0;z-index:20;background:var(--bg);
+       padding:10px 0 12px;margin-bottom:14px;border-bottom:1px solid var(--line);
+       display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  button{font:inherit;font-size:13px;font-weight:600;cursor:pointer;background:var(--card);
+    border:1px solid var(--line);border-radius:8px;padding:7px 13px;color:var(--ink)}
+  button:hover{background:#efeae1}
+  .primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .primary:hover{background:#000}
+  .status{font-size:12px;color:var(--muted);margin-left:auto}
+  .status.dirty{color:#b3541e;font-weight:600}
+
+  details{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    margin-bottom:12px;overflow:hidden}
+  details[open]{box-shadow:0 2px 10px rgba(0,0,0,.05)}
+  summary{cursor:pointer;list-style:none;padding:14px 16px;font-size:16px;font-weight:600;
+    display:flex;align-items:flex-start;gap:10px}
+  summary::-webkit-details-marker{display:none}
+  summary:hover{background:#faf8f5}
+  .num{background:var(--ink);color:#fff;font-size:11px;font-weight:700;border-radius:6px;
+    padding:3px 7px;flex-shrink:0;margin-top:3px;letter-spacing:.5px}
+  .q-title{flex:1;outline:none}
+  .q-title[contenteditable="true"]{background:#fffbe8;box-shadow:0 0 0 2px var(--note-br);
+    border-radius:6px;padding:1px 5px;margin:-1px -5px;cursor:text}
+  .sum-btn{flex-shrink:0;font-size:12px;padding:3px 8px;border-radius:6px;opacity:.55}
+  summary:hover .sum-btn{opacity:1}
+  .caret{margin-left:2px;font-size:20px;font-weight:400;color:var(--muted);line-height:1;flex-shrink:0}
+  details[open] .caret::after{content:"–"}
+  details:not([open]) .caret::after{content:"+"}
+
+  .body{padding:16px 16px 12px;border-top:1px solid var(--line)}
+
+  .box{border-left:4px solid;border-radius:8px;padding:11px 14px;margin:10px 0;
+    font-size:14.5px;position:relative}
+  .box .label{display:block;font-size:11px;font-weight:800;letter-spacing:1px;
+    text-transform:uppercase;margin-bottom:6px;opacity:.85}
+  .box .edit{outline:none;min-height:22px}
+  .box .edit:focus{box-shadow:0 0 0 2px rgba(0,0,0,.18);border-radius:5px}
+  .box p{margin:0 0 8px}
+  .box p:last-child{margin-bottom:0}
+  .box ul{margin:6px 0 8px;padding-left:20px}
+  .box li{margin:2px 0}
+  .reply{background:var(--reply-bg);border-color:var(--reply-br);color:var(--reply-ink)}
+  .note{background:var(--note-bg);border-color:var(--note-br);color:var(--note-ink);font-size:14px}
+  .ref{background:var(--ref-bg);border-color:var(--ref-br);color:var(--ref-ink)}
+
+  .case{background:var(--case-bg);border:1px solid var(--case-br);border-left-width:4px;
+    border-radius:8px;padding:10px 14px 10px;margin:14px 0}
+  .case-title{font-size:12px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;
+    color:var(--case-ink);margin:2px 0 2px;outline:none}
+  .case-title:focus{box-shadow:0 0 0 2px rgba(0,0,0,.18);border-radius:5px}
+  .case .box{margin:9px 0}
+
+  .tools{position:absolute;top:6px;right:6px;display:flex;gap:3px;opacity:0;transition:opacity .12s}
+  .box:hover > .tools,.case:hover > .tools{opacity:.85}
+  .tools button{font-size:11px;padding:2px 7px;border-radius:6px;background:rgba(255,255,255,.9);line-height:1.3}
+  .tools button:hover{background:#fff}
+  .tools .kill:hover{color:#b00}
+  .case{position:relative}
+
+  .addbar{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;padding-top:10px;
+    border-top:1px dashed var(--line)}
+  .addbar button{font-size:12px;padding:5px 10px;font-weight:600}
+  .addbar .g{color:var(--reply-ink);border-color:var(--reply-br);background:var(--reply-bg)}
+  .addbar .y{color:var(--note-ink);border-color:var(--note-br);background:var(--note-bg)}
+  .addbar .b{color:var(--case-ink);border-color:var(--case-br);background:var(--case-bg)}
+  .addbar .p{color:var(--ref-ink);border-color:var(--ref-br);background:var(--ref-bg)}
+  .addbar .del{margin-left:auto;color:#a11}
+
+  a{color:inherit}
+  table{border-collapse:collapse;width:100%;margin:6px 0 0;font-size:14px}
+  th,td{border:1px solid var(--ref-br);padding:7px 10px;text-align:left}
+  th{background:rgba(130,80,196,.14);font-weight:700}
+  footer{margin-top:26px;font-size:13px;color:var(--muted);text-align:center}
+  .hint{font-size:12.5px;color:var(--muted);margin:0 0 16px;padding:10px 13px;
+    background:#fffdf7;border:1px dashed var(--line);border-radius:9px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Sales Pitch Deck — Q&amp;A Script</h1>
+  <p>Green = send as it is. Yellow = team only, never send.</p>
+</header>
+
+<div class="legend">
+  <span class="chip reply">REPLY — send as it is</span>
+  <span class="chip note">INTERNAL NOTE — team only</span>
+  <span class="chip case">CASE SPLIT</span>
+  <span class="chip ref">REFERENCE</span>
+</div>
+
+<div class="bar" data-skip-save>
+  <button class="primary" onclick="addEntry()">+ Add question</button>
+  <button onclick="allDetails(true)">Expand all</button>
+  <button onclick="allDetails(false)">Collapse all</button>
+  <button onclick="downloadCopy()">⬇︎ Download copy</button>
+  <button onclick="exportJSON()">{ } Export JSON</button>
+  <button onclick="copyJSON()">⧉ Copy JSON</button>
+  <button onclick="importJSON()">↥ Load JSON</button>
+  <span class="status" id="status">auto-save on</span>
+</div>
+
+<p class="hint">
+  <b>Everything auto-saves to the shared script</b> — every sales rep sees the same live copy, on any device.<br>
+  Click any coloured text to type · <b>✎</b> renames a question · <b>↑ ↓</b> in the question row moves the whole question · <b>↑ ↓ ✕</b> on hover inside a card moves/deletes that block · bottom buttons add Reply / Note / Case / Reference.<br>
+  <b>⬇︎ Download copy</b> gives you an offline HTML backup whenever you want one; <b>{ } Export JSON</b> / <b>↥ Load JSON</b> back up or restore the raw data.
+</p>
+
+<div id="list">
+
+<!-- ===== ENTRY ===== -->
+<details open>
+  <summary><span class="num">00</span><span class="q-title">STARTER MESSAGE — new lead / first message</span><button class="sum-btn" onclick="editTitle(event,this)">✎</button><span class="caret"></span></summary>
+  <div class="body">
+    <div class="box reply"><button class="kill" onclick="killBox(this)">✕</button>
+      <span class="label">Reply</span>
+      <div class="edit" contenteditable="true">
+        <p>Share designs and quantity for quotation</p>
+        <p>FAQ - <a href="https://divadaulti.com/FAQ/">https://divadaulti.com/FAQ/</a></p>
+        <p>post you share the designs will also get on a brief call …so that all your doubts will be cleared ok</p>
+      </div>
+    </div>
+    <div class="box note"><button class="kill" onclick="killBox(this)">✕</button>
+      <span class="label">Internal note</span>
+      <div class="edit" contenteditable="true">
+        <p>alag alag starter message try kare hia ….abhi tk yey sbse shi laga…detailed wala long sey log padhte nhi …yey simple sweet laga..tell the user what to do next</p>
+      </div>
+    </div>
+  </div>
+</details>
+
+<!-- ===== ENTRY ===== -->
+<details>
+  <summary><span class="num">01</span><span class="q-title">“I have not finalized my designs yet…” / “i don’t have designs at the moment”</span><button class="sum-btn" onclick="editTitle(event,this)">✎</button><span class="caret"></span></summary>
+  <div class="body">
+
+    <div class="case"><button class="kill" onclick="killBox(this)">✕</button>
+      <div class="case-title" contenteditable="true">Case 1 — Indian number</div>
+      <div class="box reply"><button class="kill" onclick="killBox(this)">✕</button>
+        <span class="label">Reply</span>
+        <div class="edit" contenteditable="true"><p>reference picture also works …so that you get idea of quotation …</p></div>
+      </div>
+      <div class="box note"><button class="kill" onclick="killBox(this)">✕</button>
+        <span class="label">Internal note</span>
+        <div class="edit" contenteditable="true"><p>yey chutiye lund brand banayenge ..inse design select nhi hua inko design package pitch karenge to shayad ro denge..refernce picture ka quotation dekr bhagane ka</p></div>
+      </div>
+      <div class="addbar">
+        <button class="g" onclick="addBox(this,'reply')">+ Reply</button>
+        <button class="y" onclick="addBox(this,'note')">+ Internal note</button>
+      </div>
+    </div>
+
+    <div class="case"><button class="kill" onclick="killBox(this)">✕</button>
+      <div class="case-title" contenteditable="true">Case 2 — Foreign number</div>
+      <div class="box reply"><button class="kill" onclick="killBox(this)">✕</button>
+        <span class="label">Reply</span>
+        <div class="edit" contenteditable="true">
+          <p>also we have a professional designing team , in case you want our designing service to help with your next collection…for an investment of 10k INR …and you get  till 10 different designs SKU designed..</p>
+          <p>Basically , they help you make tech packs , measurements, fabric suggestions , motifs suggestions, flat sketches , rough sketches, and give you researched  designs that can sell , you can also have consultation conversations like pricing of the garment to make ..what tweeks we can do to reduce the cost ….fitting issue solve and all these</p>
+        </div>
+      </div>
+      <div class="box note"><button class="kill" onclick="killBox(this)">✕</button>
+        <span class="label">Internal note</span>
+        <div class="edit" contenteditable="true"><p>inko apan design package pitch krenge ..yey wahi ke wahi pay kar denge ..most of the time</p></div>
+      </div>
+      <div class="addbar">
+        <button class="g" onclick="addBox(this,'reply')">+ Reply</button>
+        <button class="y" onclick="addBox(this,'note')">+ Internal note</button>
+      </div>
+    </div>
+
+    <div class="box note"><button class="kill" onclick="killBox(this)">✕</button>
+      <span class="label">Internal note — both cases</span>
+      <div class="edit" contenteditable="true"><p>basically is questions ke baad customer ko hm log 2 hi option de sakte hai …either quotation or design service</p></div>
+    </div>
+  </div>
+</details>
+
+<!-- ===== ENTRY ===== -->
+<details>
+  <summary><span class="num">02</span><span class="q-title">“hi was looking for a manufacturer in mumbai”</span><button class="sum-btn" onclick="editTitle(event,this)">✎</button><span class="caret"></span></summary>
+  <div class="body">
+    <div class="box reply"><button class="kill" onclick="killBox(this)">✕</button>
+      <span class="label">Reply</span>
+      <div class="edit" contenteditable="true"><p>we regularly ship to our mumbai clients, takes roughly 1-2 days for delivery ….our 50 percent of domestic we di is for you mumbai and south indian clients ….so let me know any specefic reason to see locally ..as the labour charges are also high there …</p></div>
+    </div>
+    <div class="box note"><button class="kill" onclick="killBox(this)">✕</button>
+      <span class="label">Internal note</span>
+      <div class="edit" contenteditable="true"><p>to prevent client drop off before sharing the designs</p></div>
+    </div>
+  </div>
+</details>
+
+<!-- ===== ENTRY ===== -->
+<details>
+  <summary><span class="num">03</span><span class="q-title">“can i see your product catelogue ?”</span><button class="sum-btn" onclick="editTitle(event,this)">✎</button><span class="caret"></span></summary>
+  <div class="body">
+    <div class="box reply"><button class="kill" onclick="killBox(this)">✕</button>
+      <span class="label">Reply</span>
+      <div class="edit" contenteditable="true"><p>we don’t have any specific product catelogue …however if you want to see some of the works we have done in the past then ..you can refer to the catelogue in same number whatssap bio…but clients work is not there..due to confidentiality reasons ..</p></div>
+    </div>
+    <div class="box note"><button class="kill" onclick="killBox(this)">✕</button>
+      <span class="label">Internal note</span>
+      <div class="edit" contenteditable="true"><p>generally shop owners ask for catelogue …brand owners will not get offended …but if they persist then we can share the photos of some clients…so they can be impressed</p></div>
+    </div>
+  </div>
+</details>
+
+<!-- ===== ENTRY ===== -->
+<details>
+  <summary><span class="num">04</span><span class="q-title">“what is your MOQ ?”</span><button class="sum-btn" onclick="editTitle(event,this)">✎</button><span class="caret"></span></summary>
+  <div class="body">
+    <div class="box reply"><button class="kill" onclick="killBox(this)">✕</button>
+      <span class="label">Reply</span>
+      <div class="edit" contenteditable="true"><p>so we have NO MOQ ….the best sellable price we can give is for these quantity …</p></div>
+    </div>
+    <div class="box ref"><button class="kill" onclick="killBox(this)">✕</button>
+      <span class="label">Reference — style bhej di hai</span>
+      <div class="edit" contenteditable="true">
+        <table>
+          <tr><th>Category</th><th>Best price quantity</th></tr>
+          <tr><td>medium easy</td><td>25 pcs</td></tr>
+          <tr><td>very simple like short kiurti</td><td>50 pcs</td></tr>
+          <tr><td>kids wear</td><td>50 pcs</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</details>
+
+<!-- ===== ENTRY ===== -->
+<details>
+  <summary><span class="num">05</span><span class="q-title">“what will be the price of lets say a dress or a coord set”</span><button class="sum-btn" onclick="editTitle(event,this)">✎</button><span class="caret"></span></summary>
+  <div class="body">
+    <div class="box reply"><button class="kill" onclick="killBox(this)">✕</button>
+      <span class="label">Reply</span>
+      <div class="edit" contenteditable="true"><p>we will require a design so that we can give you the cost …like what all detailing it has lets say</p></div>
+    </div>
+  </div>
+</details>
+
+<!-- ===== ENTRY ===== -->
+<details>
+  <summary><span class="num">06</span><span class="q-title">“some of the brands you have worked with”</span><button class="sum-btn" onclick="editTitle(event,this)">✎</button><span class="caret"></span></summary>
+  <div class="body">
+    <div class="box reply"><button class="kill" onclick="killBox(this)">✕</button>
+      <span class="label">Reply</span>
+      <div class="edit" contenteditable="true"><p>we have worked with 100s of brands …even currently 40+ brands works going on …and 70 percent is for europe and US ….some of the brands are breathe by riya gupta , lil den x, and more ..can’t share more due to confidentiality reason but hope you understand</p></div>
+    </div>
+  </div>
+</details>
+
+<!-- ===== ENTRY ===== -->
+<details>
+  <summary><span class="num">07</span><span class="q-title">“cost is way too high”</span><button class="sum-btn" onclick="editTitle(event,this)">✎</button><span class="caret"></span></summary>
+  <div class="body">
+    <div class="box reply"><button class="kill" onclick="killBox(this)">✕</button>
+      <span class="label">Reply</span>
+      <div class="edit" contenteditable="true">
+        <p>sampling cost is high because it contains all the one time costs</p>
+        <p>sample contains :</p>
+        <ul>
+          <li>main pattern</li>
+          <li>manual one piece cutting</li>
+          <li>first time stitching and rework</li>
+          <li>designer intervention</li>
+          <li>retail fabric cost</li>
+          <li>sourcing and logistics</li>
+        </ul>
+        <p>also in some cases</p>
+        <ul>
+          <li>digital printing cost</li>
+          <li>print development cost by designer</li>
+        </ul>
+        <p>also this sample is 100 percent adjustable in 50 pieces hope you understand …</p>
+        <p>also you can directly go with production as we make a preproduction sample for free in that anyways</p>
+      </div>
+    </div>
+  </div>
+</details>
+
+</div>
+
+<footer>Add questions with <b>+ Add question</b> · every change auto-saves to the shared script</footer>
+</div>
+
+<script>
+/* ---------- autosave (shared, server-side) ---------- */
+var saveTimer=null, booted=false, saving=false, pendingResave=false;
+
+function setStatus(txt,dirtyFlag){
+  var s=document.getElementById('status');
+  if(!s) return;
+  s.textContent=txt;
+  s.className='status'+(dirtyFlag?' dirty':'');
+}
+function mark(){ if(!booted) return; setStatus('saving…',true); scheduleSave(); }
+function scheduleSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(autosave,600); }
+document.addEventListener('input',mark);
+
+function normalize(){
+  document.querySelectorAll('.q-title').forEach(function(t){t.setAttribute('contenteditable','false');});
+  document.querySelectorAll('#list details').forEach(function(d){
+    if(d.open){d.setAttribute('open','');}else{d.removeAttribute('open');}
+  });
+}
+function serialize(){
+  normalize();
+  var s=document.getElementById('status'), keep=s.textContent, keepC=s.className;
+  s.textContent='saved'; s.className='status';
+  var html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+  s.textContent=keep; s.className=keepC;
+  return html;
+}
+
+function autosave(){
+  normalize();
+  if(saving){ pendingResave=true; return; }
+  saving=true;
+  fetch('/api/pitch-deck',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(toJSON())
+  }).then(function(res){
+    if(!res.ok) throw new Error('save failed');
+    setStatus('✓ saved '+time(),false);
+  }).catch(function(){
+    setStatus('⚠ could not save — check connection',true);
+  }).finally(function(){
+    saving=false;
+    if(pendingResave){ pendingResave=false; autosave(); }
+  });
+}
+function time(){
+  var d=new Date();
+  return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+}
+
+function downloadCopy(){
+  var blob=new Blob([serialize()],{type:'text/html;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='sales-pitch-deck.html';
+  a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+}
+/* ================= JSON in / out =================
+   Data shape:
+   { title, updated, entries:[ { id, question, blocks:[
+       {type:"reply"|"note"|"ref", label, html},
+       {type:"case", title, blocks:[...]} ] } ] }
+   ================================================= */
+function blocksFrom(host){
+  var out=[];
+  Array.prototype.forEach.call(host.children,function(el){
+    if(el.classList.contains('case')){
+      var t=el.querySelector(':scope > .case-title');
+      out.push({type:'case',title:t?t.innerText.trim():'',blocks:blocksFrom(el)});
+    }else if(el.classList.contains('box')){
+      var kind = el.classList.contains('reply')?'reply' : el.classList.contains('note')?'note' : 'ref';
+      var lab=el.querySelector(':scope > .label');
+      var ed=el.querySelector(':scope > .edit');
+      out.push({type:kind,label:lab?lab.innerText.trim():'',html:ed?ed.innerHTML.trim():''});
+    }
+  });
+  return out;
+}
+function toJSON(){
+  var entries=[];
+  document.querySelectorAll('#list > details').forEach(function(d){
+    entries.push({
+      id: d.querySelector('.num').innerText.trim(),
+      question: d.querySelector('.q-title').innerText.trim(),
+      blocks: blocksFrom(d.querySelector(':scope > .body'))
+    });
+  });
+  return {title:'Sales Pitch Deck — Q&A Script', updated:new Date().toISOString(), entries:entries};
+}
+function exportJSON(){
+  var blob=new Blob([JSON.stringify(toJSON(),null,2)],{type:'application/json;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='pitch-deck.json'; a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+}
+function copyJSON(){
+  navigator.clipboard.writeText(JSON.stringify(toJSON(),null,2)).then(function(){
+    setStatus('✓ JSON copied to clipboard',false);
+  },function(){ exportJSON(); });
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function boxHTML(b){
+  var lab = b.label || (b.type==='reply'?'Reply':b.type==='note'?'Internal note':'Reference');
+  return '<div class="box '+b.type+'"><span class="label">'+esc(lab)+'</span>'+
+         '<div class="edit" contenteditable="true">'+(b.html||'')+'</div></div>';
+}
+function blocksHTML(list,inCase){
+  var h='';
+  (list||[]).forEach(function(b){
+    if(b.type==='case'){
+      h+='<div class="case"><div class="case-title" contenteditable="true">'+esc(b.title||'Case')+'</div>'+
+         blocksHTML(b.blocks,true)+
+         '<div class="addbar">'+
+           '<button class="g" onclick="addBox(this,\'reply\')">+ Reply</button>'+
+           '<button class="y" onclick="addBox(this,\'note\')">+ Internal note</button>'+
+         '</div></div>';
+    }else{ h+=boxHTML(b); }
+  });
+  return h;
+}
+function renderJSON(data){
+  var h='';
+  (data.entries||[]).forEach(function(e){
+    h+='<details><summary><span class="num">'+esc(e.id||'--')+'</span>'+
+       '<span class="q-title">'+esc(e.question||'')+'</span>'+
+       '<button class="sum-btn" onclick="editTitle(event,this)">✎</button>'+
+       '<span class="caret"></span></summary>'+
+       '<div class="body">'+blocksHTML(e.blocks)+'</div></details>';
+  });
+  document.getElementById('list').innerHTML=h;
+  wire();
+  mark();
+}
+function importJSON(){
+  var i=document.createElement('input');
+  i.type='file'; i.accept='.json,application/json';
+  i.onchange=function(){
+    var f=i.files[0]; if(!f) return;
+    var r=new FileReader();
+    r.onload=function(){
+      try{
+        var d=JSON.parse(r.result);
+        if(!confirm('Replace everything on this page with the JSON file?')) return;
+        renderJSON(d);
+        setStatus('✓ loaded from JSON',false);
+      }catch(err){ alert('That file is not valid JSON.'); }
+    };
+    r.readAsText(f);
+  };
+  i.click();
+}
+
+/* ---------- helpers ---------- */
+function allDetails(o){document.querySelectorAll('#list details').forEach(function(d){d.open=o;});mark();}
+
+function editTitle(e,btn){
+  e.preventDefault();e.stopPropagation();
+  var t=btn.parentNode.querySelector('.q-title');
+  t.setAttribute('contenteditable','true');t.focus();
+  document.execCommand('selectAll',false,null);
+  t.onblur=function(){t.setAttribute('contenteditable','false');mark();};
+}
+
+function killBox(btn){
+  var el=btn.closest('.box,.case');
+  if(confirm('Delete this block?')){el.remove();mark();}
+}
+
+/* ---------- reordering ---------- */
+function moveEntry(e,btn,dir){
+  e.preventDefault();e.stopPropagation();
+  var d=btn.closest('details');
+  if(dir<0){ var p=d.previousElementSibling; if(p&&p.tagName==='DETAILS') d.parentNode.insertBefore(d,p); }
+  else     { var n=d.nextElementSibling;     if(n&&n.tagName==='DETAILS') d.parentNode.insertBefore(n,d); }
+  renumber();mark();
+  d.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function moveBox(btn,dir){
+  var el=btn.closest('.box,.case'), host=el.parentNode;
+  var sibs=Array.prototype.filter.call(host.children,function(c){
+    return c.classList.contains('box')||c.classList.contains('case');
+  });
+  var i=sibs.indexOf(el), t=i+dir;
+  if(t<0||t>=sibs.length) return;
+  if(dir<0) host.insertBefore(el,sibs[t]);
+  else      host.insertBefore(sibs[t],el);
+  mark();
+}
+
+/* build the ✕ / ↑ / ↓ toolbar on every box + case */
+function fitTools(scope){
+  (scope||document).querySelectorAll('.box,.case').forEach(function(el){
+    if(el.querySelector(':scope > .tools')) return;
+    var old=el.querySelector(':scope > .kill');
+    if(old) old.remove();
+    var t=document.createElement('div');
+    t.className='tools';
+    t.innerHTML='<button title="move up" onclick="moveBox(this,-1)">↑</button>'+
+                '<button title="move down" onclick="moveBox(this,1)">↓</button>'+
+                '<button class="kill" title="delete" onclick="killBox(this)">✕</button>';
+    el.insertBefore(t,el.firstChild);
+  });
+}
+
+function killEntry(btn){
+  if(confirm('Delete this whole question?')){btn.closest('details').remove();renumber();mark();}
+}
+
+function renumber(){
+  document.querySelectorAll('#list details .num').forEach(function(n,i){
+    n.textContent=(i<10?'0':'')+i;
+  });
+}
+
+var TPL={
+  reply:'<button class="kill" onclick="killBox(this)">✕</button><span class="label">Reply</span><div class="edit" contenteditable="true"><p>type reply here…</p></div>',
+  note:'<button class="kill" onclick="killBox(this)">✕</button><span class="label">Internal note</span><div class="edit" contenteditable="true"><p>team ke liye note…</p></div>',
+  ref:'<button class="kill" onclick="killBox(this)">✕</button><span class="label">Reference</span><div class="edit" contenteditable="true"><p>reference / table…</p></div>'
+};
+
+function caseHTML(n){
+  return '<button class="kill" onclick="killBox(this)">✕</button>'+
+   '<div class="case-title" contenteditable="true">Case '+n+' — describe it</div>'+
+   '<div class="box reply">'+TPL.reply+'</div>'+
+   '<div class="box note">'+TPL.note+'</div>'+
+   '<div class="addbar">'+
+     '<button class="g" onclick="addBox(this,\'reply\')">+ Reply</button>'+
+     '<button class="y" onclick="addBox(this,\'note\')">+ Internal note</button>'+
+   '</div>';
+}
+
+/* add a box just above the addbar that was clicked */
+function addBox(btn,kind){
+  var bar=btn.parentNode, host=bar.parentNode;
+  var d=document.createElement('div');
+  d.className='box '+kind;
+  d.innerHTML=TPL[kind];
+  host.insertBefore(d,bar);
+  fitTools(host);
+  d.querySelector('.edit').focus();
+  mark();
+}
+
+function addCase(btn){
+  var bar=btn.parentNode, host=bar.parentNode;
+  var n=host.querySelectorAll(':scope > .case').length+1;
+  var d=document.createElement('div');
+  d.className='case';
+  d.innerHTML=caseHTML(n);
+  host.insertBefore(d,bar);
+  fitTools(host);
+  d.querySelector('.case-title').focus();
+  mark();
+}
+
+function entryAddbar(){
+  return '<div class="addbar">'+
+    '<button class="g" onclick="addBox(this,\'reply\')">+ Reply</button>'+
+    '<button class="y" onclick="addBox(this,\'note\')">+ Internal note</button>'+
+    '<button class="b" onclick="addCase(this)">+ Case</button>'+
+    '<button class="p" onclick="addBox(this,\'ref\')">+ Reference</button>'+
+    '<button class="del" onclick="killEntry(this)">Delete question</button>'+
+  '</div>';
+}
+
+var MOVEBTNS='<button class="sum-btn" title="move question up" onclick="moveEntry(event,this,-1)">↑</button>'+
+             '<button class="sum-btn" title="move question down" onclick="moveEntry(event,this,1)">↓</button>';
+
+function addEntry(){
+  var d=document.createElement('details');
+  d.open=true;
+  d.innerHTML='<summary><span class="num">--</span>'+
+    '<span class="q-title">new question — click ✎ to rename</span>'+
+    '<button class="sum-btn" onclick="editTitle(event,this)">✎</button>'+MOVEBTNS+
+    '<span class="caret"></span></summary>'+
+    '<div class="body"><div class="box reply">'+TPL.reply+'</div>'+entryAddbar()+'</div>';
+  document.getElementById('list').appendChild(d);
+  fitTools(d);
+  renumber();
+  d.scrollIntoView({behavior:'smooth',block:'center'});
+  mark();
+}
+
+/* ---------- boot: restore, then wire up ---------- */
+function wire(){
+  document.querySelectorAll('#list details > .body').forEach(function(b){
+    if(!b.querySelector(':scope > .addbar')){
+      b.insertAdjacentHTML('beforeend',entryAddbar());
+    }
+  });
+  document.querySelectorAll('#list details > summary').forEach(function(s){
+    if(!s.querySelector('button[title^="move question"]')){
+      s.querySelector('.caret').insertAdjacentHTML('beforebegin',MOVEBTNS);
+    }
+  });
+  fitTools();
+  document.querySelectorAll('.q-title').forEach(function(t){t.setAttribute('contenteditable','false');});
+  renumber();
+}
+
+(function boot(){
+  function finish(txt){
+    wire();
+    booted=true;
+    setStatus(txt||'auto-save on',false);
+  }
+
+  fetch('/api/pitch-deck').then(function(res){
+    if(res.status===404) return null; // nothing saved yet - keep the seed content baked into this page
+    if(!res.ok) throw new Error('load failed');
+    return res.json();
+  }).then(function(data){
+    if(data) renderJSON(data);
+    finish(data ? '✓ loaded' : 'auto-save on');
+  }).catch(function(){
+    finish('⚠ could not reach server — showing last-loaded content');
+  });
+})();
+
+/* Cmd/Ctrl+S = force an immediate save */
+document.addEventListener('keydown',function(e){
+  if((e.metaKey||e.ctrlKey)&&e.key==='s'){e.preventDefault();clearTimeout(saveTimer);autosave();}
+});
+window.addEventListener('blur',function(){clearTimeout(saveTimer);autosave();});
+</script>
+</body>
+</html>

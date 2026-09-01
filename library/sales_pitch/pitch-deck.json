@@ -1,0 +1,146 @@
+{
+  "title": "Sales Pitch Deck — Q&A Script",
+  "updated": "2026-08-31",
+  "entries": [
+    {
+      "id": "00",
+      "question": "STARTER MESSAGE — new lead / first message",
+      "blocks": [
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p>Share designs and quantity for quotation</p><p>FAQ - <a href=\"https://divadaulti.com/FAQ/\">https://divadaulti.com/FAQ/</a></p><p>post you share the designs will also get on a brief call …so that all your doubts will be cleared ok</p>"
+        },
+        {
+          "type": "note",
+          "label": "Internal note",
+          "html": "<p>alag alag starter message try kare hia ….abhi tk yey sbse shi laga…detailed wala long sey log padhte nhi …yey simple sweet laga..tell the user what to do next</p>"
+        }
+      ]
+    },
+    {
+      "id": "01",
+      "question": "“I have not finalized my designs yet…” / “i don’t have designs at the moment”",
+      "blocks": [
+        {
+          "type": "case",
+          "title": "Case 1 — Indian number",
+          "blocks": [
+            {
+              "type": "reply",
+              "label": "Reply",
+              "html": "<p>reference picture also works …so that you get idea of quotation …</p>"
+            },
+            {
+              "type": "note",
+              "label": "Internal note",
+              "html": "<p>yey chutiye lund brand banayenge ..inse design select nhi hua inko design package pitch karenge to shayad ro denge..refernce picture ka quotation dekr bhagane ka</p>"
+            }
+          ]
+        },
+        {
+          "type": "case",
+          "title": "Case 2 — Foreign number",
+          "blocks": [
+            {
+              "type": "reply",
+              "label": "Reply",
+              "html": "<p>also we have a professional designing team , in case you want our designing service to help with your next collection…for an investment of 10k INR …and you get  till 10 different designs SKU designed..</p><p>Basically , they help you make tech packs , measurements, fabric suggestions , motifs suggestions, flat sketches , rough sketches, and give you researched  designs that can sell , you can also have consultation conversations like pricing of the garment to make ..what tweeks we can do to reduce the cost ….fitting issue solve and all these</p>"
+            },
+            {
+              "type": "note",
+              "label": "Internal note",
+              "html": "<p>inko apan design package pitch krenge ..yey wahi ke wahi pay kar denge ..most of the time</p>"
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "label": "Internal note — both cases",
+          "html": "<p>basically is questions ke baad customer ko hm log 2 hi option de sakte hai …either quotation or design service</p>"
+        }
+      ]
+    },
+    {
+      "id": "02",
+      "question": "“hi was looking for a manufacturer in mumbai”",
+      "blocks": [
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p>we regularly ship to our mumbai clients, takes roughly 1-2 days for delivery ….our 50 percent of domestic we di is for you mumbai and south indian clients ….so let me know any specefic reason to see locally ..as the labour charges are also high there …</p>"
+        },
+        {
+          "type": "note",
+          "label": "Internal note",
+          "html": "<p>to prevent client drop off before sharing the designs</p>"
+        }
+      ]
+    },
+    {
+      "id": "03",
+      "question": "“can i see your product catelogue ?”",
+      "blocks": [
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p>we don’t have any specific product catelogue …however if you want to see some of the works we have done in the past then ..you can refer to the catelogue in same number whatssap bio…but clients work is not there..due to confidentiality reasons ..</p>"
+        },
+        {
+          "type": "note",
+          "label": "Internal note",
+          "html": "<p>generally shop owners ask for catelogue …brand owners will not get offended …but if they persist then we can share the photos of some clients…so they can be impressed</p>"
+        }
+      ]
+    },
+    {
+      "id": "04",
+      "question": "“what is your MOQ ?”",
+      "blocks": [
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p>so we have NO MOQ ….the best sellable price we can give is for these quantity …</p>"
+        },
+        {
+          "type": "ref",
+          "label": "Reference — style bhej di hai",
+          "html": "<table><tr><th>Category</th><th>Best price quantity</th></tr><tr><td>medium easy</td><td>25 pcs</td></tr><tr><td>very simple like short kiurti</td><td>50 pcs</td></tr><tr><td>kids wear</td><td>50 pcs</td></tr></table>"
+        }
+      ]
+    },
+    {
+      "id": "05",
+      "question": "“what will be the price of lets say a dress or a coord set”",
+      "blocks": [
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p>we will require a design so that we can give you the cost …like what all detailing it has lets say</p>"
+        }
+      ]
+    },
+    {
+      "id": "06",
+      "question": "“some of the brands you have worked with”",
+      "blocks": [
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p>we have worked with 100s of brands …even currently 40+ brands works going on …and 70 percent is for europe and US ….some of the brands are breathe by riya gupta , lil den x, and more ..can’t share more due to confidentiality reason but hope you understand</p>"
+        }
+      ]
+    },
+    {
+      "id": "07",
+      "question": "“cost is way too high”",
+      "blocks": [
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p>sampling cost is high because it contains all the one time costs</p><p>sample contains :</p><ul><li>main pattern</li><li>manual one piece cutting</li><li>first time stitching and rework</li><li>designer intervention</li><li>retail fabric cost</li><li>sourcing and logistics</li></ul><p>also in some cases</p><ul><li>digital printing cost</li><li>print development cost by designer</li></ul><p>also this sample is 100 percent adjustable in 50 pieces hope you understand …</p><p>also you can directly go with production as we make a preproduction sample for free in that anyways</p>"
+        }
+      ]
+    }
+  ]
+}
