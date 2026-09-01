@@ -1,15 +1,31 @@
 {
   "title": "Sales Pitch Deck — Q&A Script",
-  "updated": "2026-08-31",
+  "updated": "2026-09-01T04:45:57.219Z",
   "entries": [
     {
       "id": "00",
+      "question": "Quotation template",
+      "blocks": [
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p>Hi! Thanks for sharing the reference 😊</p><p><br></p><p>*ENGINEERED PRINT SILK TIERED MAXI DRESS — QUOTATION*</p><p>*100% silk*</p><p><br></p><p>Since this is your first style with us, here's how the whole process runs, start to finish.</p><p><br></p><p>*STEP 1 — SAMPLING — ₹12,000 (one-time)*</p><p>- Pattern making + grading across your size range</p><p>- 100% silk sourcing, with swatches shared for your approval</p><p>- Print artwork mapped onto the graded pattern, zone by zone — bodice, sleeves and each tier laid out separately</p><p>- Print strike-off on your actual silk before any bulk printing</p><p>- Beaded trim options sourced and shared</p><p>- Tier proportions and sleeve ruffle depth set on the body</p><p>- Shirred waist and front tie finalised</p><p>- First sample + 1 correction round</p><p>- Approved tech pack + size chart handed over to you</p><p>- A dedicated designer allotted to your style right till dispatch</p><p>- One-time cost only — once this style is approved, any repeat order skips sampling entirely</p><p><br></p><p>*PRINT ARTWORK DEVELOPMENT — ₹15,000 to ₹40,000 (one-time, separate)*</p><p>This is an engineered print, not a repeat — every panel carries its own designed zone, with borders landing deliberately at the tier hems and sleeve edges. That artwork has to be built and laid out per pattern piece, per size. It's a one-time investment and the file remains yours for all future styles in this print.</p><p><br></p><p>Not applicable if you'd rather we source an existing engineered print.</p><p><br></p><p>*STEP 2 — BULK — ₹1,340 per piece (25 pieces)*</p><p>Covers placement cutting across bodice, sleeves and all tiers, V-neckline with front tie, wide flutter sleeves with fine rolled ruffle hems, shirred waist, gathered tiers, hand-applied beaded trim at the neckline and sleeves, and finishing.</p><p><br></p><p>*At actual (billed on actual consumption)*</p><p>- 100% silk, digitally printed, approx. 6.5 m per piece — ₹5,525-11,375</p><p>- Beaded trim, approx. 2 m — ₹200-600</p><p>- Elastic, metal tag, labels, thread — ₹80-150</p><p><br></p><p>*BALLPARK ALL-IN — ₹7,145 to ₹13,465 per piece*</p><p>*Estimated order value — ₹1,78,625 to ₹3,36,625 for 25 pieces*</p><p>Plus the one-time ₹12,000 sampling and the artwork development above.</p><p><br></p><p>*WHY THIS STYLE COSTS WHAT IT DOES*</p><p>Almost all of it is the silk and the print.</p><p><br></p><p>Placement cutting is wasteful by nature. Each tier has to be cut where its border sits on the cloth, so panels can't be nested freely — that pushes consumption to six and a half metres, roughly a metre more than the same dress would need in an ordinary repeat print. On silk at this quality, that extra metre is the single biggest line in the quote.</p><p><br></p><p>On the making side, the beaded trim runs along the V neckline, over both shoulders and around both sleeve edges — close to two metres per dress, hand-anchored rather than glued. The sleeve ruffles then carry fine rolled hems, which on silk is slow, careful work.</p><p><br></p><p>*WORTH KNOWING*</p><p>- *Silk cannot be unpicked.* Needle holes and pin marks are permanent, so nothing on this garment gets a second attempt. This is why the sample is signed off fully before bulk begins, and why the strike-off comes first</p><p>- *The strike-off matters more here than on any other fabric.* Fine gold scrollwork and layered florals shift noticeably between screen and silk — silk takes dye differently to every other cloth, and the colours come up richer and deeper. You approve the print on the actual silk, not on a proof</p><p>- Engineered printing carries a minimum, usually 50 to 100 metres per design. At 25 pieces you need around 165 metres, so you clear it comfortably</p><p>- Silk frays quickly, so all seams are French-seamed or clean-bound; nothing is overlocked raw</p><p>- Tiers are hung overnight before their hems are finished. On a full silk maxi the bias settles considerably, and an unhung hem sits visibly uneven once the dress relaxes</p><p>- Beads are anchored individually, never glued. On silk a glued bead line also marks the fabric permanently</p><p>- Pressing is steam only, at low heat, through a cloth — silk glazes and the mark doesn't come out</p><p><br></p><p>*TWO THINGS TO CONFIRM*</p><p>- *Artwork route* — original engineered artwork developed for you, or an existing engineered print sourced off the shelf. This is the widest variable in the whole quote</p><p>- *Quantity and size split* — quoted at 25, let us know your actual numbers. At 50 pieces the making charge comes down to around ₹1,150 and the silk rate improves meaningfully</p><p><br></p><p>*TIMELINE*</p><p>- Print artwork development — 15-20 days</p><p>- Strike-off on silk — 7-8 days</p><p>- Sample after strike-off approval — 14-16 days</p><p>- Correction round — 6-7 days</p><p>- Bulk printing — 10-12 days</p><p>- Bulk production, 25 pcs — 25-30 days from fabric in hand</p><p><br></p><p>*HOW WE WORK*</p><p>- Once confirmed, you're added to a dedicated group with our designers and production team</p><p>- Every update, image and decision happens there — you'll see the artwork and the style progress at each stage</p><p>- Silk, printing and trims are purchased only after your written approval on the options shared, with photos and videos of each</p><p><br></p><p>*TERMS*</p><p>- Sampling and artwork — 100% advance</p><p>- Bulk — 50% advance, 50% before dispatch</p><p>- Quotation valid 15 days</p><p><br></p><p>Shall I share the payment details and set up your group?</p>"
+        },
+        {
+          "type": "note",
+          "label": "Internal note",
+          "html": "<p>yey kisi bhi AI ko dedo ...wo phir time by time sahi dega...also ..bs ek baar sample price dekhlena ...kabhi kabhi zyada km ya zyada hi kar dega to sahi karne ke liye bol dega ....</p>"
+        }
+      ]
+    },
+    {
+      "id": "01",
       "question": "STARTER MESSAGE — new lead / first message",
       "blocks": [
         {
           "type": "reply",
           "label": "Reply",
-          "html": "<p>Share designs and quantity for quotation</p><p>FAQ - <a href=\"https://divadaulti.com/FAQ/\">https://divadaulti.com/FAQ/</a></p><p>post you share the designs will also get on a brief call …so that all your doubts will be cleared ok</p>"
+          "html": "<p>Share designs and quantity for quotation</p>\n        <p>FAQ - <a href=\"https://divadaulti.com/FAQ/\">https://divadaulti.com/FAQ/</a></p>\n        <p>post you share the designs will also get on a brief call …so that all your doubts will be cleared ok</p>"
         },
         {
           "type": "note",
@@ -19,7 +35,7 @@
       ]
     },
     {
-      "id": "01",
+      "id": "02",
       "question": "“I have not finalized my designs yet…” / “i don’t have designs at the moment”",
       "blocks": [
         {
@@ -45,7 +61,7 @@
             {
               "type": "reply",
               "label": "Reply",
-              "html": "<p>also we have a professional designing team , in case you want our designing service to help with your next collection…for an investment of 10k INR …and you get  till 10 different designs SKU designed..</p><p>Basically , they help you make tech packs , measurements, fabric suggestions , motifs suggestions, flat sketches , rough sketches, and give you researched  designs that can sell , you can also have consultation conversations like pricing of the garment to make ..what tweeks we can do to reduce the cost ….fitting issue solve and all these</p>"
+              "html": "<p>also we have a professional designing team , in case you want our designing service to help with your next collection…for an investment of 10k INR …and you get  till 10 different designs SKU designed..</p>\n          <p>Basically , they help you make tech packs , measurements, fabric suggestions , motifs suggestions, flat sketches , rough sketches, and give you researched  designs that can sell , you can also have consultation conversations like pricing of the garment to make ..what tweeks we can do to reduce the cost ….fitting issue solve and all these</p>"
             },
             {
               "type": "note",
@@ -62,7 +78,7 @@
       ]
     },
     {
-      "id": "02",
+      "id": "03",
       "question": "“hi was looking for a manufacturer in mumbai”",
       "blocks": [
         {
@@ -78,13 +94,56 @@
       ]
     },
     {
-      "id": "03",
+      "id": "04",
+      "question": "can i come and meet at the unit and discuss",
+      "blocks": [
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p>type reply here…</p>"
+        },
+        {
+          "type": "case",
+          "title": "foreign client hai to",
+          "blocks": [
+            {
+              "type": "reply",
+              "label": "Reply",
+              "html": "<p>yes sure , 2nd floor, D127, noida sector 7, you can visit anytime from 12 to 6 let me know when you will be comming ,<br><br>also meanwhile you can share your designs so that i can have the quotation team on it ok..</p>"
+            },
+            {
+              "type": "note",
+              "label": "Internal note",
+              "html": "<p>yey aayenge bhi to theek hai ..</p>"
+            }
+          ]
+        },
+        {
+          "type": "case",
+          "title": "Deshi hai to",
+          "blocks": [
+            {
+              "type": "reply",
+              "label": "Reply",
+              "html": "<p>Hi, sure — we do meet clients at the unit, it's usually the last step before sampling.</p><p><br></p><p>Before that, please share:</p><p>1. Reference images / designs</p><p>2. Approx quantity per design</p><p>3. Target delivery timeline</p><p><br></p><p>I'll send you the quotation within 24 hrs and clear all costing doubts here itself. Once the rates work for you, I'll share the unit address and we can fix a slot for fabric + sampling discussion.</p><p><br></p><p>This way your visit is productive and we don't spend time on designs that are out of budget.</p>"
+            },
+            {
+              "type": "note",
+              "label": "Internal note",
+              "html": "<p>yey time waste karenge unit pr aakr ....generally price sensetive hote hai inko directly aane sey pehle ek bar rate bata do ..aayenge matlab order pakka&nbsp;</p>"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "05",
       "question": "“can i see your product catelogue ?”",
       "blocks": [
         {
           "type": "reply",
           "label": "Reply",
-          "html": "<p>we don’t have any specific product catelogue …however if you want to see some of the works we have done in the past then ..you can refer to the catelogue in same number whatssap bio…but clients work is not there..due to confidentiality reasons ..</p>"
+          "html": "<p>1.<b style=\"color: rgb(0, 0, 0); font-family: &quot;Helvetica Neue&quot;; font-size: 20px;\">we are custom brand manufacturers, we are not like wholesalers who sell their designs …incase you have your designs finalised for your brand ..you can send that along with the quantity and details ..will give you quotation on that<span class=\"Apple-converted-space\">&nbsp;</span></b></p><p><br><br>2. <br>we don’t have any specific product catelogue …however if you want to see some of the works we have done in the past then ..you can refer to the catelogue in same number whatssap bio…but clients work is not there..due to confidentiality reasons ..</p>"
         },
         {
           "type": "note",
@@ -94,7 +153,7 @@
       ]
     },
     {
-      "id": "04",
+      "id": "06",
       "question": "“what is your MOQ ?”",
       "blocks": [
         {
@@ -105,12 +164,12 @@
         {
           "type": "ref",
           "label": "Reference — style bhej di hai",
-          "html": "<table><tr><th>Category</th><th>Best price quantity</th></tr><tr><td>medium easy</td><td>25 pcs</td></tr><tr><td>very simple like short kiurti</td><td>50 pcs</td></tr><tr><td>kids wear</td><td>50 pcs</td></tr></table>"
+          "html": "<table>\n          <tbody><tr><th>Category</th><th>Best price quantity</th></tr>\n          <tr><td>medium easy</td><td>25 pcs</td></tr>\n          <tr><td>very simple like short kiurti</td><td>50 pcs</td></tr>\n          <tr><td>kids wear</td><td>50 pcs</td></tr>\n        </tbody></table>"
         }
       ]
     },
     {
-      "id": "05",
+      "id": "07",
       "question": "“what will be the price of lets say a dress or a coord set”",
       "blocks": [
         {
@@ -121,7 +180,7 @@
       ]
     },
     {
-      "id": "06",
+      "id": "08",
       "question": "“some of the brands you have worked with”",
       "blocks": [
         {
@@ -132,13 +191,119 @@
       ]
     },
     {
-      "id": "07",
+      "id": "09",
       "question": "“cost is way too high”",
       "blocks": [
         {
           "type": "reply",
           "label": "Reply",
-          "html": "<p>sampling cost is high because it contains all the one time costs</p><p>sample contains :</p><ul><li>main pattern</li><li>manual one piece cutting</li><li>first time stitching and rework</li><li>designer intervention</li><li>retail fabric cost</li><li>sourcing and logistics</li></ul><p>also in some cases</p><ul><li>digital printing cost</li><li>print development cost by designer</li></ul><p>also this sample is 100 percent adjustable in 50 pieces hope you understand …</p><p>also you can directly go with production as we make a preproduction sample for free in that anyways</p>"
+          "html": "<p>sampling cost is high because it contains all the one time costs</p>\n        <p>sample contains :</p>\n        <ul>\n          <li>main pattern</li>\n          <li>manual one piece cutting</li>\n          <li>first time stitching and rework</li>\n          <li>designer intervention</li>\n          <li>retail fabric cost</li>\n          <li>sourcing and logistics</li>\n        </ul>\n        <p>also in some cases</p>\n        <ul>\n          <li>digital printing cost</li>\n          <li>print development cost by designer</li>\n        </ul>\n        <p>also this sample is 100 percent adjustable in 50 pieces hope you understand …</p>\n        <p>also you can directly go with production as we make a preproduction sample for free in that anyways</p>"
+        }
+      ]
+    },
+    {
+      "id": "10",
+      "question": "taking feedback of samples from clients",
+      "blocks": [
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\"><br>Hope the sample reached you well. Just a few things we'd like to confirm:</p><ol class=\"ol1\" style=\"color: rgb(0, 0, 0); font-size: medium;\"><li class=\"li1\" style=\"margin-top: 0px; margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;;\">How do you find the sample overall — fit, fabric and finish?</li><li class=\"li1\" style=\"margin-top: 0px; margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;;\">Are there any modifications you'd like us to make?</li><li class=\"li1\" style=\"margin-top: 0px; margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;;\">If it's approved, can we go ahead with the production order? Festive season is approaching and our slots are filling up fast, so an early confirmation will help us lock your delivery timeline.</li><li class=\"li1\" style=\"margin-top: 0px; margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;;\">In case you'd like another pre-production sample after the changes, we can make it from the bulk fabric before starting production — so the sample is fully finalised before we produce the full quantity.</li></ol><p class=\"p1\" style=\"font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\">Looking forward to your feedback.<br><br><br></p>"
+        },
+        {
+          "type": "note",
+          "label": "Internal note",
+          "html": "<p>client ka feedback important ...and also unko yey assurance dena ki aapka approval ke baad hi bulk banega ..kyuki unko confidence km rehta hai jb thore bhi modifications hote hai to&nbsp;</p>"
+        }
+      ]
+    },
+    {
+      "id": "11",
+      "question": "share payment details",
+      "blocks": [
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p>Accout details&nbsp;</p><p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\"><br>Account Holder: DIVA DAULTI</p><p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\">Account Number: 50200120226847</p><p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\">IFSC: HDFC0002649</p><p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\">Branch: SECTOR 62 - NOIDA<br>swift code: HDFCINBBXXX</p><p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\"><br>Address: 2nd floor,C34, noida sector 7, 201301<br><br><br><br></p><p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\">let me know post payment with a screenshot so that I can make a group with the designer and the manufacturing team<br></p><p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\"><br><br><br></p>"
+        },
+        {
+          "type": "note",
+          "label": "Internal note",
+          "html": "<p>foreign clients sey GST nhi lete hai...indian clients sey GST always ..5 percent ..and in currect account only ...<br>also personal account is not recommented ....<br><br><br></p>"
+        },
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\">Alternate account&nbsp;&nbsp;<br><br></p><p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\">Bank Account Number - 38610190462</p><p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\">IFSC Code - SBIN0015997</p><p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\">Account Holder Name - ARUNODAY KUMAR<br><br><br>Additional details:<br>Bank Name: State bank of India<br>swift code : SBININBBXXX</p><p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\">Branch Name: Jagdeopath<span class=\"Apple-converted-space\">&nbsp;</span></p><p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\">Address: 2nd floor,C34, noida sector 7</p><p class=\"p1\" style=\"font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; min-height: 15px; color: rgb(0, 0, 0);\"><br></p>"
+        }
+      ]
+    },
+    {
+      "id": "12",
+      "question": "Client payment followup",
+      "blocks": [
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p class=\"p1\" style=\"font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\">Hi , Are we still moving forward with this order? Let me know if you have any last-minute questions before we get started.<br></p>"
+        },
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p class=\"p1\" style=\"font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\">let me know soon ok..as we are Closing our next months production slots today — festive season has the line almost full. Let me know if you'd like one held for you.<br><br></p>"
+        },
+        {
+          "type": "note",
+          "label": "Internal note",
+          "html": "<p>client kabhi kabi payement bhool jata hai ...ya phir internally thora bothered hota hai...yey repetition thore bhot payment le aate hai ...</p>"
+        }
+      ]
+    },
+    {
+      "id": "13",
+      "question": "what are your payment policies",
+      "blocks": [
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 20px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\"><b>payment terms are policies that are fixed….</b></p><p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 20px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\"><b><span class=\"Apple-tab-span\" style=\"white-space: pre;\">\t</span>- below 20k - 100 percent advance<span class=\"Apple-converted-space\">&nbsp;</span></b></p><p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 20px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\"><b><span class=\"Apple-tab-span\" style=\"white-space: pre;\">\t</span>- above 20k<span class=\"Apple-converted-space\">&nbsp;</span></b></p><p class=\"p1\" style=\"margin-bottom: 0px; font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 20px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\"><b><span class=\"Apple-tab-span\" style=\"white-space: pre;\">\t</span><span class=\"Apple-tab-span\" style=\"white-space: pre;\">\t</span>- fabric you provide - 50 - 50</b></p><p class=\"p1\" style=\"font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 20px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\"><b><span class=\"Apple-tab-span\" style=\"white-space: pre;\">\t</span><span class=\"Apple-tab-span\" style=\"white-space: pre;\">\t</span>- fabric we source - 70-30</b></p>"
+        }
+      ]
+    },
+    {
+      "id": "14",
+      "question": "can you share me your license and gst",
+      "blocks": [
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p>sure ... you can refer this on the invoice as well...<br></p><p class=\"p1\" style=\"font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 13px; line-height: normal; font-family: &quot;Helvetica Neue&quot;; color: rgb(0, 0, 0);\"><span class=\"s1\" style=\"font-variant-numeric: normal; font-variant-east-asian: normal; font-variant-alternates: normal; font-size-adjust: none; font-language-override: normal; font-kerning: auto; font-optical-sizing: auto; font-feature-settings: normal; font-variation-settings: normal; font-variant-position: normal; font-variant-emoji: normal; font-stretch: normal; font-size: 20px; line-height: normal;\"><b>GST - </b></span><b>09GGMPK0414E1ZJ<br>IEC: GGMPK0414E<br><br><br></b></p>"
+        },
+        {
+          "type": "note",
+          "label": "Internal note",
+          "html": "<p>iska koi aacha solution maangna parega ...lately international clients are asking this...so may require proper certifications they think goona work for them ...but also jinhone maanga hai wo the chindi ya unko bs trust issues the ...improving instagram will also work in that case</p><p><br></p>"
+        }
+      ]
+    },
+    {
+      "id": "15",
+      "question": "do you have this fabric ....can you send me vedios",
+      "blocks": [
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p>we don't have any fabric stock ...we source on demand ...so we will source the exact fabric you require ..</p>"
+        },
+        {
+          "type": "reply",
+          "label": "Reply",
+          "html": "<p>we have vendors across india and have acess to all types of fabics...and also collection of thousands of prints to choose form ....and also option of custom digital printing ..but all these are only there take care of by the designer ...when we start on with the order...i may not be the correct one to provide that..</p>"
+        },
+        {
+          "type": "note",
+          "label": "Internal note",
+          "html": "<p>fabric info is also a value ...and bhot baar free mein unko fabric info mil jati hai to convert nhi hote ....value chahiye to pay kro ...</p>"
         }
       ]
     }
