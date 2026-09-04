@@ -42,6 +42,7 @@ export type Design = {
   display_order: number
   is_priority: boolean
   created_at: string
+  completed_at: string | null
   hidden_from_dashboard?: boolean
   client_name?: string
   client_display_order?: number | null
@@ -479,8 +480,8 @@ export async function completeDesign(designId: string) {
   }
   
   await pool.query(
-    `UPDATE designs 
-     SET stage_status = $1, status = 'Dispatch'
+    `UPDATE designs
+     SET stage_status = $1, status = 'Dispatch', completed_at = NOW()
      WHERE id = $2`,
     [JSON.stringify(allStages), designId]
   )
@@ -734,7 +735,7 @@ export async function restoreDesign(designId: string) {
 
   await pool.query(
     `UPDATE designs
-     SET stage_status = $1, status = 'Fabric Finalize'
+     SET stage_status = $1, status = 'Fabric Finalize', completed_at = NULL
      WHERE id = $2`,
     [JSON.stringify(vacantStageStatus), designId]
   )

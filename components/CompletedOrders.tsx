@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { getCompletedDesigns, deleteDesign, restoreDesign, type Design } from "@/lib/actions"
 import { formatDisplayDate } from "@/lib/timeline"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ChevronDown, ChevronRight, Calendar, ImageIcon, FileText, Trash2, RotateCcw } from "lucide-react"
+import { ChevronDown, ChevronRight, ImageIcon, FileText, Trash2, RotateCcw, Package, Shirt } from "lucide-react"
 import Image from "next/image"
 import { ImagePreviewDialog } from "@/components/ImagePreviewDialog"
 import {
@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/dialog"
 
 type DesignStatus = string
-type DesignType = 'Sampling' | 'Production'
 type StageState = 'vacant' | 'not-needed' | 'in-progress' | 'completed'
 
 const STAGES: DesignStatus[] = [
@@ -42,16 +41,35 @@ interface ClientGroup {
   client_id: string
   client_name: string
   designs: DesignWithClient[]
-  isExpanded: boolean
+}
+
+const ALL_TIME = "all"
+
+// Dates coming back from server actions may arrive as Date instances rather
+// than strings (Next.js preserves Date objects across the server/client
+// boundary), so always coerce before doing string/date operations.
+function toMonthKey(value: string | Date): string {
+  const d = new Date(value)
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`
+}
+
+function formatMonthLabel(monthKey: string): string {
+  const [year, month] = monthKey.split("-").map(Number)
+  return new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  })
 }
 
 export function CompletedOrders() {
-  const [clientGroups, setClientGroups] = useState<ClientGroup[]>([])
+  const [allCompleted, setAllCompleted] = useState<DesignWithClient[]>([])
   const [loading, setLoading] = useState(true)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [confirmRestore, setConfirmRestore] = useState<DesignWithClient | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<DesignWithClient | null>(null)
   const [viewingNotes, setViewingNotes] = useState<DesignWithClient | null>(null)
+  const [collapsedClients, setCollapsedClients] = useState<Set<string>>(new Set())
+  const [selectedMonth, setSelectedMonth] = useState<string>(() => toMonthKey(new Date()))
 
   useEffect(() => {
     fetchCompletedDesigns()
@@ -72,27 +90,7 @@ export function CompletedOrders() {
         client_name: design.client_name || 'Unknown Client',
       }))
 
-      // Filter only completed designs
-      const completedDesigns = designsWithClients.filter(isDesignCompleted)
-
-      // Group by client
-      const groupedByClient: Record<string, DesignWithClient[]> = {}
-      completedDesigns.forEach(design => {
-        const clientId = design.client_id || 'unknown'
-        if (!groupedByClient[clientId]) {
-          groupedByClient[clientId] = []
-        }
-        groupedByClient[clientId].push(design)
-      })
-
-      const groups: ClientGroup[] = Object.entries(groupedByClient).map(([clientId, designs]) => ({
-        client_id: clientId,
-        client_name: designs[0]?.client_name || 'Unknown Client',
-        designs: designs,
-        isExpanded: true
-      }))
-
-      setClientGroups(groups)
+      setAllCompleted(designsWithClients.filter(isDesignCompleted))
     } catch (error) {
       console.error('Error fetching completed designs:', error)
     } finally {
@@ -100,32 +98,71 @@ export function CompletedOrders() {
     }
   }
 
+  // Orders completed before completion timestamps were tracked have no
+  // completed_at, so they can't be attributed to a month.
+  const noTimestampCount = useMemo(
+    () => allCompleted.filter(d => !d.completed_at).length,
+    [allCompleted]
+  )
+
+  const monthOptions = useMemo(() => {
+    const keys = new Set<string>([toMonthKey(new Date())])
+    allCompleted.forEach(d => {
+      if (d.completed_at) keys.add(toMonthKey(d.completed_at))
+    })
+    return Array.from(keys).sort((a, b) => b.localeCompare(a))
+  }, [allCompleted])
+
+  const visibleDesigns = useMemo(() => {
+    if (selectedMonth === ALL_TIME) return allCompleted
+    return allCompleted.filter(d => d.completed_at && toMonthKey(d.completed_at) === selectedMonth)
+  }, [allCompleted, selectedMonth])
+
+  const monthStats = useMemo(() => {
+    const counted = selectedMonth === ALL_TIME
+      ? allCompleted.filter(d => d.completed_at)
+      : visibleDesigns
+    return {
+      orders: counted.length,
+      pieces: counted.reduce((sum, d) => sum + (d.quantity || 0), 0),
+    }
+  }, [allCompleted, visibleDesigns, selectedMonth])
+
+  const clientGroups: ClientGroup[] = useMemo(() => {
+    const groupedByClient: Record<string, DesignWithClient[]> = {}
+    visibleDesigns.forEach(design => {
+      const clientId = design.client_id || 'unknown'
+      if (!groupedByClient[clientId]) {
+        groupedByClient[clientId] = []
+      }
+      groupedByClient[clientId].push(design)
+    })
+
+    return Object.entries(groupedByClient).map(([clientId, designs]) => ({
+      client_id: clientId,
+      client_name: designs[0]?.client_name || 'Unknown Client',
+      designs,
+    }))
+  }, [visibleDesigns])
+
   const toggleClientExpansion = (clientId: string) => {
-    setClientGroups(prev =>
-      prev.map(group =>
-        group.client_id === clientId
-          ? { ...group, isExpanded: !group.isExpanded }
-          : group
-      )
-    )
+    setCollapsedClients(prev => {
+      const next = new Set(prev)
+      if (next.has(clientId)) {
+        next.delete(clientId)
+      } else {
+        next.add(clientId)
+      }
+      return next
+    })
   }
 
   const handleRestoreDesign = async () => {
     if (!confirmRestore) return
-    
+
     try {
       await restoreDesign(confirmRestore.id)
-
-      // Remove from completed list
-      setClientGroups(prevGroups =>
-        prevGroups
-          .map(group => ({
-            ...group,
-            designs: group.designs.filter(d => d.id !== confirmRestore.id)
-          }))
-          .filter(group => group.designs.length > 0)
-      )
-
+      setAllCompleted(prev => prev.filter(d => d.id !== confirmRestore.id))
       setConfirmRestore(null)
     } catch (error: any) {
       console.error('Error restoring design:', error)
@@ -135,20 +172,10 @@ export function CompletedOrders() {
 
   const handleDeleteDesign = async () => {
     if (!confirmDelete) return
-    
+
     try {
       await deleteDesign(confirmDelete.id)
-
-      // Remove from list
-      setClientGroups(prevGroups =>
-        prevGroups
-          .map(group => ({
-            ...group,
-            designs: group.designs.filter(d => d.id !== confirmDelete.id)
-          }))
-          .filter(group => group.designs.length > 0)
-      )
-
+      setAllCompleted(prev => prev.filter(d => d.id !== confirmDelete.id))
       setConfirmDelete(null)
     } catch (error: any) {
       console.error('Error deleting design:', error)
@@ -164,21 +191,67 @@ export function CompletedOrders() {
     )
   }
 
-  const totalCompleted = clientGroups.reduce((sum, group) => sum + group.designs.length, 0)
+  const totalVisible = clientGroups.reduce((sum, group) => sum + group.designs.length, 0)
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-white p-4 rounded-lg shadow">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Completed Orders</h2>
             <p className="text-sm text-gray-600 mt-1">
-              {totalCompleted} order{totalCompleted !== 1 ? 's' : ''} across {clientGroups.length} client{clientGroups.length !== 1 ? 's' : ''}
+              {totalVisible} order{totalVisible !== 1 ? 's' : ''} across {clientGroups.length} client{clientGroups.length !== 1 ? 's' : ''}
+              {selectedMonth !== ALL_TIME && ` in ${formatMonthLabel(selectedMonth)}`}
             </p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Month</label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            >
+              {monthOptions.map(key => (
+                <option key={key} value={key}>{formatMonthLabel(key)}</option>
+              ))}
+              <option value={ALL_TIME}>All time</option>
+            </select>
           </div>
         </div>
       </div>
+
+      {/* Monthly summary */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-white rounded-lg shadow p-4 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+            <Shirt className="h-5 w-5 text-green-700" />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-gray-900">{monthStats.orders}</div>
+            <div className="text-xs text-gray-500">
+              {selectedMonth === ALL_TIME ? 'Styles completed (all time)' : `Styles completed in ${formatMonthLabel(selectedMonth)}`}
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4 flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <Package className="h-5 w-5 text-blue-700" />
+          </div>
+          <div>
+            <div className="text-2xl font-bold text-gray-900">{monthStats.pieces}</div>
+            <div className="text-xs text-gray-500">
+              {selectedMonth === ALL_TIME ? 'Pieces completed (all time)' : `Pieces completed in ${formatMonthLabel(selectedMonth)}`}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {noTimestampCount > 0 && (
+        <p className="text-xs text-gray-500 -mt-2">
+          {noTimestampCount} older completed order{noTimestampCount !== 1 ? 's' : ''} {noTimestampCount !== 1 ? 'have' : 'has'} no recorded completion date and {noTimestampCount !== 1 ? "aren't" : "isn't"} counted in monthly totals — only visible under "All time".
+        </p>
+      )}
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow overflow-x-auto">
@@ -192,7 +265,7 @@ export function CompletedOrders() {
                 Type
               </th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50">
-                Completed Date
+                Completed
               </th>
               <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32 bg-gray-50">
                 Actions
@@ -203,21 +276,23 @@ export function CompletedOrders() {
             {clientGroups.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                  No completed orders yet.
+                  No completed orders {selectedMonth !== ALL_TIME ? `in ${formatMonthLabel(selectedMonth)}` : 'yet'}.
                 </td>
               </tr>
             ) : (
-              clientGroups.map(group => (
+              clientGroups.map(group => {
+                const isExpanded = !collapsedClients.has(group.client_id)
+                return (
                 <>
                   {/* Client Header Row */}
                   <tr key={`header-${group.client_id}`} className="bg-green-50">
                     <td className="px-6 py-4 whitespace-nowrap" colSpan={4}>
                       <div className="flex items-center gap-2">
-                        <span 
+                        <span
                           className="cursor-pointer"
                           onClick={() => toggleClientExpansion(group.client_id)}
                         >
-                          {group.isExpanded ? (
+                          {isExpanded ? (
                             <ChevronDown className="h-5 w-5 text-gray-500" />
                           ) : (
                             <ChevronRight className="h-5 w-5 text-gray-500" />
@@ -232,12 +307,12 @@ export function CompletedOrders() {
                   </tr>
 
                   {/* Product Rows */}
-                  {group.isExpanded && group.designs.map(design => (
+                  {isExpanded && group.designs.map(design => (
                     <tr key={design.id} className="bg-gray-50 opacity-75">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3 pl-7">
                           {design.images && design.images.length > 0 ? (
-                            <div 
+                            <div
                               className="relative w-12 h-12 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity rounded overflow-hidden"
                               onClick={() => setPreviewImage(design.images![0])}
                             >
@@ -253,15 +328,16 @@ export function CompletedOrders() {
                             <div className="w-12 h-12 flex-shrink-0 bg-gray-100 rounded flex items-center justify-center">
                               <ImageIcon className="h-5 w-5 text-gray-400" />
                             </div>
-                          )}  
+                          )}
                           <div className="min-w-0 flex-1">
                             <div className="text-sm font-medium text-gray-500 line-through">
                               {design.title}
                               <span className="ml-2 text-xs text-green-600 font-semibold no-underline">✓ COMPLETED</span>
                             </div>
                             <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs text-gray-400 no-underline">{design.quantity} pcs</span>
                               {design.notes && design.notes.trim() && (
-                                <button 
+                                <button
                                   onClick={() => setViewingNotes(design)}
                                   className="text-xs text-blue-500 hover:underline flex items-center gap-1"
                                 >
@@ -274,7 +350,7 @@ export function CompletedOrders() {
                         </div>
                       </td>
                       <td className="px-4 py-4 text-center">
-                        <Badge 
+                        <Badge
                           variant={design.type === 'Sampling' ? 'secondary' : 'default'}
                           className="text-xs opacity-60"
                         >
@@ -282,9 +358,15 @@ export function CompletedOrders() {
                         </Badge>
                       </td>
                       <td className="px-4 py-4 text-center">
-                        <div className="text-xs text-gray-600">
-                          {design.end_date ? formatDisplayDate(design.end_date) : 'N/A'}
-                        </div>
+                        {design.completed_at ? (
+                          <div className="text-xs text-gray-600">
+                            {formatDisplayDate(design.completed_at)}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-400" title="No completion timestamp recorded — showing the estimated delivery date instead">
+                            ~{formatDisplayDate(design.end_date)} (est.)
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-center gap-2">
@@ -311,7 +393,8 @@ export function CompletedOrders() {
                     </tr>
                   ))}
                 </>
-              ))
+                )
+              })
             )}
           </tbody>
         </table>
@@ -342,13 +425,13 @@ export function CompletedOrders() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setConfirmRestore(null)}
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleRestoreDesign}
               className="bg-blue-600 hover:bg-blue-700"
             >
@@ -368,13 +451,13 @@ export function CompletedOrders() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setConfirmDelete(null)}
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleDeleteDesign}
               variant="destructive"
             >
