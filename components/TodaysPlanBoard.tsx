@@ -10,7 +10,7 @@ import {
 import { MerchandiserTag } from "@/components/MerchandiserTag"
 import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
 import { PATTERN_MASTER, CUTTING_MASTER, KARIGAAR_NAMES } from "@/lib/employees"
-import { Scissors, Shirt, PenTool, Star, Loader2, ImageIcon, Droplet, Printer, PackageCheck, Sparkles } from "lucide-react"
+import { Scissors, Shirt, PenTool, Star, Loader2, ImageIcon, Droplet, Printer, PackageCheck, Sparkles, Layers } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -30,7 +30,7 @@ import {
 import { Button } from "@/components/ui/button"
 
 type StageState = 'vacant' | 'not-needed' | 'in-progress' | 'completed'
-type ColumnKey = 'finishing' | 'stitching' | 'cutting' | 'pattern' | 'embroidery' | 'dye' | 'print'
+type ColumnKey = 'finishing' | 'stitching' | 'cutting' | 'pattern' | 'embroidery' | 'dye' | 'print' | 'fabricFinalize'
 
 const stageState = (design: Design, stage: string): StageState =>
   (design.stage_status?.[stage] as StageState) || 'vacant'
@@ -95,7 +95,7 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     hint: 'Currently with the embroidery unit',
     icon: Sparkles,
     accent: 'border-violet-300 bg-violet-50 text-violet-800',
-    matches: (d) => isPending(stageState(d, 'Embroidery')),
+    matches: (d) => isCleared(stageState(d, 'Fabric Finalize')) && isPending(stageState(d, 'Embroidery')),
   },
   {
     key: 'dye',
@@ -104,7 +104,7 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     hint: 'Currently with the dye unit',
     icon: Droplet,
     accent: 'border-rose-300 bg-rose-50 text-rose-800',
-    matches: (d) => isPending(stageState(d, 'Dye')),
+    matches: (d) => isCleared(stageState(d, 'Fabric Finalize')) && isPending(stageState(d, 'Dye')),
   },
   {
     key: 'print',
@@ -113,7 +113,16 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     hint: 'Currently with the print unit',
     icon: Printer,
     accent: 'border-lime-300 bg-lime-50 text-lime-800',
-    matches: (d) => isPending(stageState(d, 'Print')),
+    matches: (d) => isCleared(stageState(d, 'Fabric Finalize')) && isPending(stageState(d, 'Print')),
+  },
+  {
+    key: 'fabricFinalize',
+    stage: 'Fabric Finalize',
+    title: 'Fabric to Finalize',
+    hint: 'Needed before dye, print or embroidery can start',
+    icon: Layers,
+    accent: 'border-teal-300 bg-teal-50 text-teal-800',
+    matches: (d) => isPending(stageState(d, 'Fabric Finalize')),
   },
 ]
 
