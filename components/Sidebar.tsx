@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { LayoutDashboard, Users, Package, Calendar, ClipboardList, CheckCircle2, DollarSign, PauseCircle, Activity, ListChecks, FileText, MessageCircleQuestion } from "lucide-react"
+import { LayoutDashboard, Users, Package, Calendar, ClipboardList, CheckCircle2, DollarSign, PauseCircle, Activity, ListChecks, FileText, MessageCircleQuestion, Truck } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navigation = [
@@ -10,6 +10,7 @@ const navigation = [
   { name: "Today's Plan", href: "/todays-plan", icon: ListChecks },
   { name: "Orders", href: "/orders", icon: Package },
   { name: "Timeline", href: "/timeline", icon: Calendar },
+  { name: "Dispatch Schedule", href: "/dispatch-schedule", icon: Truck },
   { name: "Finance", href: "/finance", icon: DollarSign },
   { name: "Quotation", href: "/quotation", icon: FileText },
   { name: "Sales Pitch", href: "/sales-pitch", icon: MessageCircleQuestion },

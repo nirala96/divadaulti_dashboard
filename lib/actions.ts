@@ -39,6 +39,7 @@ export type Design = {
   stage_started_at: Record<string, string>
   start_date: string | null
   end_date: string | null
+  dispatch_date: string | null
   display_order: number
   is_priority: boolean
   created_at: string
@@ -448,6 +449,14 @@ export async function updateDesignPriority(designId: string, isPriority: boolean
     [isPriority, designId]
   )
   revalidatePath('/')
+}
+
+export async function updateDesignDispatchDate(designId: string, dispatchDate: string | null) {
+  await pool.query(
+    'UPDATE designs SET dispatch_date = $1 WHERE id = $2',
+    [dispatchDate, designId]
+  )
+  revalidatePath('/dispatch-schedule')
 }
 
 export async function updateDesignCompletedQuantity(designId: string, completedQuantity: number) {

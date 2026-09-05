@@ -8,6 +8,7 @@ import {
   type Design
 } from "@/lib/actions"
 import { MerchandiserTag } from "@/components/MerchandiserTag"
+import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
 import { PATTERN_MASTER, CUTTING_MASTER, KARIGAAR_NAMES } from "@/lib/employees"
 import { Scissors, Shirt, PenTool, Star, Loader2, ImageIcon, Droplet, Printer, PackageCheck, Sparkles } from "lucide-react"
 import Image from "next/image"
@@ -135,6 +136,7 @@ export default function TodaysPlanBoard() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [stitchingPrompt, setStitchingPrompt] = useState<Design | null>(null)
   const [selectedKarigaar, setSelectedKarigaar] = useState("")
+  const [activeMerchandiserFilter, setActiveMerchandiserFilter] = useState<string | null>(null)
 
   useEffect(() => {
     getDesignsWithClients()
@@ -142,13 +144,18 @@ export default function TodaysPlanBoard() {
       .finally(() => setLoading(false))
   }, [])
 
+  const filteredDesigns = useMemo(() => {
+    if (!activeMerchandiserFilter) return designs
+    return designs.filter(d => d.client_merchandiser === activeMerchandiserFilter)
+  }, [designs, activeMerchandiserFilter])
+
   const columns = useMemo(() => {
     const result = {} as Record<ColumnKey, Design[]>
     for (const column of COLUMNS) {
-      result[column.key] = sortForColumn(designs.filter(column.matches))
+      result[column.key] = sortForColumn(filteredDesigns.filter(column.matches))
     }
     return result
-  }, [designs])
+  }, [filteredDesigns])
 
   const applyLocalStageUpdate = (designId: string, stage: string, state: StageState) => {
     setDesigns(prev =>
@@ -224,6 +231,28 @@ export default function TodaysPlanBoard() {
         <p className="text-sm text-gray-500 mt-1">
           What&apos;s ready to ship first, then what&apos;s blocking it — finishing, stitching, cutting, pattern, embroidery, dye, print.
         </p>
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap mb-5">
+        <span className="text-sm font-medium text-gray-700">Filter by Merchandiser:</span>
+        <div className="flex gap-2 flex-wrap items-center">
+          <Button
+            variant={activeMerchandiserFilter === null ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setActiveMerchandiserFilter(null)}
+          >
+            All
+          </Button>
+          {MERCHANDISER_NAMES.map(name => (
+            <button
+              key={name}
+              onClick={() => setActiveMerchandiserFilter(activeMerchandiserFilter === name ? null : name)}
+              className={activeMerchandiserFilter === name ? "ring-2 ring-offset-1 ring-gray-400 rounded-full" : ""}
+            >
+              <MerchandiserTag name={name} />
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="flex gap-5 overflow-x-auto pb-4">

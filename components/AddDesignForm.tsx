@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import Image from "next/image"
 import { getActiveClients, addClient, hideClientFromOrders, addDesign, calculateTimeline, type Client, type Design } from "@/lib/actions"
 import { formatDisplayDate } from "@/lib/timeline"
@@ -50,6 +50,7 @@ export function AddDesignForm() {
   const [showAddClient, setShowAddClient] = useState(false)
   const [newClientName, setNewClientName] = useState("")
   const [clientDropdownOpen, setClientDropdownOpen] = useState(false)
+  const [clientSearchQuery, setClientSearchQuery] = useState("")
   const [confirmHideClient, setConfirmHideClient] = useState<Client | null>(null)
   const [hidingClient, setHidingClient] = useState(false)
   const clientDropdownRef = useRef<HTMLDivElement>(null)
@@ -108,6 +109,16 @@ export function AddDesignForm() {
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [clientDropdownOpen])
+
+  useEffect(() => {
+    if (!clientDropdownOpen) setClientSearchQuery("")
+  }, [clientDropdownOpen])
+
+  const filteredClients = useMemo(() => {
+    const query = clientSearchQuery.trim().toLowerCase()
+    if (!query) return clients
+    return clients.filter((client) => client.name.toLowerCase().includes(query))
+  }, [clients, clientSearchQuery])
 
   useEffect(() => {
     if (isSampling) {
@@ -314,10 +325,27 @@ export function AddDesignForm() {
 
           {clientDropdownOpen && (
             <div className="absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md">
+              {clients.length > 0 && (
+                <div className="sticky top-0 bg-popover p-1 pb-1.5">
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Search clients..."
+                    value={clientSearchQuery}
+                    onChange={(e) => setClientSearchQuery(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              )}
               {clients.length === 0 ? (
                 <div className="px-2 py-1.5 text-sm text-muted-foreground">No clients yet</div>
+              ) : filteredClients.length === 0 ? (
+                <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                  No clients match "{clientSearchQuery}"
+                </div>
               ) : (
-                clients.map((client) => (
+                filteredClients.map((client) => (
                   <div
                     key={client.id}
                     onClick={() => {

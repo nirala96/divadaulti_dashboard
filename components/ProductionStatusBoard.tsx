@@ -61,7 +61,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ChevronDown, ChevronRight, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Pencil, Upload, Star, Link2, PauseCircle, Clock, IndianRupee, ClipboardPaste, Tag } from "lucide-react"
+import { ChevronDown, ChevronRight, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Pencil, Upload, Star, Link2, PauseCircle, Clock, IndianRupee, ClipboardPaste, Tag, GripVertical } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -71,6 +71,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+
+// Dates from server actions may arrive as Date instances rather than
+// strings, so always coerce before doing string/date operations.
+function toMonthKey(value: string | Date): string {
+  const d = new Date(value)
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`
+}
+
+function formatMonthLabel(monthKey: string): string {
+  const [year, month] = monthKey.split("-").map(Number)
+  return new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  })
+}
 
 // Image Carousel Component with Hover Cycling
 function ImageCarousel({ 
@@ -269,6 +284,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [activeFilter, setActiveFilter] = useState<DesignType | 'All'>(filter)
   const [activeStageFilter, setActiveStageFilter] = useState<DesignStatus | null>(null)
   const [activeMerchandiserFilter, setActiveMerchandiserFilter] = useState<string | null>(null)
+  const [activeMonthFilter, setActiveMonthFilter] = useState<string | null>(null)
+  const [monthOptions, setMonthOptions] = useState<string[]>([])
   const [editingMerchandiserFor, setEditingMerchandiserFor] = useState<{ id: string, name: string, merchandiser: string | null } | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [editingDesign, setEditingDesign] = useState<DesignWithClient | null>(null)
@@ -419,10 +436,22 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       client_id: design.client_id
     }))
 
+    // Months present in the current (unfiltered by type/month) data set,
+    // for the "Added in" dropdown - always reflects the full data set
+    // regardless of which month is currently selected.
+    const months = new Set<string>()
+    designsWithClients.forEach(d => { if (d.created_at) months.add(toMonthKey(d.created_at)) })
+    setMonthOptions(Array.from(months).sort((a, b) => b.localeCompare(a)))
+
     // Apply type filter
-    let filteredDesigns = activeFilter === 'All' 
+    let filteredDesigns = activeFilter === 'All'
       ? designsWithClients
       : designsWithClients.filter(d => d.type === activeFilter)
+
+    // Apply "added in" month filter
+    if (activeMonthFilter) {
+      filteredDesigns = filteredDesigns.filter(d => d.created_at && toMonthKey(d.created_at) === activeMonthFilter)
+    }
 
     // Apply stage filter (show only designs where stage is vacant or in-progress)
     if (activeStageFilter) {
@@ -530,7 +559,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     }
 
     setClientGroups(groups)
-  }, [activeFilter, activeStageFilter, isDesignCompleted])
+  }, [activeFilter, activeMonthFilter, activeStageFilter, isDesignCompleted])
 
   const fetchDesigns = useCallback(async () => {
     setLoading(true)
@@ -557,9 +586,9 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   }, [processDesigns, activeFilter])
 
   useEffect(() => {
-    console.log('🔄 Fetching designs for filter:', activeFilter, activeStageFilter)
+    console.log('🔄 Fetching designs for filter:', activeFilter, activeStageFilter, activeMonthFilter)
     fetchDesigns()
-  }, [activeFilter, activeStageFilter, fetchDesigns])
+  }, [activeFilter, activeStageFilter, activeMonthFilter, fetchDesigns])
 
   // Let users paste a screenshot/copied image (Ctrl+V) directly into
   // whichever image dialog is currently open, instead of only being able to
@@ -1106,7 +1135,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
 
   const handleClientDrop = async (e: React.DragEvent, targetClientId: string) => {
     e.preventDefault()
-    
+    await performClientReorder(targetClientId)
+  }
+
+  const performClientReorder = async (targetClientId: string) => {
     if (!draggedClientId || draggedClientId === targetClientId) {
       setDraggedClientId(null)
       setDragOverClientId(null)
@@ -1186,7 +1218,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const handleDesignDrop = async (e: React.DragEvent, targetDesignId: string, clientId: string) => {
     e.preventDefault()
     e.stopPropagation()
-    
+    await performDesignReorder(targetDesignId)
+  }
+
+  const performDesignReorder = async (targetDesignId: string) => {
     if (!draggedDesignId || draggedDesignId === targetDesignId) {
       setDraggedDesignId(null)
       setDragOverDesignId(null)
@@ -1275,6 +1310,61 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     setDragOverDesignId(null)
   }
 
+  // Native HTML5 drag-and-drop (draggable/onDragStart/onDragOver/onDrop) only
+  // fires for mouse input - touch never triggers it. This factory drives the
+  // same reorder state/logic from touch events on a dedicated grip handle
+  // instead, so mobile users can reorder too. The handle carries
+  // touchAction: 'none' so the browser never treats the gesture as a page
+  // scroll, which means preventDefault() in onTouchMove is not fighting a
+  // passive listener.
+  function createTouchDragHandlers(options: {
+    onStart: (id: string) => void
+    onOver: (id: string) => void
+    onDrop: (id: string) => void
+    onEnd: () => void
+  }) {
+    const getRowId = (el: Element | null): string | null =>
+      el?.closest<HTMLElement>('[data-drag-id]')?.dataset.dragId ?? null
+
+    const onTouchStart = (e: React.TouchEvent, id: string) => {
+      options.onStart(id)
+    }
+
+    const onTouchMove = (e: React.TouchEvent) => {
+      e.preventDefault()
+      const touch = e.touches[0]
+      const id = getRowId(document.elementFromPoint(touch.clientX, touch.clientY))
+      if (id) options.onOver(id)
+    }
+
+    const onTouchEnd = (e: React.TouchEvent) => {
+      const touch = e.changedTouches[0]
+      const id = touch ? getRowId(document.elementFromPoint(touch.clientX, touch.clientY)) : null
+      if (id) options.onDrop(id)
+      options.onEnd()
+    }
+
+    const onTouchCancel = () => {
+      options.onEnd()
+    }
+
+    return { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel }
+  }
+
+  const clientTouchDragHandlers = createTouchDragHandlers({
+    onStart: handleClientDragStart,
+    onOver: setDragOverClientId,
+    onDrop: performClientReorder,
+    onEnd: handleClientDragEnd,
+  })
+
+  const designTouchDragHandlers = createTouchDragHandlers({
+    onStart: handleDesignDragStart,
+    onOver: setDragOverDesignId,
+    onDrop: performDesignReorder,
+    onEnd: handleDesignDragEnd,
+  })
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -1356,7 +1446,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
 
         {/* Type Filter */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <span className="text-sm font-medium text-gray-700">Filter by Type:</span>
             <div className="flex gap-2">
             <Button
@@ -1380,6 +1470,19 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
             >
               Production Only
             </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Added in:</span>
+              <select
+                value={activeMonthFilter ?? 'All'}
+                onChange={(e) => setActiveMonthFilter(e.target.value === 'All' ? null : e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+              >
+                <option value="All">All time</option>
+                {monthOptions.map(key => (
+                  <option key={key} value={key}>{formatMonthLabel(key)}</option>
+                ))}
+              </select>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -1451,7 +1554,9 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                 <tr>
                   <td colSpan={STAGES.length + 2} className="px-6 py-12 text-center text-gray-500">
                     {clientGroups.length === 0
-                      ? "No designs found. Add a client and create your first design order!"
+                      ? activeMonthFilter
+                        ? `No orders added in ${formatMonthLabel(activeMonthFilter)}.`
+                        : "No designs found. Add a client and create your first design order!"
                       : `No clients tagged to "${activeMerchandiserFilter}".`}
                   </td>
                 </tr>
@@ -1487,6 +1592,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     dragOverDesignId={dragOverDesignId}
                     onCopyTrackingLink={handleOpenTracking}
                     onHideCompletedThumbnail={handleHideCompletedThumbnail}
+                    clientTouchDragHandlers={clientTouchDragHandlers}
+                    designTouchDragHandlers={designTouchDragHandlers}
                   />
                 ))
               )}
@@ -1985,6 +2092,13 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   )
 }
 
+interface TouchDragHandlers {
+  onTouchStart: (e: React.TouchEvent, id: string) => void
+  onTouchMove: (e: React.TouchEvent) => void
+  onTouchEnd: (e: React.TouchEvent) => void
+  onTouchCancel: () => void
+}
+
 interface ClientGroupRowProps {
   group: ClientGroup
   onToggle: () => void
@@ -2013,6 +2127,8 @@ interface ClientGroupRowProps {
   draggedDesignId: string | null
   dragOverDesignId: string | null
   onCopyTrackingLink: (clientId: string) => void
+  clientTouchDragHandlers: TouchDragHandlers
+  designTouchDragHandlers: TouchDragHandlers
   onHideCompletedThumbnail: (clientId: string, designId: string) => void
 }
 
@@ -2044,14 +2160,17 @@ function ClientGroupRow({
   dragOverClientId,
   draggedDesignId,
   dragOverDesignId,
-  onCopyTrackingLink
+  onCopyTrackingLink,
+  clientTouchDragHandlers,
+  designTouchDragHandlers
 }: ClientGroupRowProps) {
   const isDraggingClient = draggedClientId === group.client_id
   const isOverClient = dragOverClientId === group.client_id
   return (
     <>
       {/* Client Header Row */}
-      <tr 
+      <tr
+        data-drag-id={group.client_id}
         className={`bg-gray-100 hover:bg-gray-200 cursor-move transition-all ${
           isDraggingClient ? 'opacity-50' : ''
         } ${isOverClient ? 'border-t-4 border-t-blue-500' : ''}`}
@@ -2063,7 +2182,18 @@ function ClientGroupRow({
       >
         <td className="px-6 py-4 whitespace-nowrap">
           <div className="flex items-center gap-2">
-            <span 
+            <span
+              className="cursor-grab text-gray-400 touch-none"
+              style={{ touchAction: 'none' }}
+              title="Drag to reorder"
+              onTouchStart={(e) => clientTouchDragHandlers.onTouchStart(e, group.client_id)}
+              onTouchMove={clientTouchDragHandlers.onTouchMove}
+              onTouchEnd={clientTouchDragHandlers.onTouchEnd}
+              onTouchCancel={clientTouchDragHandlers.onTouchCancel}
+            >
+              <GripVertical className="h-4 w-4" />
+            </span>
+            <span
               className="cursor-pointer"
               onClick={onToggle}
             >
@@ -2195,8 +2325,9 @@ function ClientGroupRow({
         const isDraggingDesign = draggedDesignId === design.id
         const isOverDesign = dragOverDesignId === design.id
         return (
-          <tr 
-            key={design.id} 
+          <tr
+            key={design.id}
+            data-drag-id={design.id}
             className={`transition-all hover:bg-gray-50 border-l-4 cursor-move ${
               overdueStatus 
                 ? 'border-l-red-500 bg-red-50' 
@@ -2219,6 +2350,17 @@ function ClientGroupRow({
           >
             <td className="px-6 py-4">
               <div className="flex items-center gap-3 pl-7">
+                <span
+                  className="cursor-grab text-gray-400 touch-none flex-shrink-0"
+                  style={{ touchAction: 'none' }}
+                  title="Drag to reorder"
+                  onTouchStart={(e) => designTouchDragHandlers.onTouchStart(e, design.id)}
+                  onTouchMove={designTouchDragHandlers.onTouchMove}
+                  onTouchEnd={designTouchDragHandlers.onTouchEnd}
+                  onTouchCancel={designTouchDragHandlers.onTouchCancel}
+                >
+                  <GripVertical className="h-4 w-4" />
+                </span>
                 {/* Image Thumbnail */}
                 <div className="flex items-center gap-1">
                   {design.images && design.images.length > 0 ? (
