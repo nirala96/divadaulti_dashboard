@@ -64,6 +64,8 @@ export type StageWorkLog = {
   created_at: string | Date
   design_title?: string
   client_name?: string
+  design_type?: 'Sampling' | 'Production' | null
+  design_quantity?: number | null
 }
 
 export type WorkPoint = {
@@ -391,7 +393,9 @@ export async function getStageWorkLogs(): Promise<StageWorkLog[]> {
       l.duration_seconds,
       l.created_at,
       COALESCE(l.design_title, d.title) AS design_title,
-      COALESCE(l.client_name, c.name) AS client_name
+      COALESCE(l.client_name, c.name) AS client_name,
+      d.type AS design_type,
+      d.quantity AS design_quantity
     FROM stage_work_logs l
     LEFT JOIN designs d ON l.design_id = d.id
     LEFT JOIN clients c ON d.client_id = c.id
@@ -765,6 +769,87 @@ export async function updateDesignDates(designId: string, startDate: string, end
 export async function getWorkforceSettings() {
   const result = await pool.query('SELECT * FROM workforce_settings LIMIT 1')
   return result.rows[0] || { daily_unit_capacity: 10 }
+}
+
+// Capacity Settings (per-department, powers the Timeline scheduler)
+export type CapacitySettings = {
+  pattern_per_day: number
+  cutting_sample_per_day: number
+  cutting_production_per_day: number
+  stitching_sample_per_day: number
+  stitching_production_per_day: number
+  embroidery_sampling_per_day: number
+  fabric_finalize_days: number
+  dye_days: number
+  embroidery_production_days: number
+  print_days: number
+}
+
+const DEFAULT_CAPACITY_SETTINGS: CapacitySettings = {
+  pattern_per_day: 2,
+  cutting_sample_per_day: 12.5,
+  cutting_production_per_day: 75,
+  stitching_sample_per_day: 12.5,
+  stitching_production_per_day: 24,
+  embroidery_sampling_per_day: 2,
+  fabric_finalize_days: 2.5,
+  dye_days: 3,
+  embroidery_production_days: 7,
+  print_days: 18,
+}
+
+export async function getCapacitySettings(): Promise<CapacitySettings> {
+  const result = await pool.query(`
+    SELECT
+      pattern_per_day, cutting_sample_per_day, cutting_production_per_day,
+      stitching_sample_per_day, stitching_production_per_day,
+      embroidery_sampling_per_day, fabric_finalize_days, dye_days,
+      embroidery_production_days, print_days
+    FROM workforce_settings LIMIT 1
+  `)
+  const row = result.rows[0]
+  if (!row) return DEFAULT_CAPACITY_SETTINGS
+  return {
+    pattern_per_day: Number(row.pattern_per_day),
+    cutting_sample_per_day: Number(row.cutting_sample_per_day),
+    cutting_production_per_day: Number(row.cutting_production_per_day),
+    stitching_sample_per_day: Number(row.stitching_sample_per_day),
+    stitching_production_per_day: Number(row.stitching_production_per_day),
+    embroidery_sampling_per_day: Number(row.embroidery_sampling_per_day),
+    fabric_finalize_days: Number(row.fabric_finalize_days),
+    dye_days: Number(row.dye_days),
+    embroidery_production_days: Number(row.embroidery_production_days),
+    print_days: Number(row.print_days),
+  }
+}
+
+export async function updateCapacitySettings(data: CapacitySettings) {
+  await pool.query(
+    `UPDATE workforce_settings SET
+      pattern_per_day = $1,
+      cutting_sample_per_day = $2,
+      cutting_production_per_day = $3,
+      stitching_sample_per_day = $4,
+      stitching_production_per_day = $5,
+      embroidery_sampling_per_day = $6,
+      fabric_finalize_days = $7,
+      dye_days = $8,
+      embroidery_production_days = $9,
+      print_days = $10`,
+    [
+      data.pattern_per_day,
+      data.cutting_sample_per_day,
+      data.cutting_production_per_day,
+      data.stitching_sample_per_day,
+      data.stitching_production_per_day,
+      data.embroidery_sampling_per_day,
+      data.fabric_finalize_days,
+      data.dye_days,
+      data.embroidery_production_days,
+      data.print_days,
+    ]
+  )
+  revalidatePath('/timeline')
 }
 
 export async function getDesignCount(): Promise<number> {
