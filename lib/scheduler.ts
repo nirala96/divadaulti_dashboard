@@ -20,12 +20,21 @@ const stageState = (design: Design, stage: string): StageState =>
 const isCleared = (state: StageState) => state === 'completed' || state === 'not-needed'
 const isPending = (state: StageState) => state === 'vacant' || state === 'in-progress'
 
-function toDateOnly(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate())
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+
+// All calendar-day math below happens in this shifted-UTC space: given any
+// instant, this returns the UTC-midnight timestamp of that instant's IST
+// calendar day. Reading UTC accessors (getUTCDay, etc.) on the result then
+// reflects the correct IST weekday/date regardless of the server or
+// viewer's own timezone - this is an India-based business, so "today" and
+// "Sunday" need to mean the IST calendar day, not wherever the code runs.
+export function toISTDateOnly(d: Date): Date {
+  const shifted = new Date(d.getTime() + IST_OFFSET_MS)
+  return new Date(Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate()))
 }
 function addDays(d: Date, days: number): Date {
   const r = new Date(d)
-  r.setDate(r.getDate() + days)
+  r.setUTCDate(r.getUTCDate() + days)
   return r
 }
 function dateKey(d: Date): string {
@@ -43,7 +52,7 @@ function priorityComparator(a: Design, b: Design): number {
 
 // Sunday counts as a 50% capacity day (alternate Sundays are usually off).
 export function getDailyCapacity(base: number, date: Date): number {
-  return date.getDay() === 0 ? base * 0.5 : base
+  return date.getUTCDay() === 0 ? base * 0.5 : base
 }
 
 export type DepartmentKey =
@@ -110,7 +119,7 @@ function turnaroundCompletionDate(
   const state = stageState(design, stage)
   const startedAt = design.stage_started_at?.[stage]
   const start =
-    state === 'in-progress' && startedAt ? toDateOnly(new Date(startedAt)) : earliestStart
+    state === 'in-progress' && startedAt ? toISTDateOnly(new Date(startedAt)) : earliestStart
   const completion = addDays(start, Math.max(0, Math.ceil(durationDays) - 1))
   return completion < today ? today : completion
 }
@@ -122,7 +131,7 @@ export function runScheduler(
   settings: CapacitySettings,
   today: Date = new Date()
 ): SchedulerResult {
-  const day0 = toDateOnly(today)
+  const day0 = toISTDateOnly(today)
 
   // 1. Turnaround departments: Fabric Finalize has no prerequisite; Dye,
   // Print and Embroidery-Production all key off Fabric Finalize clearing.
@@ -316,15 +325,24 @@ export function runScheduler(
     embSamplingDoneToday.push(embDone)
 
     if (dayIndex < FORECAST_DAYS) {
+      const onThisDay = (map: Map<string, Date | null>): CompletingItem[] =>
+        designs
+          .filter(d => map.get(d.id) && dateKey(map.get(d.id)!) === dateKey(date))
+          .map(d => ({ design: d }))
+
       forecast.push({
         date: dateKey(date),
-        isSunday: date.getDay() === 0,
+        isSunday: date.getUTCDay() === 0,
         completions: {
           pattern: patternDone,
           cutting: cuttingDone,
           stitchingSample: stitchSampleDone,
           stitchingProduction: stitchProdDone,
           embroiderySampling: embDone,
+          fabricFinalize: onThisDay(fabricDate),
+          dye: onThisDay(dyeDate),
+          print: onThisDay(printDate),
+          embroideryProduction: onThisDay(embroideryProdDate),
         },
       })
     }

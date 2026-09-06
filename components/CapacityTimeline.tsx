@@ -10,13 +10,54 @@ import {
   type CapacitySettings,
   type StageWorkLog,
 } from "@/lib/actions"
-import { runScheduler, getDailyCapacity, type Department, type DepartmentKey } from "@/lib/scheduler"
+import {
+  runScheduler,
+  getDailyCapacity,
+  toISTDateOnly,
+  type Department,
+  type DepartmentKey,
+  type CompletingItem,
+} from "@/lib/scheduler"
 import { Button } from "@/components/ui/button"
-import { AlertTriangle, Info } from "lucide-react"
+import { AlertTriangle, Info, ImageIcon } from "lucide-react"
+import Image from "next/image"
 
 interface DesignWithClient extends Design {
   client_name: string
   client_id: string
+}
+
+function MiniThumb({ design }: { design: Design }) {
+  const url = design.images?.[0]
+  if (url) {
+    return (
+      <div className="relative w-6 h-6 flex-shrink-0 rounded overflow-hidden bg-gray-100">
+        <Image src={url} alt={design.title} fill className="object-cover" sizes="24px" unoptimized />
+      </div>
+    )
+  }
+  return (
+    <div className="w-6 h-6 flex-shrink-0 rounded bg-gray-100 flex items-center justify-center">
+      <ImageIcon className="h-3 w-3 text-gray-400" />
+    </div>
+  )
+}
+
+function CompletingList({ items, max = 8 }: { items: CompletingItem[]; max?: number }) {
+  if (items.length === 0) return null
+  return (
+    <ul className="space-y-1 max-h-28 overflow-y-auto">
+      {items.slice(0, max).map(item => (
+        <li key={item.design.id} className="flex items-center gap-2 text-xs text-gray-700">
+          <MiniThumb design={item.design} />
+          <span className="truncate">
+            {(item.design as DesignWithClient).client_name} — {item.design.title}
+          </span>
+        </li>
+      ))}
+      {items.length > max && <li className="text-xs text-gray-400 pl-8">+{items.length - max} more</li>}
+    </ul>
+  )
 }
 
 const SETTINGS_FIELDS: { key: keyof CapacitySettings; label: string; unit: string }[] = [
@@ -32,17 +73,43 @@ const SETTINGS_FIELDS: { key: keyof CapacitySettings; label: string; unit: strin
   { key: "print_days", label: "Print", unit: "days turnaround" },
 ]
 
+// IST-anchored, same convention as lib/scheduler.ts - this is an India-based
+// business, so "today" and daily buckets need to mean the IST calendar day
+// regardless of the viewer's own timezone.
 function toDateOnly(value: string | Date): string {
-  return new Date(value).toISOString().split("T")[0]
+  return toISTDateOnly(new Date(value)).toISOString().split("T")[0]
 }
 
 function formatShortDate(dateStr: string): string {
-  return new Date(dateStr + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })
+  return new Date(dateStr + "T00:00:00Z").toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" })
+}
+
+function dayLabel(dateStr: string, index: number): string {
+  if (index === 0) return `Today — ${formatShortDate(dateStr)}`
+  if (index === 1) return `Tomorrow — ${formatShortDate(dateStr)}`
+  return new Date(dateStr + "T00:00:00Z").toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  })
 }
 
 function round1(n: number): number {
   return Math.round(n * 10) / 10
 }
+
+const ALL_DEPARTMENT_ORDER: DepartmentKey[] = [
+  "pattern",
+  "cutting",
+  "stitchingSample",
+  "stitchingProduction",
+  "embroiderySampling",
+  "fabricFinalize",
+  "dye",
+  "print",
+  "embroideryProduction",
+]
 
 export function CapacityTimeline() {
   const [designs, setDesigns] = useState<DesignWithClient[]>([])
@@ -83,11 +150,11 @@ export function CapacityTimeline() {
 
   const efficiency = useMemo(() => {
     if (!settings) return null
-    const today = new Date()
+    const todayIST = toISTDateOnly(new Date())
     const days: Date[] = []
     for (let i = 1; i <= 7; i++) {
-      const d = new Date(today)
-      d.setDate(d.getDate() - i)
+      const d = new Date(todayIST)
+      d.setUTCDate(d.getUTCDate() - i)
       days.push(d)
     }
     const dayKeys = new Set(days.map(toDateOnly))
@@ -211,6 +278,48 @@ export function CapacityTimeline() {
         )}
       </div>
 
+      {/* This week's plan - the main "what happens when" view */}
+      <div>
+        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
+          This week's plan — what happens in each department, day by day
+        </h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {forecast.slice(0, 7).map((day, index) => {
+            const activeDepts = ALL_DEPARTMENT_ORDER.map(key => ({
+              key,
+              dept: departments.find(d => d.key === key)!,
+              items: day.completions[key] || [],
+            })).filter(d => d.items.length > 0)
+
+            return (
+              <div
+                key={day.date}
+                className={`bg-white rounded-lg shadow p-4 ${day.isSunday ? "border-l-4 border-amber-300" : ""}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-bold text-gray-900">{dayLabel(day.date, index)}</div>
+                  {day.isSunday && <span className="text-xs text-amber-600">Sunday, 50% capacity</span>}
+                </div>
+                {activeDepts.length === 0 ? (
+                  <p className="text-xs text-gray-400 mt-2">Nothing scheduled to finish this day yet.</p>
+                ) : (
+                  <div className="mt-3 space-y-3">
+                    {activeDepts.map(({ key, dept, items }) => (
+                      <div key={key}>
+                        <div className="text-xs font-medium text-gray-600 mb-1">
+                          {dept.label} ({items.length})
+                        </div>
+                        <CompletingList items={items} max={5} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
       {/* Queued departments - backlog */}
       <div>
         <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
@@ -238,16 +347,7 @@ export function CapacityTimeline() {
                 {dept.completingToday.length === 0 ? (
                   <div className="text-xs text-gray-400">Nothing scheduled to finish today</div>
                 ) : (
-                  <ul className="text-xs text-gray-700 space-y-0.5 max-h-24 overflow-y-auto">
-                    {dept.completingToday.slice(0, 8).map(item => (
-                      <li key={item.design.id} className="truncate">
-                        {(item.design as DesignWithClient).client_name} — {item.design.title}
-                      </li>
-                    ))}
-                    {dept.completingToday.length > 8 && (
-                      <li className="text-gray-400">+{dept.completingToday.length - 8} more</li>
-                    )}
-                  </ul>
+                  <CompletingList items={dept.completingToday} />
                 )}
               </div>
             </div>
@@ -275,13 +375,7 @@ export function CapacityTimeline() {
                 {dept.completingToday.length === 0 ? (
                   <div className="text-xs text-gray-400">None expected today</div>
                 ) : (
-                  <ul className="text-xs text-gray-700 space-y-0.5 max-h-20 overflow-y-auto">
-                    {dept.completingToday.slice(0, 6).map(item => (
-                      <li key={item.design.id} className="truncate">
-                        {(item.design as DesignWithClient).client_name} — {item.design.title}
-                      </li>
-                    ))}
-                  </ul>
+                  <CompletingList items={dept.completingToday} max={6} />
                 )}
               </div>
             </div>
@@ -324,7 +418,9 @@ export function CapacityTimeline() {
 
       {/* Forecast */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Next 14 days</h3>
+        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
+          14-day outlook — quick glance (counts only)
+        </h3>
         <div className="bg-white rounded-lg shadow overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
