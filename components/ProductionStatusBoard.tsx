@@ -10,6 +10,7 @@ import {
   updateDesignStatus,
   updateDesignPriority,
   updateDesignCompletedQuantity,
+  updateDesignDispatchDate,
   updateDesignNotes,
   updateDesignPrice,
   updateDesignDetails,
@@ -28,6 +29,8 @@ import { ImagePreviewDialog } from "@/components/ImagePreviewDialog"
 import { MerchandiserTag } from "@/components/MerchandiserTag"
 import { EditMerchandiserDialog } from "@/components/EditMerchandiserDialog"
 import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
+import { formatDisplayDate } from "@/lib/timeline"
+import { toISTDateOnly } from "@/lib/scheduler"
 
 type DesignStatus = string
 type DesignType = 'Sampling' | 'Production'
@@ -61,7 +64,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ChevronDown, ChevronRight, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Pencil, Upload, Star, Link2, PauseCircle, Clock, IndianRupee, ClipboardPaste, Tag, GripVertical } from "lucide-react"
+import { ChevronDown, ChevronRight, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Pencil, Upload, Star, Link2, PauseCircle, Clock, IndianRupee, ClipboardPaste, Tag, GripVertical, Calendar } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -295,6 +298,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [typeValue, setTypeValue] = useState<DesignType>("Sampling")
   const [quantityValue, setQuantityValue] = useState(1)
   const [completedQtyValue, setCompletedQtyValue] = useState(0)
+  const [dispatchDateValue, setDispatchDateValue] = useState("")
   const [savingNotes, setSavingNotes] = useState(false)
   const [confirmComplete, setConfirmComplete] = useState<DesignWithClient | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<DesignWithClient | null>(null)
@@ -758,6 +762,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     setTypeValue(design.type)
     setQuantityValue(design.quantity)
     setCompletedQtyValue(design.completed_quantity || 0)
+    setDispatchDateValue(design.dispatch_date ? design.dispatch_date.split("T")[0] : "")
     setEditImageFiles([])
     setEditImagePreviews([])
   }
@@ -770,6 +775,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     setTypeValue("Sampling")
     setQuantityValue(1)
     setCompletedQtyValue(0)
+    setDispatchDateValue("")
     setEditImageFiles([])
     setEditImagePreviews([])
   }
@@ -821,6 +827,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       const trimmedTitle = titleValue.trim()
       const newQuantity = typeValue === 'Sampling' ? 1 : quantityValue
       const newCompletedQty = Math.max(0, Math.min(completedQtyValue, newQuantity))
+      const newDispatchDate = dispatchDateValue || null
 
       updateLocalDesignState(editingDesign.id, design => ({
         ...design,
@@ -830,7 +837,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         title: trimmedTitle,
         type: typeValue,
         quantity: newQuantity,
-        completed_quantity: newCompletedQty
+        completed_quantity: newCompletedQty,
+        dispatch_date: newDispatchDate
       }))
 
       await updateDesignNotes(editingDesign.id, notesValue, allImages)
@@ -850,6 +858,9 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       }
       if (newCompletedQty !== (editingDesign.completed_quantity || 0)) {
         await updateDesignCompletedQuantity(editingDesign.id, newCompletedQty)
+      }
+      if (newDispatchDate !== (editingDesign.dispatch_date || null)) {
+        await updateDesignDispatchDate(editingDesign.id, newDispatchDate)
       }
 
       closeNotesModal()
@@ -957,6 +968,25 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const isOverdue = (design: DesignWithClient): boolean => {
     const daysSinceStart = calculateDaysSinceStart(design.start_date)
     return daysSinceStart > 10
+  }
+
+  // Dispatch-date urgency: yellow ~2 days out, red at 1 day out or overdue.
+  // Signed days until the dispatch date (negative = overdue), anchored to
+  // IST regardless of the viewer's own timezone - same convention as the
+  // Timeline scheduler.
+  const getDispatchDaysRemaining = (dispatchDate: string | null | undefined): number | null => {
+    if (!dispatchDate) return null
+    const todayIST = toISTDateOnly(new Date())
+    const target = toISTDateOnly(new Date(dispatchDate))
+    return Math.round((target.getTime() - todayIST.getTime()) / (1000 * 60 * 60 * 24))
+  }
+
+  const getDispatchUrgency = (dispatchDate: string | null | undefined): 'none' | 'normal' | 'warning' | 'critical' => {
+    const days = getDispatchDaysRemaining(dispatchDate)
+    if (days === null) return 'none'
+    if (days <= 1) return 'critical'
+    if (days <= 2) return 'warning'
+    return 'normal'
   }
 
   const openAddDesignDialog = (clientId: string, clientName: string) => {
@@ -1578,6 +1608,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     onHoldClient={handleHoldClient}
                     onEditMerchandiser={(id, name, merchandiser) => setEditingMerchandiserFor({ id, name, merchandiser })}
                     isOverdue={isOverdue}
+                    getDispatchUrgency={getDispatchUrgency}
+                    getDispatchDaysRemaining={getDispatchDaysRemaining}
                     onClientDragStart={handleClientDragStart}
                     onClientDragOver={handleClientDragOver}
                     onClientDrop={handleClientDrop}
@@ -1703,6 +1735,19 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                 value={priceValue}
                 onChange={(e) => setPriceValue(e.target.value)}
               />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="dispatch-date-editor">Dispatch Date</Label>
+              <Input
+                id="dispatch-date-editor"
+                type="date"
+                value={dispatchDateValue}
+                onChange={(e) => setDispatchDateValue(e.target.value)}
+              />
+              <p className="text-xs text-gray-400">
+                The date this order should ship from our end. Tiles turn yellow ~2 days out, red at 1 day out or overdue.
+              </p>
             </div>
 
             <div className="grid gap-2">
@@ -2114,6 +2159,8 @@ interface ClientGroupRowProps {
   onHoldClient: (clientId: string, clientName: string) => void
   onEditMerchandiser: (clientId: string, clientName: string, merchandiser: string | null) => void
   isOverdue: (design: DesignWithClient) => boolean
+  getDispatchUrgency: (dispatchDate: string | null | undefined) => 'none' | 'normal' | 'warning' | 'critical'
+  getDispatchDaysRemaining: (dispatchDate: string | null | undefined) => number | null
   onClientDragStart: (clientId: string) => void
   onClientDragOver: (e: React.DragEvent, clientId: string) => void
   onClientDrop: (e: React.DragEvent, clientId: string) => void
@@ -2148,6 +2195,8 @@ function ClientGroupRow({
   onEditMerchandiser,
   onHideCompletedThumbnail,
   isOverdue,
+  getDispatchUrgency,
+  getDispatchDaysRemaining,
   onClientDragStart,
   onClientDragOver,
   onClientDrop,
@@ -2166,12 +2215,34 @@ function ClientGroupRow({
 }: ClientGroupRowProps) {
   const isDraggingClient = draggedClientId === group.client_id
   const isOverClient = dragOverClientId === group.client_id
+
+  // Soonest dispatch deadline among this client's designs - the tile and
+  // the countdown badge both reflect whichever order needs attention first.
+  const dispatchDaysList = group.designs
+    .map(d => getDispatchDaysRemaining(d.dispatch_date))
+    .filter((d): d is number => d !== null)
+  const soonestDispatchDays = dispatchDaysList.length > 0 ? Math.min(...dispatchDaysList) : null
+  const clientDispatchUrgency: 'none' | 'normal' | 'warning' | 'critical' =
+    soonestDispatchDays === null ? 'none' : soonestDispatchDays <= 1 ? 'critical' : soonestDispatchDays <= 2 ? 'warning' : 'normal'
+  const clientDispatchClass =
+    clientDispatchUrgency === 'critical'
+      ? 'bg-red-100 hover:bg-red-200'
+      : clientDispatchUrgency === 'warning'
+      ? 'bg-yellow-100 hover:bg-yellow-200'
+      : 'bg-gray-100 hover:bg-gray-200'
+
+  const dispatchCountdownLabel = (days: number): string => {
+    if (days < 0) return `Overdue ${Math.abs(days)}d`
+    if (days === 0) return 'Due today'
+    return `${days}d left`
+  }
+
   return (
     <>
       {/* Client Header Row */}
       <tr
         data-drag-id={group.client_id}
-        className={`bg-gray-100 hover:bg-gray-200 cursor-move transition-all ${
+        className={`${clientDispatchClass} cursor-move transition-all ${
           isDraggingClient ? 'opacity-50' : ''
         } ${isOverClient ? 'border-t-4 border-t-blue-500' : ''}`}
         draggable
@@ -2206,6 +2277,21 @@ function ClientGroupRow({
             <div className="flex-1" onClick={onToggle}>
               <div className="flex items-center gap-2">
                 <div className="text-sm font-bold text-gray-900">{group.client_name}</div>
+                {soonestDispatchDays !== null && (
+                  <span
+                    className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
+                      clientDispatchUrgency === 'critical'
+                        ? 'bg-red-200 text-red-800'
+                        : clientDispatchUrgency === 'warning'
+                        ? 'bg-yellow-200 text-yellow-800'
+                        : 'bg-gray-200 text-gray-600'
+                    }`}
+                    title="Time remaining until the soonest dispatch date set for this client"
+                  >
+                    <Clock className="h-3 w-3" />
+                    {dispatchCountdownLabel(soonestDispatchDays)}
+                  </span>
+                )}
                 {group.merchandiser ? (
                   <MerchandiserTag
                     name={group.merchandiser}
@@ -2322,17 +2408,22 @@ function ClientGroupRow({
       {/* Product Rows (shown when expanded) */}
       {group.isExpanded && group.designs.map(design => {
         const overdueStatus = isOverdue(design)
+        const dispatchUrgency = getDispatchUrgency(design.dispatch_date)
         const isDraggingDesign = draggedDesignId === design.id
         const isOverDesign = dragOverDesignId === design.id
+        const rowUrgencyClass =
+          dispatchUrgency === 'critical'
+            ? 'border-l-red-500 bg-red-50'
+            : dispatchUrgency === 'warning'
+            ? 'border-l-yellow-500 bg-yellow-50'
+            : overdueStatus
+            ? 'border-l-red-500 bg-red-50'
+            : 'border-l-transparent hover:border-l-blue-500'
         return (
           <tr
             key={design.id}
             data-drag-id={design.id}
-            className={`transition-all hover:bg-gray-50 border-l-4 cursor-move ${
-              overdueStatus 
-                ? 'border-l-red-500 bg-red-50' 
-                : 'border-l-transparent hover:border-l-blue-500'
-            } ${isDraggingDesign ? 'opacity-50' : ''} ${isOverDesign ? 'border-t-2 border-t-blue-400' : ''}`}
+            className={`transition-all hover:bg-gray-50 border-l-4 cursor-move ${rowUrgencyClass} ${isDraggingDesign ? 'opacity-50' : ''} ${isOverDesign ? 'border-t-2 border-t-blue-400' : ''}`}
             draggable={true}
             onDragStart={(e) => {
               e.stopPropagation()
@@ -2439,6 +2530,26 @@ function ClientGroupRow({
                       >
                         <Package2 className="h-3 w-3" />
                         {design.completed_quantity || 0}/{design.quantity} pcs
+                      </Badge>
+                    )}
+                    {design.dispatch_date && (
+                      <Badge
+                        variant="outline"
+                        className={`text-xs gap-1 flex items-center cursor-pointer ${
+                          dispatchUrgency === 'critical'
+                            ? 'border-red-400 text-red-700 bg-red-50'
+                            : dispatchUrgency === 'warning'
+                            ? 'border-yellow-400 text-yellow-700 bg-yellow-50'
+                            : ''
+                        }`}
+                        title="Dispatch date. Click to edit."
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onTileClick(design)
+                        }}
+                      >
+                        <Calendar className="h-3 w-3" />
+                        {formatDisplayDate(design.dispatch_date)}
                       </Badge>
                     )}
                     {design.notes && design.notes.trim() && (
