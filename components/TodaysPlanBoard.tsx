@@ -9,6 +9,8 @@ import {
 } from "@/lib/actions"
 import { MerchandiserTag } from "@/components/MerchandiserTag"
 import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
+import { CLIENT_TAGS } from "@/lib/clientTags"
+import { getClientTagColor } from "@/lib/clientTagColors"
 import { PATTERN_MASTER, CUTTING_MASTER, KARIGAAR_NAMES } from "@/lib/employees"
 import { Scissors, Shirt, PenTool, Star, Loader2, ImageIcon, Droplet, Printer, PackageCheck, Sparkles, Layers } from "lucide-react"
 import Image from "next/image"
@@ -27,7 +29,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 
 type StageState = 'vacant' | 'not-needed' | 'in-progress' | 'completed'
@@ -147,6 +148,7 @@ export default function TodaysPlanBoard() {
   const [stitchingPrompt, setStitchingPrompt] = useState<Design | null>(null)
   const [selectedKarigaar, setSelectedKarigaar] = useState("")
   const [activeMerchandiserFilter, setActiveMerchandiserFilter] = useState<string | null>(null)
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null)
   const [activeTypeFilter, setActiveTypeFilter] = useState<'All' | 'Sampling' | 'Production'>('All')
 
   useEffect(() => {
@@ -158,9 +160,10 @@ export default function TodaysPlanBoard() {
   const filteredDesigns = useMemo(() => {
     let out = designs
     if (activeMerchandiserFilter) out = out.filter(d => d.client_merchandiser === activeMerchandiserFilter)
+    if (activeTagFilter) out = out.filter(d => d.client_tag === activeTagFilter)
     if (activeTypeFilter !== 'All') out = out.filter(d => d.type === activeTypeFilter)
     return out
-  }, [designs, activeMerchandiserFilter, activeTypeFilter])
+  }, [designs, activeMerchandiserFilter, activeTagFilter, activeTypeFilter])
 
   const columns = useMemo(() => {
     const result = {} as Record<ColumnKey, Design[]>
@@ -246,39 +249,69 @@ export default function TodaysPlanBoard() {
         </p>
       </div>
 
-      <div className="flex items-center gap-3 flex-wrap mb-5">
-        <span className="text-sm font-medium text-gray-700">Filter by Merchandiser:</span>
-        <div className="flex gap-2 flex-wrap items-center">
-          <Button
-            variant={activeMerchandiserFilter === null ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActiveMerchandiserFilter(null)}
-          >
-            All
-          </Button>
-          {MERCHANDISER_NAMES.map(name => (
-            <button
-              key={name}
-              onClick={() => setActiveMerchandiserFilter(activeMerchandiserFilter === name ? null : name)}
-              className={activeMerchandiserFilter === name ? "ring-2 ring-offset-1 ring-gray-400 rounded-full" : ""}
+      <div className="bg-white p-4 rounded-lg shadow space-y-3 mb-5">
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm font-medium text-gray-700">Filter by Merchandiser:</span>
+          <div className="flex gap-2 flex-wrap items-center">
+            <Button
+              variant={activeMerchandiserFilter === null ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveMerchandiserFilter(null)}
             >
-              <MerchandiserTag name={name} />
-            </button>
-          ))}
-        </div>
-          <div className="ml-4">
-            <Label htmlFor="type-filter">Type</Label>
-            <Select value={activeTypeFilter} onValueChange={(v) => setActiveTypeFilter(v as any)}>
-              <SelectTrigger id="type-filter">
-                <SelectValue placeholder="All" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All</SelectItem>
-                <SelectItem value="Sampling">Sampling</SelectItem>
-                <SelectItem value="Production">Production</SelectItem>
-              </SelectContent>
-            </Select>
+              All
+            </Button>
+            {MERCHANDISER_NAMES.map(name => (
+              <button
+                key={name}
+                onClick={() => setActiveMerchandiserFilter(activeMerchandiserFilter === name ? null : name)}
+                className={activeMerchandiserFilter === name ? "ring-2 ring-offset-1 ring-gray-400 rounded-full" : ""}
+              >
+                <MerchandiserTag name={name} />
+              </button>
+            ))}
           </div>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm font-medium text-gray-700">Filter by Tag:</span>
+          <div className="flex gap-2 flex-wrap items-center">
+            <Button
+              variant={activeTagFilter === null ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveTagFilter(null)}
+            >
+              All
+            </Button>
+            {CLIENT_TAGS.map(t => {
+              const color = getClientTagColor(t)
+              return (
+                <button
+                  key={t}
+                  onClick={() => setActiveTagFilter(activeTagFilter === t ? null : t)}
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${color.bg} ${color.text} ${color.border} hover:opacity-80 transition-opacity ${
+                    activeTagFilter === t ? "ring-2 ring-offset-1 ring-gray-400" : ""
+                  }`}
+                >
+                  {t}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm font-medium text-gray-700">Filter by Type:</span>
+          <Select value={activeTypeFilter} onValueChange={(v) => setActiveTypeFilter(v as any)}>
+            <SelectTrigger id="type-filter" className="w-[160px]">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All">All</SelectItem>
+              <SelectItem value="Sampling">Sampling</SelectItem>
+              <SelectItem value="Production">Production</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="flex gap-5 overflow-x-auto pb-4">

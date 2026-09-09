@@ -28,6 +28,8 @@ import { KARIGAAR_NAMES } from "@/lib/employees"
 import { ImagePreviewDialog } from "@/components/ImagePreviewDialog"
 import { MerchandiserTag } from "@/components/MerchandiserTag"
 import { ClientTagBadge } from "@/components/ClientTagBadge"
+import { CLIENT_TAGS } from "@/lib/clientTags"
+import { getClientTagColor } from "@/lib/clientTagColors"
 import { EditMerchandiserDialog } from "@/components/EditMerchandiserDialog"
 import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
 import { formatDisplayDate } from "@/lib/timeline"
@@ -289,6 +291,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [activeFilter, setActiveFilter] = useState<DesignType | 'All'>(filter)
   const [activeStageFilter, setActiveStageFilter] = useState<DesignStatus | null>(null)
   const [activeMerchandiserFilter, setActiveMerchandiserFilter] = useState<string | null>(null)
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null)
   const [activeMonthFilter, setActiveMonthFilter] = useState<string | null>(null)
   const [monthOptions, setMonthOptions] = useState<string[]>([])
   const [editingMerchandiserFor, setEditingMerchandiserFor] = useState<{ id: string, name: string, merchandiser: string | null } | null>(null)
@@ -1120,9 +1123,11 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   }
 
   const visibleClientGroups = useMemo(() => {
-    if (!activeMerchandiserFilter) return clientGroups
-    return clientGroups.filter(g => g.merchandiser === activeMerchandiserFilter)
-  }, [clientGroups, activeMerchandiserFilter])
+    let groups = clientGroups
+    if (activeMerchandiserFilter) groups = groups.filter(g => g.merchandiser === activeMerchandiserFilter)
+    if (activeTagFilter) groups = groups.filter(g => g.tag === activeTagFilter)
+    return groups
+  }, [clientGroups, activeMerchandiserFilter, activeTagFilter])
 
   const handleMerchandiserSaved = useCallback((clientId: string, merchandiser: string | null) => {
     setClientGroups(prevGroups =>
@@ -1486,6 +1491,34 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           </div>
         </div>
 
+        {/* Tag Filter */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm font-medium text-gray-700">Filter by Tag:</span>
+          <div className="flex gap-2 flex-wrap items-center">
+            <Button
+              variant={activeTagFilter === null ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveTagFilter(null)}
+            >
+              All
+            </Button>
+            {CLIENT_TAGS.map(t => {
+              const color = getClientTagColor(t)
+              return (
+                <button
+                  key={t}
+                  onClick={() => setActiveTagFilter(activeTagFilter === t ? null : t)}
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${color.bg} ${color.text} ${color.border} hover:opacity-80 transition-opacity ${
+                    activeTagFilter === t ? "ring-2 ring-offset-1 ring-gray-400" : ""
+                  }`}
+                >
+                  {t}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         {/* Type Filter */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-4 flex-wrap">
@@ -1599,6 +1632,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                       ? activeMonthFilter
                         ? `No orders added in ${formatMonthLabel(activeMonthFilter)}.`
                         : "No designs found. Add a client and create your first design order!"
+                      : activeTagFilter && activeMerchandiserFilter
+                      ? `No clients tagged "${activeTagFilter}" for merchandiser "${activeMerchandiserFilter}".`
+                      : activeTagFilter
+                      ? `No clients tagged "${activeTagFilter}".`
                       : `No clients tagged to "${activeMerchandiserFilter}".`}
                   </td>
                 </tr>
