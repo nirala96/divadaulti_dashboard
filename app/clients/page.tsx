@@ -189,13 +189,14 @@ export default function ClientsPage() {
           clientId={editingMerchandiserFor.id}
           clientName={editingMerchandiserFor.name}
           currentMerchandiser={editingMerchandiserFor.merchandiser}
+          currentTag={editingMerchandiserFor.tag ?? null}
           open={!!editingMerchandiserFor}
           onOpenChange={(open) => {
             if (!open) setEditingMerchandiserFor(null)
           }}
-          onSaved={(merchandiser) => {
+          onSaved={(merchandiser, tag) => {
             setClients((prev) =>
-              prev.map((c) => (c.id === editingMerchandiserFor.id ? { ...c, merchandiser } : c))
+              prev.map((c) => (c.id === editingMerchandiserFor.id ? { ...c, merchandiser, tag } : c))
             )
           }}
         />
