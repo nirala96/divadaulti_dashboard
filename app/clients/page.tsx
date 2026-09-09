@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/Sidebar"
 import { AddClientModal } from "@/components/AddClientModal"
 import { EditMerchandiserDialog } from "@/components/EditMerchandiserDialog"
 import { MerchandiserTag } from "@/components/MerchandiserTag"
+import { ClientTagBadge } from "@/components/ClientTagBadge"
 import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
 import { getClients, unhideClientFromOrders, type Client } from "@/lib/actions"
 import { Link2, RotateCcw, Tag } from "lucide-react"
@@ -113,6 +114,7 @@ export default function ClientsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Merchandiser</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tag</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Added</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Orders Dropdown</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tracking Link</th>
@@ -140,6 +142,17 @@ export default function ClientsPage() {
                             Add
                           </button>
                         )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <ClientTagBadge
+                          clientId={client.id}
+                          tag={client.tag ?? null}
+                          onTagChanged={(tag) =>
+                            setClients((prev) =>
+                              prev.map((c) => (c.id === client.id ? { ...c, tag } : c))
+                            )
+                          }
+                        />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-gray-500 text-sm">
                         {new Date(client.created_at).toLocaleDateString()}
@@ -189,14 +202,13 @@ export default function ClientsPage() {
           clientId={editingMerchandiserFor.id}
           clientName={editingMerchandiserFor.name}
           currentMerchandiser={editingMerchandiserFor.merchandiser}
-          currentTag={editingMerchandiserFor.tag ?? null}
           open={!!editingMerchandiserFor}
           onOpenChange={(open) => {
             if (!open) setEditingMerchandiserFor(null)
           }}
-          onSaved={(merchandiser, tag) => {
+          onSaved={(merchandiser) => {
             setClients((prev) =>
-              prev.map((c) => (c.id === editingMerchandiserFor.id ? { ...c, merchandiser, tag } : c))
+              prev.map((c) => (c.id === editingMerchandiserFor.id ? { ...c, merchandiser } : c))
             )
           }}
         />

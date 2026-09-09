@@ -27,6 +27,7 @@ import {
 import { KARIGAAR_NAMES } from "@/lib/employees"
 import { ImagePreviewDialog } from "@/components/ImagePreviewDialog"
 import { MerchandiserTag } from "@/components/MerchandiserTag"
+import { ClientTagBadge } from "@/components/ClientTagBadge"
 import { EditMerchandiserDialog } from "@/components/EditMerchandiserDialog"
 import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
 import { formatDisplayDate } from "@/lib/timeline"
@@ -290,7 +291,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [activeMerchandiserFilter, setActiveMerchandiserFilter] = useState<string | null>(null)
   const [activeMonthFilter, setActiveMonthFilter] = useState<string | null>(null)
   const [monthOptions, setMonthOptions] = useState<string[]>([])
-  const [editingMerchandiserFor, setEditingMerchandiserFor] = useState<{ id: string, name: string, merchandiser: string | null, tag?: string | null } | null>(null)
+  const [editingMerchandiserFor, setEditingMerchandiserFor] = useState<{ id: string, name: string, merchandiser: string | null } | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [editingDesign, setEditingDesign] = useState<DesignWithClient | null>(null)
   const [notesValue, setNotesValue] = useState("")
@@ -524,7 +525,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           name: design.client_name || 'Unknown Client',
           display_order: design.client_display_order ?? null,
           merchandiser: design.client_merchandiser ?? null,
-          tag: (design as any).client_tag ?? null
+          tag: design.client_tag ?? null
         })
       }
     })
@@ -537,7 +538,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           client_id: clientId,
           client_name: client.name,
           merchandiser: client.merchandiser,
-          tag: (client as any).tag ?? null,
+          tag: client.tag ?? null,
           designs: clientDesigns,
           isExpanded: true,
           display_order: client.display_order,
@@ -1123,10 +1124,18 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     return clientGroups.filter(g => g.merchandiser === activeMerchandiserFilter)
   }, [clientGroups, activeMerchandiserFilter])
 
-  const handleMerchandiserSaved = useCallback((clientId: string, merchandiser: string | null, tag?: string | null) => {
+  const handleMerchandiserSaved = useCallback((clientId: string, merchandiser: string | null) => {
     setClientGroups(prevGroups =>
       prevGroups.map(group =>
-        group.client_id === clientId ? { ...group, merchandiser, tag: tag ?? group.tag } : group
+        group.client_id === clientId ? { ...group, merchandiser } : group
+      )
+    )
+  }, [])
+
+  const handleTagSaved = useCallback((clientId: string, tag: string | null) => {
+    setClientGroups(prevGroups =>
+      prevGroups.map(group =>
+        group.client_id === clientId ? { ...group, tag } : group
       )
     )
   }, [])
@@ -1609,7 +1618,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     onDeleteClick={setConfirmDelete}
                     onAddDesign={openAddDesignDialog}
                     onHoldClient={handleHoldClient}
-                    onEditMerchandiser={(id, name, merchandiser, tag) => setEditingMerchandiserFor({ id, name, merchandiser, tag })}
+                    onEditMerchandiser={(id, name, merchandiser) => setEditingMerchandiserFor({ id, name, merchandiser })}
+                    onTagSaved={handleTagSaved}
                     isOverdue={isOverdue}
                     getDispatchUrgency={getDispatchUrgency}
                     getDispatchDaysRemaining={getDispatchDaysRemaining}
@@ -1645,13 +1655,12 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           clientId={editingMerchandiserFor.id}
           clientName={editingMerchandiserFor.name}
           currentMerchandiser={editingMerchandiserFor.merchandiser}
-          currentTag={editingMerchandiserFor.tag ?? null}
           open={!!editingMerchandiserFor}
           onOpenChange={(open) => {
             if (!open) setEditingMerchandiserFor(null)
           }}
-          onSaved={(merchandiser, tag) => {
-            handleMerchandiserSaved(editingMerchandiserFor.id, merchandiser, tag)
+          onSaved={(merchandiser) => {
+            handleMerchandiserSaved(editingMerchandiserFor.id, merchandiser)
           }}
         />
       )}
@@ -2161,7 +2170,8 @@ interface ClientGroupRowProps {
   onDeleteClick: (design: DesignWithClient) => void
   onAddDesign: (clientId: string, clientName: string) => void
   onHoldClient: (clientId: string, clientName: string) => void
-  onEditMerchandiser: (clientId: string, clientName: string, merchandiser: string | null, tag?: string | null) => void
+  onEditMerchandiser: (clientId: string, clientName: string, merchandiser: string | null) => void
+  onTagSaved: (clientId: string, tag: string | null) => void
   isOverdue: (design: DesignWithClient) => boolean
   getDispatchUrgency: (dispatchDate: string | null | undefined) => 'none' | 'normal' | 'warning' | 'critical'
   getDispatchDaysRemaining: (dispatchDate: string | null | undefined) => number | null
@@ -2197,6 +2207,7 @@ function ClientGroupRow({
   onAddDesign,
   onHoldClient,
   onEditMerchandiser,
+  onTagSaved,
   onHideCompletedThumbnail,
   isOverdue,
   getDispatchUrgency,
@@ -2301,14 +2312,14 @@ function ClientGroupRow({
                     name={group.merchandiser}
                     onClick={(e) => {
                       e.stopPropagation()
-                      onEditMerchandiser(group.client_id, group.client_name, group.merchandiser, (group as any).tag ?? null)
+                      onEditMerchandiser(group.client_id, group.client_name, group.merchandiser)
                     }}
                   />
                 ) : (
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      onEditMerchandiser(group.client_id, group.client_name, null, null)
+                      onEditMerchandiser(group.client_id, group.client_name, null)
                     }}
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-gray-400 border border-dashed border-gray-300 hover:border-gray-400 hover:text-gray-600 transition-colors"
                     title="Tag a merchandiser"
@@ -2317,6 +2328,13 @@ function ClientGroupRow({
                     Tag
                   </button>
                 )}
+                <div onClick={(e) => e.stopPropagation()}>
+                  <ClientTagBadge
+                    clientId={group.client_id}
+                    tag={group.tag ?? null}
+                    onTagChanged={(tag) => onTagSaved(group.client_id, tag)}
+                  />
+                </div>
                 {group.completed_count > 0 && (
                   <span
                     className="flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700"
