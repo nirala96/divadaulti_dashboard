@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 
 type StageState = 'vacant' | 'not-needed' | 'in-progress' | 'completed'
@@ -146,6 +147,7 @@ export default function TodaysPlanBoard() {
   const [stitchingPrompt, setStitchingPrompt] = useState<Design | null>(null)
   const [selectedKarigaar, setSelectedKarigaar] = useState("")
   const [activeMerchandiserFilter, setActiveMerchandiserFilter] = useState<string | null>(null)
+  const [activeTypeFilter, setActiveTypeFilter] = useState<'All' | 'Sampling' | 'Production'>('All')
 
   useEffect(() => {
     getDesignsWithClients()
@@ -154,9 +156,11 @@ export default function TodaysPlanBoard() {
   }, [])
 
   const filteredDesigns = useMemo(() => {
-    if (!activeMerchandiserFilter) return designs
-    return designs.filter(d => d.client_merchandiser === activeMerchandiserFilter)
-  }, [designs, activeMerchandiserFilter])
+    let out = designs
+    if (activeMerchandiserFilter) out = out.filter(d => d.client_merchandiser === activeMerchandiserFilter)
+    if (activeTypeFilter !== 'All') out = out.filter(d => d.type === activeTypeFilter)
+    return out
+  }, [designs, activeMerchandiserFilter, activeTypeFilter])
 
   const columns = useMemo(() => {
     const result = {} as Record<ColumnKey, Design[]>
@@ -262,6 +266,19 @@ export default function TodaysPlanBoard() {
             </button>
           ))}
         </div>
+          <div className="ml-4">
+            <Label htmlFor="type-filter">Type</Label>
+            <Select value={activeTypeFilter} onValueChange={(v) => setActiveTypeFilter(v as any)}>
+              <SelectTrigger id="type-filter">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All</SelectItem>
+                <SelectItem value="Sampling">Sampling</SelectItem>
+                <SelectItem value="Production">Production</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
       </div>
 
       <div className="flex gap-5 overflow-x-auto pb-4">

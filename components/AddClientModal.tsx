@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
+import { CLIENT_TAGS } from "@/lib/clientTags"
 import { Plus } from "lucide-react"
 
 const UNASSIGNED = "__unassigned__"
@@ -38,6 +39,7 @@ export function AddClientModal({ onClientAdded }: AddClientModalProps) {
     contact_person: "",
     email: "",
     merchandiser: UNASSIGNED,
+    tag: UNASSIGNED,
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,11 +49,12 @@ export function AddClientModal({ onClientAdded }: AddClientModalProps) {
     try {
       await addClient({
         ...formData,
-        merchandiser: formData.merchandiser === UNASSIGNED ? undefined : formData.merchandiser,
+          merchandiser: formData.merchandiser === UNASSIGNED ? undefined : formData.merchandiser,
+          tag: formData.tag === UNASSIGNED ? undefined : formData.tag,
       })
 
       alert("Client added successfully!")
-      setFormData({ name: "", contact_person: "", email: "", merchandiser: UNASSIGNED })
+      setFormData({ name: "", contact_person: "", email: "", merchandiser: UNASSIGNED, tag: UNASSIGNED })
       setOpen(false)
       onClientAdded?.() // Call the callback to refresh the list
     } catch (error: any) {
@@ -129,6 +132,25 @@ export function AddClientModal({ onClientAdded }: AddClientModalProps) {
                   {MERCHANDISER_NAMES.map((name) => (
                     <SelectItem key={name} value={name}>
                       {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="client-tag">Client Tag</Label>
+              <Select
+                value={formData.tag}
+                onValueChange={(value) => setFormData({ ...formData, tag: value })}
+              >
+                <SelectTrigger id="client-tag">
+                  <SelectValue placeholder="Select client tag" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
+                  {CLIENT_TAGS.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
                     </SelectItem>
                   ))}
                 </SelectContent>

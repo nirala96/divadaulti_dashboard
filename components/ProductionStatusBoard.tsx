@@ -269,6 +269,7 @@ type ClientGroup = {
   client_id: string
   client_name: string
   merchandiser: string | null
+  tag?: string | null
   designs: DesignWithClient[]
   isExpanded: boolean
   display_order: number | null
@@ -289,7 +290,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [activeMerchandiserFilter, setActiveMerchandiserFilter] = useState<string | null>(null)
   const [activeMonthFilter, setActiveMonthFilter] = useState<string | null>(null)
   const [monthOptions, setMonthOptions] = useState<string[]>([])
-  const [editingMerchandiserFor, setEditingMerchandiserFor] = useState<{ id: string, name: string, merchandiser: string | null } | null>(null)
+  const [editingMerchandiserFor, setEditingMerchandiserFor] = useState<{ id: string, name: string, merchandiser: string | null, tag?: string | null } | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [editingDesign, setEditingDesign] = useState<DesignWithClient | null>(null)
   const [notesValue, setNotesValue] = useState("")
@@ -516,13 +517,14 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     const groups: ClientGroup[] = []
     
     // Get unique clients from designs
-    const clientMap = new Map<string, { name: string, display_order: number | null, merchandiser: string | null }>()
+    const clientMap = new Map<string, { name: string, display_order: number | null, merchandiser: string | null, tag?: string | null }>()
     designsWithClients.forEach(design => {
       if (!clientMap.has(design.client_id)) {
         clientMap.set(design.client_id, {
           name: design.client_name || 'Unknown Client',
           display_order: design.client_display_order ?? null,
-          merchandiser: design.client_merchandiser ?? null
+          merchandiser: design.client_merchandiser ?? null,
+          tag: (design as any).client_tag ?? null
         })
       }
     })
@@ -535,6 +537,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           client_id: clientId,
           client_name: client.name,
           merchandiser: client.merchandiser,
+          tag: (client as any).tag ?? null,
           designs: clientDesigns,
           isExpanded: true,
           display_order: client.display_order,
@@ -1120,10 +1123,10 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     return clientGroups.filter(g => g.merchandiser === activeMerchandiserFilter)
   }, [clientGroups, activeMerchandiserFilter])
 
-  const handleMerchandiserSaved = useCallback((clientId: string, merchandiser: string | null) => {
+  const handleMerchandiserSaved = useCallback((clientId: string, merchandiser: string | null, tag?: string | null) => {
     setClientGroups(prevGroups =>
       prevGroups.map(group =>
-        group.client_id === clientId ? { ...group, merchandiser } : group
+        group.client_id === clientId ? { ...group, merchandiser, tag: tag ?? group.tag } : group
       )
     )
   }, [])
@@ -1606,7 +1609,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     onDeleteClick={setConfirmDelete}
                     onAddDesign={openAddDesignDialog}
                     onHoldClient={handleHoldClient}
-                    onEditMerchandiser={(id, name, merchandiser) => setEditingMerchandiserFor({ id, name, merchandiser })}
+                    onEditMerchandiser={(id, name, merchandiser, tag) => setEditingMerchandiserFor({ id, name, merchandiser, tag })}
                     isOverdue={isOverdue}
                     getDispatchUrgency={getDispatchUrgency}
                     getDispatchDaysRemaining={getDispatchDaysRemaining}
@@ -1642,12 +1645,13 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
           clientId={editingMerchandiserFor.id}
           clientName={editingMerchandiserFor.name}
           currentMerchandiser={editingMerchandiserFor.merchandiser}
+          currentTag={editingMerchandiserFor.tag ?? null}
           open={!!editingMerchandiserFor}
           onOpenChange={(open) => {
             if (!open) setEditingMerchandiserFor(null)
           }}
-          onSaved={(merchandiser) => {
-            handleMerchandiserSaved(editingMerchandiserFor.id, merchandiser)
+          onSaved={(merchandiser, tag) => {
+            handleMerchandiserSaved(editingMerchandiserFor.id, merchandiser, tag)
           }}
         />
       )}
@@ -2157,7 +2161,7 @@ interface ClientGroupRowProps {
   onDeleteClick: (design: DesignWithClient) => void
   onAddDesign: (clientId: string, clientName: string) => void
   onHoldClient: (clientId: string, clientName: string) => void
-  onEditMerchandiser: (clientId: string, clientName: string, merchandiser: string | null) => void
+  onEditMerchandiser: (clientId: string, clientName: string, merchandiser: string | null, tag?: string | null) => void
   isOverdue: (design: DesignWithClient) => boolean
   getDispatchUrgency: (dispatchDate: string | null | undefined) => 'none' | 'normal' | 'warning' | 'critical'
   getDispatchDaysRemaining: (dispatchDate: string | null | undefined) => number | null
@@ -2297,14 +2301,14 @@ function ClientGroupRow({
                     name={group.merchandiser}
                     onClick={(e) => {
                       e.stopPropagation()
-                      onEditMerchandiser(group.client_id, group.client_name, group.merchandiser)
+                      onEditMerchandiser(group.client_id, group.client_name, group.merchandiser, (group as any).tag ?? null)
                     }}
                   />
                 ) : (
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      onEditMerchandiser(group.client_id, group.client_name, null)
+                      onEditMerchandiser(group.client_id, group.client_name, null, null)
                     }}
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium text-gray-400 border border-dashed border-gray-300 hover:border-gray-400 hover:text-gray-600 transition-colors"
                     title="Tag a merchandiser"

@@ -22,6 +22,7 @@ export type Client = {
   hold_date: string | null
   hidden_from_orders: boolean
   merchandiser: string | null
+  tag?: string | null
 }
 
 export type Design = {
@@ -48,6 +49,7 @@ export type Design = {
   client_name?: string
   client_display_order?: number | null
   client_merchandiser?: string | null
+  client_tag?: string | null
 }
 
 export type StageWorkLog = {
@@ -90,16 +92,17 @@ export async function addClient(data: {
   email: string
   phone?: string
   merchandiser?: string
+  tag?: string
 }) {
   // Generate unique tracking token using crypto
   const crypto = require('crypto')
   const trackingToken = crypto.randomBytes(16).toString('hex')
 
   const result = await pool.query(
-    `INSERT INTO clients (name, contact_person, email, phone, display_order, tracking_token, merchandiser)
-     VALUES ($1, $2, $3, $4, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM clients), $5, $6)
+    `INSERT INTO clients (name, contact_person, email, phone, display_order, tracking_token, merchandiser, tag)
+     VALUES ($1, $2, $3, $4, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM clients), $5, $6, $7)
      RETURNING *`,
-    [data.name, data.contact_person, data.email, data.phone || null, trackingToken, data.merchandiser?.trim() || null]
+    [data.name, data.contact_person, data.email, data.phone || null, trackingToken, data.merchandiser?.trim() || null, data.tag?.trim() || null]
   )
   revalidatePath('/')
   revalidatePath('/clients')
@@ -110,6 +113,16 @@ export async function updateClientMerchandiser(clientId: string, merchandiser: s
   const result = await pool.query(
     'UPDATE clients SET merchandiser = $1 WHERE id = $2 RETURNING *',
     [merchandiser?.trim() || null, clientId]
+  )
+  revalidatePath('/')
+  revalidatePath('/clients')
+  return result.rows[0]
+}
+
+export async function updateClientTag(clientId: string, tag: string | null) {
+  const result = await pool.query(
+    'UPDATE clients SET tag = $1 WHERE id = $2 RETURNING *',
+    [tag?.trim() || null, clientId]
   )
   revalidatePath('/')
   revalidatePath('/clients')
@@ -179,7 +192,8 @@ export async function getDesignsWithClients(): Promise<Design[]> {
       d.*,
       c.name as client_name,
       c.display_order as client_display_order,
-      c.merchandiser as client_merchandiser
+      c.merchandiser as client_merchandiser,
+      c.tag as client_tag
     FROM designs d
     LEFT JOIN clients c ON d.client_id = c.id
     WHERE (c.is_on_hold IS NULL OR c.is_on_hold = FALSE)
@@ -939,7 +953,9 @@ export async function getClientByTrackingToken(token: string): Promise<ClientTra
   try {
     // Get client by tracking token
     const clientResult = await pool.query(
-      'SELECT * FROM clients WHERE tracking_token = $1',
+      `SELECT id, name, contact_person, email, phone, display_order, created_at, tracking_token,
+              is_on_hold, hold_date, hidden_from_orders, merchandiser
+       FROM clients WHERE tracking_token = $1`,
       [token]
     )
     
