@@ -495,6 +495,7 @@ export async function deleteDesign(designId: string) {
 export async function completeDesign(designId: string) {
   // Set all stages to completed
   const allStages = {
+    'Consultation': 'completed',
     'Fabric Finalize': 'completed',
     'Trims Sourcing': 'completed',
     'Dye': 'completed',
@@ -747,8 +748,11 @@ export async function getCompletedDesigns(): Promise<Design[]> {
 }
 
 export async function restoreDesign(designId: string) {
-  // Reset all stages to vacant and status to the first stage of the workflow
+  // Reset production stages to vacant. Consultation already happened for a
+  // design that made it to dispatch, so it stays completed rather than
+  // being reset - restoring shouldn't force it back through consultation.
   const vacantStageStatus = {
+    'Consultation': 'completed',
     'Fabric Finalize': 'vacant',
     'Trims Sourcing': 'vacant',
     'Dye': 'vacant',

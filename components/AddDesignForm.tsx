@@ -30,6 +30,7 @@ type DesignType = 'Sampling' | 'Production'
 type DesignStatus = string
 
 const PROCESS_STEPS: DesignStatus[] = [
+  'Consultation',
   'Fabric Finalize',
   'Trims Sourcing',
   'Dye',
@@ -65,7 +66,7 @@ export function AddDesignForm() {
     title: "",
     type: "Sampling" as DesignType,
     quantity: 1,
-    status: "Fabric Finalize" as DesignStatus,
+    status: "Consultation" as DesignStatus,
     notes: "",
     price: "",
   })
@@ -286,7 +287,7 @@ export function AddDesignForm() {
         title: "",
         type: "Sampling",
         quantity: 1,
-        status: "Fabric Finalize",
+        status: "Consultation",
         notes: "",
         price: "",
       })
@@ -593,7 +594,7 @@ export function AddDesignForm() {
               title: "",
               type: "Sampling",
               quantity: 1,
-              status: "Fabric Finalize",
+              status: "Consultation",
               notes: "",
               price: "",
             })

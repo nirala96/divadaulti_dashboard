@@ -17,6 +17,7 @@ import {
   updateDesignOrder,
   updateDesignImages,
   updateClientOrder,
+  updateClientMerchandiser,
   holdClient,
   addDesign,
   deleteDesign,
@@ -67,7 +68,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ChevronDown, ChevronRight, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Pencil, Upload, Star, Link2, PauseCircle, Clock, IndianRupee, ClipboardPaste, Tag, GripVertical, Calendar } from "lucide-react"
+import { ChevronDown, ChevronRight, Package2, X, ImageIcon, FileText, CheckCircle2, Trash2, Plus, Pencil, Upload, Star, Link2, PauseCircle, Clock, IndianRupee, ClipboardPaste, Tag, GripVertical, Calendar, Lock } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -209,6 +210,7 @@ function ImageCarousel({
 }
 
 const STAGES: DesignStatus[] = [
+  'Consultation',
   'Fabric Finalize',
   'Trims Sourcing',
   'Dye',
@@ -220,7 +222,16 @@ const STAGES: DesignStatus[] = [
   'Finishing'
 ]
 
+// Consultation (requirement gathering + design consultation with the
+// client) gates everything else - no other stage can start until it's
+// cleared, and marking it complete requires a merchandiser and a fixed
+// delivery date to be set first.
+const isStageCleared = (state: string | undefined) => state === 'completed' || state === 'not-needed'
+const isConsultationDone = (design: { stage_status?: Record<string, string> }) =>
+  isStageCleared(design.stage_status?.['Consultation'])
+
 const STAGE_COLORS: Record<DesignStatus, string> = {
+  'Consultation': 'bg-indigo-100 text-indigo-800',
   'Fabric Finalize': 'bg-slate-100 text-slate-800',
   'Trims Sourcing': 'bg-yellow-100 text-yellow-800',
   'Dye': 'bg-rose-100 text-rose-800',
@@ -314,7 +325,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     title: "",
     type: "Sampling" as DesignType,
     quantity: 1,
-    status: "Fabric Finalize" as DesignStatus,
+    status: "Consultation" as DesignStatus,
     notes: "",
     price: "",
   })
@@ -329,6 +340,9 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [dragOverDesignId, setDragOverDesignId] = useState<string | null>(null)
   const [stitchingPrompt, setStitchingPrompt] = useState<{ designId: string, stage: DesignStatus } | null>(null)
   const [selectedKarigaar, setSelectedKarigaar] = useState("")
+  const [consultationPrompt, setConsultationPrompt] = useState<{ designId: string, clientId: string, stage: DesignStatus } | null>(null)
+  const [consultationMerchandiser, setConsultationMerchandiser] = useState("")
+  const [consultationDeliveryDate, setConsultationDeliveryDate] = useState("")
 
   const sortDesignsForDisplay = useCallback((designs: DesignWithClient[]) => {
     return [...designs].sort((a, b) => {
@@ -741,6 +755,37 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     }
   }
 
+  const requestConsultationComplete = (design: DesignWithClient, stage: DesignStatus) => {
+    setConsultationMerchandiser(design.client_merchandiser || "")
+    setConsultationDeliveryDate(design.dispatch_date ? design.dispatch_date.split("T")[0] : "")
+    setConsultationPrompt({ designId: design.id, clientId: design.client_id!, stage })
+  }
+
+  const confirmConsultationComplete = async () => {
+    if (!consultationPrompt || !consultationMerchandiser || !consultationDeliveryDate) return
+    const { designId, clientId, stage } = consultationPrompt
+
+    updateLocalDesignState(designId, design => ({
+      ...design,
+      client_merchandiser: consultationMerchandiser,
+      dispatch_date: consultationDeliveryDate,
+      stage_status: { ...design.stage_status, [stage]: 'completed' }
+    }))
+    handleMerchandiserSaved(clientId, consultationMerchandiser)
+    setConsultationPrompt(null)
+
+    try {
+      await Promise.all([
+        updateClientMerchandiser(clientId, consultationMerchandiser),
+        updateDesignDispatchDate(designId, consultationDeliveryDate),
+        updateDesignStageStatus(designId, stage, 'completed'),
+      ])
+    } catch (error: any) {
+      console.error('Error completing consultation:', error)
+      alert('Failed to mark consultation complete: ' + error.message)
+    }
+  }
+
   const togglePriority = async (designId: string, currentPriority: boolean) => {
     const newPriority = !currentPriority
 
@@ -1002,7 +1047,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       title: "",
       type: "Sampling",
       quantity: 1,
-      status: "Fabric Finalize",
+      status: "Consultation",
       notes: "",
       price: "",
     })
@@ -1016,7 +1061,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       title: "",
       type: "Sampling",
       quantity: 1,
-      status: "Fabric Finalize",
+      status: "Consultation",
       notes: "",
       price: "",
     })
@@ -1648,6 +1693,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     onUpdateStatus={updateDesignStatusLocal}
                     onUpdateStageStatus={updateStageStatus}
                     onRequestStitchingComplete={requestStitchingComplete}
+                    onRequestConsultationComplete={requestConsultationComplete}
                     onTogglePriority={togglePriority}
                     onImageClick={setPreviewImage}
                     onTileClick={openNotesModal}
@@ -2018,6 +2064,58 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         </DialogContent>
       </Dialog>
 
+      <Dialog open={!!consultationPrompt} onOpenChange={(open) => !open && setConsultationPrompt(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Finish Consultation</DialogTitle>
+            <DialogDescription>
+              Both fields are required before production can begin - they can still be changed later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="consultation-merchandiser">Merchandiser</Label>
+              <Select value={consultationMerchandiser} onValueChange={setConsultationMerchandiser}>
+                <SelectTrigger id="consultation-merchandiser">
+                  <SelectValue placeholder="Assign a merchandiser" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MERCHANDISER_NAMES.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="consultation-delivery-date">Delivery Date</Label>
+              <Input
+                id="consultation-delivery-date"
+                type="date"
+                value={consultationDeliveryDate}
+                onChange={(e) => setConsultationDeliveryDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConsultationPrompt(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmConsultationComplete}
+              disabled={!consultationMerchandiser || !consultationDeliveryDate}
+            >
+              Mark Complete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Add Design Dialog */}
       <Dialog open={!!addingForClient} onOpenChange={() => closeAddDesignDialog()}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -2200,6 +2298,7 @@ interface ClientGroupRowProps {
   onUpdateStatus: (designId: string, status: DesignStatus) => void
   onUpdateStageStatus: (designId: string, stage: DesignStatus, state: StageState) => void
   onRequestStitchingComplete: (design: DesignWithClient, stage: DesignStatus) => void
+  onRequestConsultationComplete: (design: DesignWithClient, stage: DesignStatus) => void
   onTogglePriority: (designId: string, currentPriority: boolean) => void
   onImageClick: (imageUrl: string) => void
   onTileClick: (design: DesignWithClient) => void
@@ -2236,6 +2335,7 @@ function ClientGroupRow({
   onUpdateStatus,
   onUpdateStageStatus,
   onRequestStitchingComplete,
+  onRequestConsultationComplete,
   onTogglePriority,
   onImageClick,
   onTileClick,
@@ -2625,8 +2725,11 @@ function ClientGroupRow({
                 <StatusIndicator
                   design={design}
                   stage={stage}
+                  locked={stage !== 'Consultation' && !isConsultationDone(design)}
                   onUpdateStageStatus={(newState) => {
-                    if (stage === 'Stitching' && newState === 'completed') {
+                    if (stage === 'Consultation' && newState === 'completed') {
+                      onRequestConsultationComplete(design, stage)
+                    } else if (stage === 'Stitching' && newState === 'completed') {
                       onRequestStitchingComplete(design, stage)
                     } else {
                       onUpdateStageStatus(design.id, stage, newState)
@@ -2668,12 +2771,13 @@ interface StatusIndicatorProps {
   design: Design
   stage: DesignStatus
   onUpdateStageStatus: (state: StageState) => void
+  locked?: boolean
 }
 
-function StatusIndicator({ design, stage, onUpdateStageStatus }: StatusIndicatorProps) {
+function StatusIndicator({ design, stage, onUpdateStageStatus, locked }: StatusIndicatorProps) {
   // Get the current state of this stage from stage_status
   const stageState: StageState = (design.stage_status?.[stage] as StageState) || 'vacant'
-  
+
   // Define the cycle: vacant → not-needed → in-progress → completed → vacant
   const getNextState = (current: StageState): StageState => {
     switch (current) {
@@ -2693,6 +2797,17 @@ function StatusIndicator({ design, stage, onUpdateStageStatus }: StatusIndicator
   const handleClick = () => {
     const nextState = getNextState(stageState)
     onUpdateStageStatus(nextState)
+  }
+
+  if (locked) {
+    return (
+      <div
+        className="inline-flex items-center justify-center w-11 h-11 min-w-[44px] min-h-[44px] bg-gray-50 rounded-full cursor-not-allowed"
+        title="Complete Consultation first"
+      >
+        <Lock className="h-4 w-4 text-gray-300" />
+      </div>
+    )
   }
 
   // Render based on state

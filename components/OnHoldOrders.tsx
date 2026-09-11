@@ -19,6 +19,7 @@ import {
 type DesignStatus = string
 
 const STAGES: DesignStatus[] = [
+  'Consultation',
   'Fabric Finalize',
   'Trims Sourcing',
   'Dye',

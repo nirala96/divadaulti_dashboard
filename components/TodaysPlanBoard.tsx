@@ -5,6 +5,8 @@ import {
   getDesignsWithClients,
   updateDesignStageStatus,
   updateDesignPriority,
+  updateClientMerchandiser,
+  updateDesignDispatchDate,
   type Design
 } from "@/lib/actions"
 import { MerchandiserTag } from "@/components/MerchandiserTag"
@@ -12,7 +14,7 @@ import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
 import { CLIENT_TAGS } from "@/lib/clientTags"
 import { getClientTagColor } from "@/lib/clientTagColors"
 import { PATTERN_MASTER, CUTTING_MASTER, KARIGAAR_NAMES } from "@/lib/employees"
-import { Scissors, Shirt, PenTool, Star, Loader2, ImageIcon, Droplet, Printer, PackageCheck, Sparkles, Layers } from "lucide-react"
+import { Scissors, Shirt, PenTool, Star, Loader2, ImageIcon, Droplet, Printer, PackageCheck, Sparkles, Layers, Users } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -30,9 +32,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 type StageState = 'vacant' | 'not-needed' | 'in-progress' | 'completed'
-type ColumnKey = 'finishing' | 'stitching' | 'cutting' | 'pattern' | 'embroidery' | 'dye' | 'print' | 'fabricFinalize'
+type ColumnKey = 'finishing' | 'stitching' | 'cutting' | 'pattern' | 'embroidery' | 'dye' | 'print' | 'fabricFinalize' | 'consultation'
 
 const stageState = (design: Design, stage: string): StageState =>
   (design.stage_status?.[stage] as StageState) || 'vacant'
@@ -89,7 +93,7 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     hint: 'New orders waiting on a pattern',
     icon: PenTool,
     accent: 'border-blue-300 bg-blue-50 text-blue-800',
-    matches: (d) => isPending(stageState(d, 'Pattern')),
+    matches: (d) => isCleared(stageState(d, 'Consultation')) && isPending(stageState(d, 'Pattern')),
   },
   {
     key: 'embroidery',
@@ -125,7 +129,16 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     hint: 'Needed before dye, print or embroidery can start',
     icon: Layers,
     accent: 'border-teal-300 bg-teal-50 text-teal-800',
-    matches: (d) => isPending(stageState(d, 'Fabric Finalize')),
+    matches: (d) => isCleared(stageState(d, 'Consultation')) && isPending(stageState(d, 'Fabric Finalize')),
+  },
+  {
+    key: 'consultation',
+    stage: 'Consultation',
+    title: 'Needs Consultation',
+    hint: 'Requirement gathering & design consultation with the client',
+    icon: Users,
+    accent: 'border-indigo-300 bg-indigo-50 text-indigo-800',
+    matches: (d) => isPending(stageState(d, 'Consultation')),
   },
 ]
 
@@ -147,6 +160,9 @@ export default function TodaysPlanBoard() {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [stitchingPrompt, setStitchingPrompt] = useState<Design | null>(null)
+  const [consultationPrompt, setConsultationPrompt] = useState<Design | null>(null)
+  const [consultationMerchandiser, setConsultationMerchandiser] = useState("")
+  const [consultationDeliveryDate, setConsultationDeliveryDate] = useState("")
   const [selectedKarigaar, setSelectedKarigaar] = useState("")
   const [activeMerchandiserFilter, setActiveMerchandiserFilter] = useState<string | null>(null)
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null)
@@ -212,7 +228,44 @@ export default function TodaysPlanBoard() {
       setStitchingPrompt(design)
       return
     }
+    if (stage === 'Consultation') {
+      setConsultationMerchandiser(design.client_merchandiser || "")
+      setConsultationDeliveryDate(design.dispatch_date ? design.dispatch_date.split("T")[0] : "")
+      setConsultationPrompt(design)
+      return
+    }
     completeStage(design, stage)
+  }
+
+  const confirmConsultationComplete = async () => {
+    if (!consultationPrompt || !consultationMerchandiser || !consultationDeliveryDate) return
+    const design = consultationPrompt
+    setConsultationPrompt(null)
+    setBusyId(design.id)
+    setDesigns(prev =>
+      prev.map(d =>
+        d.id === design.id
+          ? {
+              ...d,
+              client_merchandiser: consultationMerchandiser,
+              dispatch_date: consultationDeliveryDate,
+              stage_status: { ...d.stage_status, Consultation: 'completed' },
+            }
+          : d
+      )
+    )
+    try {
+      await Promise.all([
+        updateClientMerchandiser(design.client_id, consultationMerchandiser),
+        updateDesignDispatchDate(design.id, consultationDeliveryDate),
+        updateDesignStageStatus(design.id, 'Consultation', 'completed'),
+      ])
+    } catch (error: any) {
+      console.error('Error completing consultation:', error)
+      alert('Failed to mark consultation complete: ' + error.message)
+    } finally {
+      setBusyId(null)
+    }
   }
 
   const confirmStitchingComplete = async () => {
@@ -460,6 +513,54 @@ export default function TodaysPlanBoard() {
               Cancel
             </Button>
             <Button onClick={confirmStitchingComplete} disabled={!selectedKarigaar}>
+              Mark Complete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!consultationPrompt} onOpenChange={(open) => !open && setConsultationPrompt(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Finish Consultation</DialogTitle>
+            <DialogDescription>
+              Both fields are required before production can begin - they can still be changed later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label htmlFor="todays-plan-consultation-merchandiser">Merchandiser</Label>
+              <Select value={consultationMerchandiser} onValueChange={setConsultationMerchandiser}>
+                <SelectTrigger id="todays-plan-consultation-merchandiser">
+                  <SelectValue placeholder="Assign a merchandiser" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MERCHANDISER_NAMES.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="todays-plan-consultation-date">Delivery Date</Label>
+              <Input
+                id="todays-plan-consultation-date"
+                type="date"
+                value={consultationDeliveryDate}
+                onChange={(e) => setConsultationDeliveryDate(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setConsultationPrompt(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmConsultationComplete}
+              disabled={!consultationMerchandiser || !consultationDeliveryDate}
+            >
               Mark Complete
             </Button>
           </DialogFooter>
