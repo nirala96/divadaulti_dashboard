@@ -71,7 +71,7 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     key: 'cutting',
     stage: 'Cutting',
     title: 'Ready to Cut',
-    hint: 'Fabric, dye, print and pattern all done',
+    hint: 'Fabric, dye, print, pattern and embroidery all done',
     icon: Scissors,
     accent: 'border-orange-300 bg-orange-50 text-orange-800',
     matches: (d) =>
@@ -79,6 +79,7 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
       isCleared(stageState(d, 'Dye')) &&
       isCleared(stageState(d, 'Print')) &&
       isCleared(stageState(d, 'Pattern')) &&
+      isCleared(stageState(d, 'Embroidery')) &&
       isPending(stageState(d, 'Cutting')),
   },
   {
