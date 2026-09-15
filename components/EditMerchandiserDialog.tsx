@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { updateClientMerchandiser } from "@/lib/actions"
-import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
+import { useMerchandiserNames } from "@/lib/useMerchandiserNames"
 import {
   Dialog,
   DialogContent,
@@ -40,6 +40,7 @@ export function EditMerchandiserDialog({
   onOpenChange,
   onSaved,
 }: EditMerchandiserDialogProps) {
+  const { merchandiserNames } = useMerchandiserNames()
   const [value, setValue] = useState(currentMerchandiser || UNASSIGNED)
   const [saving, setSaving] = useState(false)
 
@@ -79,7 +80,7 @@ export function EditMerchandiserDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-                {MERCHANDISER_NAMES.map((name) => (
+                {merchandiserNames.map((name) => (
                   <SelectItem key={name} value={name}>
                     {name}
                   </SelectItem>

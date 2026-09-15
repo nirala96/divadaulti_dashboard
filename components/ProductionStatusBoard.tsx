@@ -32,7 +32,7 @@ import { ClientTagBadge } from "@/components/ClientTagBadge"
 import { CLIENT_TAGS } from "@/lib/clientTags"
 import { getClientTagColor } from "@/lib/clientTagColors"
 import { EditMerchandiserDialog } from "@/components/EditMerchandiserDialog"
-import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
+import { useMerchandiserNames } from "@/lib/useMerchandiserNames"
 import { formatDisplayDate } from "@/lib/timeline"
 import { toISTDateOnly } from "@/lib/scheduler"
 
@@ -296,6 +296,7 @@ interface ProductionStatusBoardProps {
 }
 
 export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardProps) {
+  const { merchandiserNames } = useMerchandiserNames()
   const [clientGroups, setClientGroups] = useState<ClientGroup[]>([])
   const [completedTotal, setCompletedTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -1524,7 +1525,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
             >
               All
             </Button>
-            {MERCHANDISER_NAMES.map(name => (
+            {merchandiserNames.map(name => (
               <button
                 key={name}
                 onClick={() => setActiveMerchandiserFilter(activeMerchandiserFilter === name ? null : name)}
@@ -2080,7 +2081,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                   <SelectValue placeholder="Assign a merchandiser" />
                 </SelectTrigger>
                 <SelectContent>
-                  {MERCHANDISER_NAMES.map((name) => (
+                  {merchandiserNames.map((name) => (
                     <SelectItem key={name} value={name}>
                       {name}
                     </SelectItem>

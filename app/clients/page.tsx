@@ -6,7 +6,7 @@ import { AddClientModal } from "@/components/AddClientModal"
 import { EditMerchandiserDialog } from "@/components/EditMerchandiserDialog"
 import { MerchandiserTag } from "@/components/MerchandiserTag"
 import { ClientTagBadge } from "@/components/ClientTagBadge"
-import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
+import { useMerchandiserNames } from "@/lib/useMerchandiserNames"
 import { getClients, unhideClientFromOrders, type Client } from "@/lib/actions"
 import { Link2, RotateCcw, Tag } from "lucide-react"
 
@@ -16,6 +16,7 @@ export default function ClientsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [merchandiserFilter, setMerchandiserFilter] = useState<string | null>(null)
   const [editingMerchandiserFor, setEditingMerchandiserFor] = useState<Client | null>(null)
+  const { merchandiserNames } = useMerchandiserNames()
 
   const visibleClients = useMemo(() => {
     if (!merchandiserFilter) return clients
@@ -80,7 +81,7 @@ export default function ClientsPage() {
               >
                 All
               </button>
-              {MERCHANDISER_NAMES.map((name) => (
+              {merchandiserNames.map((name) => (
                 <button
                   key={name}
                   onClick={() => setMerchandiserFilter(merchandiserFilter === name ? null : name)}

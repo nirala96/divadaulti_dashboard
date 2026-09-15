@@ -78,6 +78,49 @@ export type WorkPoint = {
   created_at: string
 }
 
+export type Merchandiser = {
+  id: number
+  name: string
+  display_order: number
+  created_at: string
+}
+
+// Merchandisers
+export async function getMerchandisers(): Promise<Merchandiser[]> {
+  const result = await pool.query(
+    'SELECT * FROM merchandisers ORDER BY display_order, name'
+  )
+  return result.rows
+}
+
+export async function addMerchandiser(name: string): Promise<Merchandiser | null> {
+  const trimmed = name.trim()
+  if (!trimmed) return null
+
+  const result = await pool.query(
+    `INSERT INTO merchandisers (name, display_order)
+     VALUES ($1, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM merchandisers))
+     ON CONFLICT (name) DO NOTHING
+     RETURNING *`,
+    [trimmed]
+  )
+  revalidatePath('/orders')
+  return result.rows[0] || null
+}
+
+export async function removeMerchandiser(name: string) {
+  await pool.query('DELETE FROM merchandisers WHERE name = $1', [name])
+  revalidatePath('/orders')
+}
+
+export async function countClientsForMerchandiser(name: string): Promise<number> {
+  const result = await pool.query(
+    'SELECT COUNT(*) FROM clients WHERE merchandiser = $1',
+    [name]
+  )
+  return parseInt(result.rows[0].count, 10)
+}
+
 // Clients
 export async function getClients(): Promise<Client[]> {
   const result = await pool.query(`

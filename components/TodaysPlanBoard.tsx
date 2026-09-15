@@ -10,7 +10,7 @@ import {
   type Design
 } from "@/lib/actions"
 import { MerchandiserTag } from "@/components/MerchandiserTag"
-import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
+import { useMerchandiserNames } from "@/lib/useMerchandiserNames"
 import { CLIENT_TAGS } from "@/lib/clientTags"
 import { getClientTagColor } from "@/lib/clientTagColors"
 import { PATTERN_MASTER, CUTTING_MASTER, KARIGAAR_NAMES } from "@/lib/employees"
@@ -156,6 +156,7 @@ const sortForColumn = (designs: Design[]): Design[] =>
   })
 
 export default function TodaysPlanBoard() {
+  const { merchandiserNames } = useMerchandiserNames()
   const [designs, setDesigns] = useState<Design[]>([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -314,7 +315,7 @@ export default function TodaysPlanBoard() {
             >
               All
             </Button>
-            {MERCHANDISER_NAMES.map(name => (
+            {merchandiserNames.map(name => (
               <button
                 key={name}
                 onClick={() => setActiveMerchandiserFilter(activeMerchandiserFilter === name ? null : name)}
@@ -535,7 +536,7 @@ export default function TodaysPlanBoard() {
                   <SelectValue placeholder="Assign a merchandiser" />
                 </SelectTrigger>
                 <SelectContent>
-                  {MERCHANDISER_NAMES.map((name) => (
+                  {merchandiserNames.map((name) => (
                     <SelectItem key={name} value={name}>
                       {name}
                     </SelectItem>

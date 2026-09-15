@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { MERCHANDISER_NAMES } from "@/lib/merchandisers"
+import { useMerchandiserNames } from "@/lib/useMerchandiserNames"
 import { CLIENT_TAGS } from "@/lib/clientTags"
 import { Plus } from "lucide-react"
 
@@ -32,6 +32,7 @@ interface AddClientModalProps {
 }
 
 export function AddClientModal({ onClientAdded }: AddClientModalProps) {
+  const { merchandiserNames } = useMerchandiserNames()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
@@ -129,7 +130,7 @@ export function AddClientModal({ onClientAdded }: AddClientModalProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={UNASSIGNED}>Unassigned</SelectItem>
-                  {MERCHANDISER_NAMES.map((name) => (
+                  {merchandiserNames.map((name) => (
                     <SelectItem key={name} value={name}>
                       {name}
                     </SelectItem>
