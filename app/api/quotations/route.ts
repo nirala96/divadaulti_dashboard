@@ -4,7 +4,7 @@ import { isAuthenticated } from '@/lib/apiAuth'
 
 // Snapshots older than this fall off automatically - keeps the saved list
 // to a rolling window instead of growing forever.
-const RETENTION_SQL = "DELETE FROM quotation_snapshots WHERE saved_at < NOW() - INTERVAL '7 days'"
+const RETENTION_SQL = "DELETE FROM quotation_snapshots WHERE saved_at < NOW() - INTERVAL '4 days'"
 
 export async function GET() {
   if (!isAuthenticated()) {

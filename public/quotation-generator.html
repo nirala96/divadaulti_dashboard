@@ -969,7 +969,7 @@ document.getElementById('printBtn').addEventListener('click', ()=>{
 
 // Saved quotations - persisted server-side (shared across every device/user
 // on this dashboard) instead of browser localStorage, and automatically
-// pruned 7 days after the last time a given quotation number was saved.
+// pruned 4 days after the last time a given quotation number was saved.
 async function fetchLibraryList(){
   try{
     const res = await fetch('/api/quotations');
@@ -1118,7 +1118,8 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
   try{
     const ok = await saveQuotationToServer(serialize());
     if(ok){
-      alert(`Quotation "${quoteNo}" saved. It stays available (and updates each time you save again) for 7 days.`);
+      bumpQuoteNo();
+      alert(`Quotation "${quoteNo}" saved and stays available to view/edit for 4 days. Quotation No is now ${document.getElementById('quoteNo').textContent.trim()} for the next one.`);
     }else{
       alert('Could not save. Please check your connection and try again.');
     }
@@ -1253,7 +1254,7 @@ document.addEventListener('click', (e)=>{
 });
 
 document.getElementById('newBtn').addEventListener('click', async ()=>{
-  if(!confirm('Start a new blank quotation? (Anything already saved stays in "Saved Quotations" for 7 days — this only clears the screen.)')) return;
+  if(!confirm('Start a new blank quotation? (Anything already saved stays in "Saved Quotations" for 4 days — this only clears the screen.)')) return;
   itemsBody.innerHTML = '';
   rowTemplate();
   document.getElementById('quoteNo').textContent = await getNextQuoteNo();
