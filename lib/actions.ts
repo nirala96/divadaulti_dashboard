@@ -85,6 +85,13 @@ export type Merchandiser = {
   created_at: string
 }
 
+export type ClientCheckin = {
+  client_id: string
+  client_name: string
+  merchandiser: string | null
+  checked_today: boolean
+}
+
 // Merchandisers
 export async function getMerchandisers(): Promise<Merchandiser[]> {
   const result = await pool.query(
@@ -119,6 +126,56 @@ export async function countClientsForMerchandiser(name: string): Promise<number>
     [name]
   )
   return parseInt(result.rows[0].count, 10)
+}
+
+// Client Check-ins - "did the merchandiser talk to this client today," reset
+// automatically every day rather than via a scheduled job: only the last
+// checked_at is stored, and a row only counts as checked if that timestamp
+// falls on today's IST calendar date. Ticking tomorrow just overwrites it.
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000
+function istDateKey(d: Date): string {
+  return new Date(d.getTime() + IST_OFFSET_MS).toISOString().slice(0, 10)
+}
+
+async function ensureClientCheckinsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS client_checkins (
+      client_id UUID PRIMARY KEY REFERENCES clients(id) ON DELETE CASCADE,
+      checked_at TIMESTAMPTZ
+    )
+  `)
+}
+
+export async function getClientCheckins(): Promise<ClientCheckin[]> {
+  await ensureClientCheckinsTable()
+
+  const result = await pool.query(`
+    SELECT c.id as client_id, c.name as client_name, c.merchandiser, cc.checked_at
+    FROM clients c
+    LEFT JOIN client_checkins cc ON cc.client_id = c.id
+    WHERE c.hidden_from_orders IS NOT TRUE
+      AND (c.is_on_hold IS NULL OR c.is_on_hold = FALSE)
+    ORDER BY c.display_order
+  `)
+
+  const todayKey = istDateKey(new Date())
+  return result.rows.map((row) => ({
+    client_id: row.client_id,
+    client_name: row.client_name,
+    merchandiser: row.merchandiser,
+    checked_today: !!row.checked_at && istDateKey(new Date(row.checked_at)) === todayKey,
+  }))
+}
+
+export async function setClientCheckin(clientId: string, checked: boolean) {
+  await ensureClientCheckinsTable()
+  await pool.query(
+    `INSERT INTO client_checkins (client_id, checked_at)
+     VALUES ($1, $2)
+     ON CONFLICT (client_id) DO UPDATE SET checked_at = $2`,
+    [clientId, checked ? new Date() : null]
+  )
+  revalidatePath('/todays-plan')
 }
 
 // Clients
