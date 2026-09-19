@@ -24,17 +24,26 @@ export function middleware(request: NextRequest) {
   
   // Check if user is authenticated
   const authCookie = request.cookies.get('admin-auth')
-  
-  if (authCookie?.value === ADMIN_PASSWORD) {
+  const isAuthenticated = authCookie?.value === ADMIN_PASSWORD
+
+  // The PWA manifest's start_url points here (rather than "/") specifically
+  // because it must return 200 for a logged-out fetch: Android's real
+  // "Install app" flow has Google's WebAPK service fetch start_url with no
+  // cookies to verify and package the app, and "/" redirecting it to
+  // /login broke that silently, so the app never actually installed. An
+  // already-authenticated visitor just gets bounced straight through.
+  if (pathname === '/login') {
+    if (isAuthenticated) {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
     return NextResponse.next()
   }
-  
-  // Redirect to login if not authenticated
-  if (pathname !== '/login') {
-    return NextResponse.redirect(new URL('/login', request.url))
+
+  if (isAuthenticated) {
+    return NextResponse.next()
   }
-  
-  return NextResponse.next()
+
+  return NextResponse.redirect(new URL('/login', request.url))
 }
 
 export const config = {
