@@ -32,7 +32,6 @@ type DesignStatus = string
 const PROCESS_STEPS: DesignStatus[] = [
   'Consultation',
   'Fabric Finalize',
-  'Trims Sourcing',
   'Dye',
   'Print',
   'Pattern',

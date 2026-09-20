@@ -212,7 +212,6 @@ function ImageCarousel({
 const STAGES: DesignStatus[] = [
   'Consultation',
   'Fabric Finalize',
-  'Trims Sourcing',
   'Dye',
   'Print',
   'Pattern',
@@ -233,7 +232,6 @@ const isConsultationDone = (design: { stage_status?: Record<string, string> }) =
 const STAGE_COLORS: Record<DesignStatus, string> = {
   'Consultation': 'bg-indigo-100 text-indigo-800',
   'Fabric Finalize': 'bg-slate-100 text-slate-800',
-  'Trims Sourcing': 'bg-yellow-100 text-yellow-800',
   'Dye': 'bg-rose-100 text-rose-800',
   'Print': 'bg-lime-100 text-lime-800',
   'Pattern': 'bg-blue-100 text-blue-800',

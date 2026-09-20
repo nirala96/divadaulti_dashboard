@@ -23,7 +23,6 @@ type StageState = 'vacant' | 'not-needed' | 'in-progress' | 'completed'
 const STAGES: DesignStatus[] = [
   'Consultation',
   'Fabric Finalize',
-  'Trims Sourcing',
   'Dye',
   'Print',
   'Pattern',

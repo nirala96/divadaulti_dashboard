@@ -603,7 +603,6 @@ export async function completeDesign(designId: string) {
   const allStages = {
     'Consultation': 'completed',
     'Fabric Finalize': 'completed',
-    'Trims Sourcing': 'completed',
     'Dye': 'completed',
     'Print': 'completed',
     'Pattern': 'completed',
@@ -860,7 +859,6 @@ export async function restoreDesign(designId: string) {
   const vacantStageStatus = {
     'Consultation': 'completed',
     'Fabric Finalize': 'vacant',
-    'Trims Sourcing': 'vacant',
     'Dye': 'vacant',
     'Print': 'vacant',
     'Pattern': 'vacant',

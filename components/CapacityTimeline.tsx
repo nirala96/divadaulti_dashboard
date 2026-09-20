@@ -270,8 +270,8 @@ export function CapacityTimeline() {
                 {saving ? "Saving..." : "Save capacity settings"}
               </Button>
               <p className="text-xs text-gray-500">
-                Trims Sourcing and Finishing aren't capacity-limited here (Trims is same-day; Finishing has no
-                capacity number yet — let me know one if you want it modeled).
+                Finishing isn't capacity-limited here (no capacity number yet — let me know one if you want it
+                modeled).
               </p>
             </div>
           </div>
