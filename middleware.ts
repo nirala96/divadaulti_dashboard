@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { verifySession } from '@/lib/auth'
 
 // Simple password protection for admin routes
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'divadaulti2024'
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  
+
   // Protect all routes except /track/*, API routes, and PWA assets
   // (manifest/icons/service worker must always be fetchable so Chrome can
   // evaluate installability and Android can render the app icon, even
@@ -21,10 +22,14 @@ export function middleware(request: NextRequest) {
   ) {
     return NextResponse.next()
   }
-  
-  // Check if user is authenticated
-  const authCookie = request.cookies.get('admin-auth')
-  const isAuthenticated = authCookie?.value === ADMIN_PASSWORD
+
+  // Two independent ways in: the original shared owner password
+  // (admin-auth cookie, untouched), or a named login (user-session cookie,
+  // a "<username>.<hmac>" token verified here with no DB round-trip since
+  // Edge middleware can't reach Postgres).
+  const isOwner = request.cookies.get('admin-auth')?.value === ADMIN_PASSWORD
+  const sessionUsername = isOwner ? null : await verifySession(request.cookies.get('user-session')?.value)
+  const isAuthenticated = isOwner || !!sessionUsername
 
   // The PWA manifest's start_url points here (rather than "/") specifically
   // because it must return 200 for a logged-out fetch: Android's real
@@ -39,11 +44,15 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  if (isAuthenticated) {
-    return NextResponse.next()
+  if (!isAuthenticated) {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  return NextResponse.redirect(new URL('/login', request.url))
+  // Identify who's making the request so server actions can attribute
+  // activity-log entries without re-verifying the session themselves.
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-actor-username', isOwner ? 'admin' : sessionUsername!)
+  return NextResponse.next({ request: { headers: requestHeaders } })
 }
 
 export const config = {

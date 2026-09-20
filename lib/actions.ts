@@ -7,7 +7,9 @@
 
 import pool from '@/lib/database'
 import { revalidatePath } from 'next/cache'
+import { headers } from 'next/headers'
 import { STAGE_FIXED_EMPLOYEES } from '@/lib/employees'
+import { hashPassword, verifyPassword } from '@/lib/auth'
 
 export type Client = {
   id: string
@@ -182,6 +184,97 @@ export async function setClientCheckin(clientId: string, checked: boolean) {
     [clientId, checked ? new Date() : null]
   )
   revalidatePath('/todays-plan')
+}
+
+// Dashboard Users - named logins in addition to the shared admin password.
+// Anyone with a login gets the same full access as before; the login just
+// identifies who did what, for the activity log below.
+export type DashboardUser = {
+  username: string
+  display_name: string
+  created_at: string
+}
+
+export async function getDashboardUsers(): Promise<DashboardUser[]> {
+  const result = await pool.query(
+    'SELECT username, display_name, created_at FROM dashboard_users ORDER BY created_at ASC'
+  )
+  return result.rows
+}
+
+export async function addDashboardUser(username: string, password: string, displayName: string) {
+  const normalizedUsername = username.trim().toLowerCase()
+  const trimmedDisplayName = displayName.trim() || normalizedUsername
+  if (!normalizedUsername || !password) return null
+
+  const passwordHash = await hashPassword(password)
+  const result = await pool.query(
+    `INSERT INTO dashboard_users (username, password_hash, display_name)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash, display_name = EXCLUDED.display_name
+     RETURNING username, display_name, created_at`,
+    [normalizedUsername, passwordHash, trimmedDisplayName]
+  )
+  revalidatePath('/users')
+  return result.rows[0]
+}
+
+export async function removeDashboardUser(username: string) {
+  await pool.query('DELETE FROM dashboard_users WHERE username = $1', [username.trim().toLowerCase()])
+  revalidatePath('/users')
+}
+
+export async function verifyDashboardUser(
+  username: string,
+  password: string
+): Promise<{ username: string; display_name: string } | null> {
+  const result = await pool.query(
+    'SELECT username, display_name, password_hash FROM dashboard_users WHERE username = $1',
+    [username.trim().toLowerCase()]
+  )
+  const user = result.rows[0]
+  if (!user) return null
+  const valid = await verifyPassword(password, user.password_hash)
+  return valid ? { username: user.username, display_name: user.display_name } : null
+}
+
+// Activity Log - who marked which stage completed for which client/design.
+// Snapshots design_title/client_name so entries stay meaningful even if the
+// design or client is later deleted or renamed.
+export type ActivityLogEntry = {
+  id: string
+  actor_username: string
+  actor_display_name: string
+  stage: string
+  design_id: string | null
+  design_title: string | null
+  client_name: string | null
+  created_at: string
+}
+
+async function getCurrentActor(): Promise<{ username: string; display_name: string }> {
+  const username = headers().get('x-actor-username') || 'unknown'
+  if (username === 'admin') return { username: 'admin', display_name: 'Admin' }
+
+  const result = await pool.query('SELECT display_name FROM dashboard_users WHERE username = $1', [username])
+  return { username, display_name: result.rows[0]?.display_name || username }
+}
+
+async function logActivity(stage: string, designId: string, designTitle: string | null, clientName: string | null) {
+  const actor = await getCurrentActor()
+  await pool.query(
+    `INSERT INTO activity_log (actor_username, actor_display_name, stage, design_id, design_title, client_name)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [actor.username, actor.display_name, stage, designId, designTitle, clientName]
+  )
+}
+
+export async function getActivityLog(limit = 200): Promise<ActivityLogEntry[]> {
+  const result = await pool.query(
+    'SELECT * FROM activity_log ORDER BY created_at DESC LIMIT $1',
+    [limit]
+  )
+  return result.rows
 }
 
 // Clients
@@ -483,21 +576,33 @@ export async function updateDesignStageStatus(
       [designId, stage, employee, startedAtText, completedAt.toISOString(), durationSeconds, designTitle, clientName]
     )
 
+    if (status === 'completed') {
+      await logActivity(stage, designId, designTitle, clientName)
+    }
+
     revalidatePath('/')
     revalidatePath('/performance')
     return
   }
 
-  await pool.query(
+  const result = await pool.query(
     `UPDATE designs
      SET stage_status = jsonb_set(
        COALESCE(stage_status, '{}'::jsonb),
        $2::text[],
        $3::jsonb
      )
-     WHERE id = $1`,
+     WHERE id = $1
+     RETURNING title AS design_title, (SELECT name FROM clients WHERE id = designs.client_id) AS client_name`,
     [designId, `{${stage}}`, JSON.stringify(status)]
   )
+
+  if (status === 'completed') {
+    const designTitle: string | null = result.rows[0]?.design_title ?? null
+    const clientName: string | null = result.rows[0]?.client_name ?? null
+    await logActivity(stage, designId, designTitle, clientName)
+  }
+
   revalidatePath('/')
 }
 

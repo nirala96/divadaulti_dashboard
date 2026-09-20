@@ -7,7 +7,7 @@ import { isAuthenticated } from '@/lib/apiAuth'
 const RETENTION_SQL = "DELETE FROM quotation_snapshots WHERE saved_at < NOW() - INTERVAL '4 days'"
 
 export async function GET() {
-  if (!isAuthenticated()) {
+  if (!(await isAuthenticated())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -20,7 +20,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAuthenticated()) {
+  if (!(await isAuthenticated())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

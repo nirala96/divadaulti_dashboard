@@ -1,9 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { useState } from "react"
-import { LayoutDashboard, Package, Calendar, ClipboardList, CheckCircle2, DollarSign, PauseCircle, Activity, ListChecks, FileText, MessageCircleQuestion, ChevronDown } from "lucide-react"
+import { LayoutDashboard, Package, Calendar, ClipboardList, CheckCircle2, DollarSign, PauseCircle, Activity, ListChecks, FileText, MessageCircleQuestion, ChevronDown, History, KeyRound, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const groups = [
@@ -43,11 +43,32 @@ const groups = [
       { name: "Orders", href: "/orders", icon: Package },
     ],
   },
+  {
+    title: "Admin",
+    key: "admin",
+    items: [
+      { name: "Activity Log", href: "/activity-log", icon: History },
+      { name: "Dashboard Logins", href: "/users", icon: KeyRound },
+    ],
+  },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const [open, setOpen] = useState<Record<string, boolean>>({ planning: true })
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  const handleLogout = async () => {
+    setLoggingOut(true)
+    try {
+      await fetch('/api/logout', { method: 'POST' })
+      router.push('/login')
+      router.refresh()
+    } finally {
+      setLoggingOut(false)
+    }
+  }
 
   return (
     <div className="flex h-full w-64 flex-col bg-gray-900">
@@ -100,7 +121,15 @@ export function Sidebar() {
           )
         })}
       </nav>
-      <div className="border-t border-gray-800 p-4">
+      <div className="border-t border-gray-800 p-4 space-y-3">
+        <button
+          onClick={handleLogout}
+          disabled={loggingOut}
+          className="flex w-full items-center rounded-md px-2 py-2 text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white transition-colors disabled:opacity-50"
+        >
+          <LogOut className="mr-3 h-5 w-5 flex-shrink-0 text-gray-400" />
+          {loggingOut ? "Logging out..." : "Log out"}
+        </button>
         <p className="text-xs text-gray-400">Order Management System</p>
       </div>
     </div>
