@@ -149,12 +149,18 @@ async function ensureClientCheckinsTable() {
 export async function getClientCheckins(): Promise<ClientCheckin[]> {
   await ensureClientCheckinsTable()
 
+  // Same "currently active" definition as the Dashboard's client list: not
+  // on hold, and has at least one design that isn't dispatched yet. A
+  // client with nothing currently in production shouldn't show up here
+  // even if they're not explicitly on hold.
   const result = await pool.query(`
     SELECT c.id as client_id, c.name as client_name, c.merchandiser, cc.checked_at
     FROM clients c
     LEFT JOIN client_checkins cc ON cc.client_id = c.id
-    WHERE c.hidden_from_orders IS NOT TRUE
-      AND (c.is_on_hold IS NULL OR c.is_on_hold = FALSE)
+    WHERE (c.is_on_hold IS NULL OR c.is_on_hold = FALSE)
+      AND EXISTS (
+        SELECT 1 FROM designs d WHERE d.client_id = c.id AND d.status != 'Dispatch'
+      )
     ORDER BY c.display_order
   `)
 
