@@ -17,6 +17,7 @@ const groups = [
       { name: "Today's Plan", href: "/todays-plan", icon: ListChecks },
       { name: "Daily Check-In", href: "/daily-checkin", icon: ClipboardCheck },
       { name: "Timeline", href: "/timeline", icon: Calendar },
+      { name: "Work Points", href: "/work-points", icon: ClipboardList },
     ],
   },
   {
@@ -41,7 +42,6 @@ const groups = [
     items: [
       { name: "Finance", href: "/finance", icon: DollarSign },
       { name: "Performance", href: "/performance", icon: Activity },
-      { name: "Work Points", href: "/work-points", icon: ClipboardList },
       // keep Orders accessible under Operations
       { name: "Orders", href: "/orders", icon: Package },
     ],
