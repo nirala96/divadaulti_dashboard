@@ -2,9 +2,11 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useState } from "react"
-import { LayoutDashboard, Package, Calendar, ClipboardList, CheckCircle2, DollarSign, PauseCircle, Activity, ListChecks, FileText, MessageCircleQuestion, ChevronDown, History, KeyRound, LogOut } from "lucide-react"
+import { useEffect, useState } from "react"
+import { LayoutDashboard, Package, Calendar, ClipboardList, ClipboardCheck, CheckCircle2, DollarSign, PauseCircle, Activity, ListChecks, FileText, MessageCircleQuestion, ChevronDown, History, KeyRound, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getCurrentSession } from "@/lib/actions"
+import { MERCHANDISER_ALLOWED_PATHS } from "@/lib/roles"
 
 const groups = [
   {
@@ -13,6 +15,7 @@ const groups = [
     items: [
       { name: "Dashboard", href: "/", icon: LayoutDashboard },
       { name: "Today's Plan", href: "/todays-plan", icon: ListChecks },
+      { name: "Daily Check-In", href: "/daily-checkin", icon: ClipboardCheck },
       { name: "Timeline", href: "/timeline", icon: Calendar },
     ],
   },
@@ -58,6 +61,13 @@ export function Sidebar() {
   const router = useRouter()
   const [open, setOpen] = useState<Record<string, boolean>>({ planning: true })
   const [loggingOut, setLoggingOut] = useState(false)
+  const [isMerchandiser, setIsMerchandiser] = useState(false)
+
+  useEffect(() => {
+    getCurrentSession()
+      .then((session) => setIsMerchandiser(session?.role === 'merchandiser'))
+      .catch(() => {})
+  }, [])
 
   const handleLogout = async () => {
     setLoggingOut(true)
@@ -70,13 +80,19 @@ export function Sidebar() {
     }
   }
 
+  const visibleGroups = isMerchandiser
+    ? groups
+        .map((g) => ({ ...g, items: g.items.filter((item) => MERCHANDISER_ALLOWED_PATHS.includes(item.href)) }))
+        .filter((g) => g.items.length > 0)
+    : groups
+
   return (
     <div className="flex h-full w-64 flex-col bg-gray-900">
       <div className="flex h-16 items-center justify-center border-b border-gray-800">
         <h1 className="text-xl font-bold text-white">Diva Daulti</h1>
       </div>
       <nav className="flex-1 px-2 py-4">
-        {groups.map((g) => {
+        {visibleGroups.map((g) => {
           const isOpen = !!open[g.key]
           return (
             <div key={g.key} className="mb-2">

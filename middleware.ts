@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { verifySession } from '@/lib/auth'
+import { MERCHANDISER_ALLOWED_PATHS } from '@/lib/roles'
 
 // Simple password protection for admin routes
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'divadaulti2024'
@@ -24,12 +25,12 @@ export async function middleware(request: NextRequest) {
   }
 
   // Two independent ways in: the original shared owner password
-  // (admin-auth cookie, untouched), or a named login (user-session cookie,
-  // a "<username>.<hmac>" token verified here with no DB round-trip since
-  // Edge middleware can't reach Postgres).
+  // (admin-auth cookie, untouched, always full access), or a named login
+  // (user-session cookie, a "<username>:<role>.<hmac>" token verified here
+  // with no DB round-trip since Edge middleware can't reach Postgres).
   const isOwner = request.cookies.get('admin-auth')?.value === ADMIN_PASSWORD
-  const sessionUsername = isOwner ? null : await verifySession(request.cookies.get('user-session')?.value)
-  const isAuthenticated = isOwner || !!sessionUsername
+  const session = isOwner ? null : await verifySession(request.cookies.get('user-session')?.value)
+  const isAuthenticated = isOwner || !!session
 
   // The PWA manifest's start_url points here (rather than "/") specifically
   // because it must return 200 for a logged-out fetch: Android's real
@@ -48,10 +49,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Identify who's making the request so server actions can attribute
-  // activity-log entries without re-verifying the session themselves.
+  // Merchandiser logins are fenced to a handful of pages. Owner and any
+  // named "sales"/"admin" login are unrestricted.
+  if (session?.role === 'merchandiser' && !MERCHANDISER_ALLOWED_PATHS.includes(pathname)) {
+    return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  // Identify who's making the request (and their role) so server actions
+  // and the Sidebar can read it without re-verifying the session
+  // themselves.
   const requestHeaders = new Headers(request.headers)
-  requestHeaders.set('x-actor-username', isOwner ? 'admin' : sessionUsername!)
+  requestHeaders.set('x-actor-username', isOwner ? 'admin' : session!.username)
+  requestHeaders.set('x-actor-role', isOwner ? 'admin' : session!.role)
   return NextResponse.next({ request: { headers: requestHeaders } })
 }
 

@@ -53,9 +53,9 @@ export function ClientCheckinBoard() {
   }
 
   return (
-    <div className="p-6 pt-0">
+    <div className="p-6">
       <div className="mb-5">
-        <h2 className="text-xl font-bold text-gray-900">Daily Client Check-In</h2>
+        <h1 className="text-2xl font-bold text-gray-900">Daily Client Check-In</h1>
         <p className="text-sm text-gray-500 mt-1">
           Has the merchandiser spoken to this client today? Resets automatically every night at midnight.
         </p>

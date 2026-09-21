@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     // Named login first, so a merchandiser's own username/password works.
     const user = username ? await verifyDashboardUser(username, password) : null
     if (user) {
-      cookies().set('user-session', await signSession(user.username), {
+      cookies().set('user-session', await signSession(user.username, user.role), {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',

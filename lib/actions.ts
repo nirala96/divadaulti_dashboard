@@ -187,33 +187,38 @@ export async function setClientCheckin(clientId: string, checked: boolean) {
 }
 
 // Dashboard Users - named logins in addition to the shared admin password.
-// Anyone with a login gets the same full access as before; the login just
-// identifies who did what, for the activity log below.
+// Role gates page access (see middleware.ts): merchandiser is restricted to
+// a handful of pages, sales and admin get full access, same as the shared
+// owner password. The login also identifies who did what, for the
+// activity log below.
+export type DashboardRole = 'merchandiser' | 'sales' | 'admin'
+
 export type DashboardUser = {
   username: string
   display_name: string
+  role: DashboardRole
   created_at: string
 }
 
 export async function getDashboardUsers(): Promise<DashboardUser[]> {
   const result = await pool.query(
-    'SELECT username, display_name, created_at FROM dashboard_users ORDER BY created_at ASC'
+    'SELECT username, display_name, role, created_at FROM dashboard_users ORDER BY created_at ASC'
   )
   return result.rows
 }
 
-export async function addDashboardUser(username: string, password: string, displayName: string) {
+export async function addDashboardUser(username: string, password: string, displayName: string, role: DashboardRole) {
   const normalizedUsername = username.trim().toLowerCase()
   const trimmedDisplayName = displayName.trim() || normalizedUsername
   if (!normalizedUsername || !password) return null
 
   const passwordHash = await hashPassword(password)
   const result = await pool.query(
-    `INSERT INTO dashboard_users (username, password_hash, display_name)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash, display_name = EXCLUDED.display_name
-     RETURNING username, display_name, created_at`,
-    [normalizedUsername, passwordHash, trimmedDisplayName]
+    `INSERT INTO dashboard_users (username, password_hash, display_name, role)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash, display_name = EXCLUDED.display_name, role = EXCLUDED.role
+     RETURNING username, display_name, role, created_at`,
+    [normalizedUsername, passwordHash, trimmedDisplayName, role]
   )
   revalidatePath('/users')
   return result.rows[0]
@@ -227,15 +232,15 @@ export async function removeDashboardUser(username: string) {
 export async function verifyDashboardUser(
   username: string,
   password: string
-): Promise<{ username: string; display_name: string } | null> {
+): Promise<{ username: string; display_name: string; role: DashboardRole } | null> {
   const result = await pool.query(
-    'SELECT username, display_name, password_hash FROM dashboard_users WHERE username = $1',
+    'SELECT username, display_name, role, password_hash FROM dashboard_users WHERE username = $1',
     [username.trim().toLowerCase()]
   )
   const user = result.rows[0]
   if (!user) return null
   const valid = await verifyPassword(password, user.password_hash)
-  return valid ? { username: user.username, display_name: user.display_name } : null
+  return valid ? { username: user.username, display_name: user.display_name, role: user.role } : null
 }
 
 // Activity Log - who marked which stage completed for which client/design.
@@ -258,6 +263,19 @@ async function getCurrentActor(): Promise<{ username: string; display_name: stri
 
   const result = await pool.query('SELECT display_name FROM dashboard_users WHERE username = $1', [username])
   return { username, display_name: result.rows[0]?.display_name || username }
+}
+
+// For the Sidebar to know which nav items to show. Reads the headers
+// middleware already verified and injected, rather than re-checking
+// cookies here.
+export async function getCurrentSession(): Promise<{ username: string; displayName: string; role: DashboardRole } | null> {
+  const username = headers().get('x-actor-username')
+  const role = headers().get('x-actor-role') as DashboardRole | null
+  if (!username || !role) return null
+  if (username === 'admin') return { username: 'admin', displayName: 'Admin', role: 'admin' }
+
+  const result = await pool.query('SELECT display_name FROM dashboard_users WHERE username = $1', [username])
+  return { username, displayName: result.rows[0]?.display_name || username, role }
 }
 
 async function logActivity(stage: string, designId: string, designTitle: string | null, clientName: string | null) {
@@ -773,79 +791,6 @@ export type Task = {
   images: string[] | null
   display_order: number
   created_at: string
-}
-
-export type Employee = {
-  id: string
-  name: string
-  display_order: number
-  created_at: string
-}
-
-async function ensureWorkpointEmployeesTable() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS workpoint_employees (
-      id SERIAL PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE,
-      display_order INTEGER NOT NULL DEFAULT 0,
-      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-    )
-  `)
-}
-
-export async function getEmployees(): Promise<Employee[]> {
-  await ensureWorkpointEmployeesTable()
-
-  const existing = await pool.query(`
-    SELECT * FROM workpoint_employees
-    ORDER BY display_order ASC, created_at ASC
-  `)
-
-  if (existing.rows.length > 0) {
-    return existing.rows
-  }
-
-  const defaults = ['Arun', 'Allish', 'Nirjara']
-  for (let index = 0; index < defaults.length; index++) {
-    const name = defaults[index]
-    await pool.query(
-      `INSERT INTO workpoint_employees (name, display_order)
-       VALUES ($1, $2)
-       ON CONFLICT (name) DO NOTHING`,
-      [name, index]
-    )
-  }
-
-  const seeded = await pool.query(`
-    SELECT * FROM workpoint_employees
-    ORDER BY display_order ASC, created_at ASC
-  `)
-
-  return seeded.rows
-}
-
-export async function addEmployee(name: string) {
-  await ensureWorkpointEmployeesTable()
-
-  const result = await pool.query(
-    `INSERT INTO workpoint_employees (name, display_order)
-     VALUES ($1, (SELECT COALESCE(MAX(display_order), 0) + 1 FROM workpoint_employees))
-     ON CONFLICT (name) DO NOTHING
-     RETURNING *`,
-    [name]
-  )
-
-  revalidatePath('/work-points')
-  return result.rows[0] || null
-}
-
-export async function removeEmployee(name: string) {
-  await ensureWorkpointEmployeesTable()
-
-  await pool.query(`UPDATE tasks SET assigned_to = NULL WHERE assigned_to = $1`, [name])
-  await pool.query(`DELETE FROM workpoint_employees WHERE name = $1`, [name])
-
-  revalidatePath('/work-points')
 }
 
 export async function getTasks(): Promise<Task[]> {

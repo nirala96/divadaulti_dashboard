@@ -6,11 +6,31 @@ import {
   addDashboardUser,
   removeDashboardUser,
   type DashboardUser,
+  type DashboardRole,
 } from "@/lib/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { X, UserPlus } from "lucide-react"
+
+const ROLES: { value: DashboardRole; label: string }[] = [
+  { value: "merchandiser", label: "Merchandiser" },
+  { value: "sales", label: "Sales" },
+  { value: "admin", label: "Admin" },
+]
+
+const ROLE_COLORS: Record<DashboardRole, string> = {
+  merchandiser: "bg-blue-50 text-blue-700 border-blue-200",
+  sales: "bg-amber-50 text-amber-700 border-amber-200",
+  admin: "bg-purple-50 text-purple-700 border-purple-200",
+}
 
 export function UserManager() {
   const [users, setUsers] = useState<DashboardUser[]>([])
@@ -18,6 +38,7 @@ export function UserManager() {
   const [displayName, setDisplayName] = useState("")
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
+  const [role, setRole] = useState<DashboardRole>("merchandiser")
   const [adding, setAdding] = useState(false)
   const [removingUsername, setRemovingUsername] = useState<string | null>(null)
 
@@ -41,10 +62,11 @@ export function UserManager() {
     }
     setAdding(true)
     try {
-      await addDashboardUser(trimmedUsername, password, displayName)
+      await addDashboardUser(trimmedUsername, password, displayName, role)
       setDisplayName("")
       setUsername("")
       setPassword("")
+      setRole("merchandiser")
       refresh()
     } catch (error: any) {
       alert("Failed to add login: " + error.message)
@@ -70,8 +92,8 @@ export function UserManager() {
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-lg font-semibold text-gray-900 mb-1">Dashboard Logins</h2>
       <p className="text-sm text-gray-500 mb-4">
-        Give merchandisers, karigaars, or anyone else their own username and password. They get the same full
-        access as before - this just identifies who did what in the Activity Log.
+        Give merchandisers, karigaars, or anyone else their own username and password. Merchandiser logins only see
+        Dashboard, Today&apos;s Plan, Daily Check-In, Timeline, and Work Points - Sales and Admin get full access.
       </p>
 
       {loading ? (
@@ -87,6 +109,9 @@ export function UserManager() {
             >
               <span className="font-medium text-gray-900">{user.display_name}</span>
               <span className="text-gray-400">@{user.username}</span>
+              <span className={`text-xs px-1.5 py-0.5 rounded-full border ${ROLE_COLORS[user.role]}`}>
+                {user.role}
+              </span>
               <button
                 onClick={() => handleRemove(user)}
                 disabled={removingUsername === user.username}
@@ -100,7 +125,7 @@ export function UserManager() {
         </div>
       )}
 
-      <form onSubmit={handleAdd} className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl items-end">
+      <form onSubmit={handleAdd} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 max-w-4xl items-end">
         <div className="grid gap-1.5">
           <Label htmlFor="new-user-display-name">Name</Label>
           <Input
@@ -119,6 +144,21 @@ export function UserManager() {
             placeholder="e.g. ritu"
             autoCapitalize="none"
           />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="new-user-role">Role</Label>
+          <Select value={role} onValueChange={(v) => setRole(v as DashboardRole)}>
+            <SelectTrigger id="new-user-role">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ROLES.map((r) => (
+                <SelectItem key={r.value} value={r.value}>
+                  {r.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="new-user-password">Password</Label>

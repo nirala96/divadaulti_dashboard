@@ -40,10 +40,13 @@ export async function verifyPassword(password: string, stored: string): Promise<
 }
 
 // Session cookie for named logins - separate from the existing shared
-// admin-auth cookie, which is untouched. Format is "<username>.<hmac>";
-// verifying just recomputes the HMAC, so no DB round-trip is needed on
-// every request (important since Edge middleware can't reach Postgres).
+// admin-auth cookie, which is untouched. Format is "<username>:<role>.<hmac>";
+// role travels inside the signed payload so Edge middleware can enforce
+// role-based page access without a DB round-trip on every request
+// (important since Edge middleware can't reach Postgres).
 const SESSION_SECRET = process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD || "divadaulti2024"
+
+export type SessionInfo = { username: string; role: string }
 
 async function hmac(value: string): Promise<string> {
   const key = await crypto.subtle.importKey("raw", encoder.encode(SESSION_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"])
@@ -51,15 +54,19 @@ async function hmac(value: string): Promise<string> {
   return toHex(new Uint8Array(sig))
 }
 
-export async function signSession(username: string): Promise<string> {
-  return `${username}.${await hmac(username)}`
+export async function signSession(username: string, role: string): Promise<string> {
+  const payload = `${username}:${role}`
+  return `${payload}.${await hmac(payload)}`
 }
 
-export async function verifySession(token: string | undefined | null): Promise<string | null> {
+export async function verifySession(token: string | undefined | null): Promise<SessionInfo | null> {
   if (!token) return null
   const separatorIndex = token.lastIndexOf(".")
   if (separatorIndex === -1) return null
-  const username = token.slice(0, separatorIndex)
+  const payload = token.slice(0, separatorIndex)
   const signature = token.slice(separatorIndex + 1)
-  return signature === (await hmac(username)) ? username : null
+  if (signature !== (await hmac(payload))) return null
+  const colonIndex = payload.indexOf(":")
+  if (colonIndex === -1) return null
+  return { username: payload.slice(0, colonIndex), role: payload.slice(colonIndex + 1) }
 }

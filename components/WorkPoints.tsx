@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getTasks, addTask, updateTask, deleteTask, getEmployees, addEmployee, removeEmployee, type Task, type Employee } from '@/lib/actions'
+import { getTasks, addTask, updateTask, deleteTask, getDashboardUsers, type Task } from '@/lib/actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Plus, GripVertical, Check, Trash2, Image as ImageIcon, Pencil, UserPlus, X } from 'lucide-react'
+import { Plus, GripVertical, Check, Trash2, Image as ImageIcon, Pencil } from 'lucide-react'
+import Link from 'next/link'
 import {
   Select,
   SelectContent,
@@ -23,8 +24,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog'
 
-const DEFAULT_EMPLOYEES = ['Arun', 'Allish', 'Nirjara']
-
 type EmployeeFilter = 'All' | string
 
 export default function WorkPoints() {
@@ -35,8 +34,7 @@ export default function WorkPoints() {
   const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
   const [selectedFilter, setSelectedFilter] = useState<EmployeeFilter>('All')
-  const [employees, setEmployees] = useState<string[]>(DEFAULT_EMPLOYEES)
-  const [newEmployeeName, setNewEmployeeName] = useState('')
+  const [employees, setEmployees] = useState<string[]>([])
 
   // Form state
   const [newTask, setNewTask] = useState({
@@ -53,13 +51,13 @@ export default function WorkPoints() {
 
   const fetchData = async () => {
     try {
-      const [taskData, employeeData] = await Promise.all([
+      const [taskData, userData] = await Promise.all([
         getTasks(),
-        getEmployees()
+        getDashboardUsers()
       ])
 
       setTasks(taskData || [])
-      setEmployees((employeeData || []).map((employee: Employee) => employee.name))
+      setEmployees((userData || []).map((user) => user.display_name))
     } catch (error) {
       console.error('Error fetching work points data:', error)
     } finally {
@@ -311,48 +309,6 @@ export default function WorkPoints() {
       return palette[index % palette.length]
     }
     return 'bg-gray-100 text-gray-800'
-  }
-
-  const handleAddEmployee = async () => {
-    const trimmedName = newEmployeeName.trim()
-    if (!trimmedName) return
-    if (employees.some(employee => employee.toLowerCase() === trimmedName.toLowerCase())) {
-      alert('This employee already exists')
-      return
-    }
-
-    try {
-      const createdEmployee = await addEmployee(trimmedName)
-      if (createdEmployee) {
-        setEmployees(prev => [...prev, createdEmployee.name])
-      }
-      setNewEmployeeName('')
-    } catch (error) {
-      console.error('Error adding employee:', error)
-      alert('Failed to add employee')
-    }
-  }
-
-  const handleRemoveEmployee = async (employeeToRemove: string) => {
-    if (employees.length <= 1) {
-      alert('At least one employee is required')
-      return
-    }
-
-    try {
-      await removeEmployee(employeeToRemove)
-      setEmployees(prev => prev.filter(employee => employee !== employeeToRemove))
-      setTasks(prevTasks => prevTasks.map(task =>
-        task.assigned_to === employeeToRemove ? { ...task, assigned_to: null } : task
-      ))
-
-      if (selectedFilter === employeeToRemove) {
-        setSelectedFilter('All')
-      }
-    } catch (error) {
-      console.error('Error removing employee:', error)
-      alert('Failed to remove employee')
-    }
   }
 
   if (loading) {
@@ -645,44 +601,16 @@ export default function WorkPoints() {
         </DialogContent>
       </Dialog>
 
-      {/* Employee Management */}
+      {/* Employees are managed on the Dashboard Logins page now, not here */}
       <Card className="mb-6">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold">Employees</h2>
-              <p className="text-sm text-gray-600">Add or remove team members for task assignment</p>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            {employees.map(employee => (
-              <div key={employee} className="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
-                <span>{employee}</span>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveEmployee(employee)}
-                  className="text-gray-400 hover:text-red-600"
-                  title={`Remove ${employee}`}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Input
-              value={newEmployeeName}
-              onChange={(e) => setNewEmployeeName(e.target.value)}
-              placeholder="Add employee name"
-              className="max-w-xs"
-            />
-            <Button type="button" onClick={handleAddEmployee} variant="outline">
-              <UserPlus className="mr-2 h-4 w-4" />
-              Add Employee
-            </Button>
-          </div>
+        <CardContent className="py-4">
+          <p className="text-sm text-gray-600">
+            Employees available for task assignment come from{" "}
+            <Link href="/users" className="text-blue-600 hover:underline font-medium">
+              Dashboard Logins
+            </Link>
+            . Add or remove people there.
+          </p>
         </CardContent>
       </Card>
 
