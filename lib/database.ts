@@ -3,7 +3,13 @@
  * Replace Supabase client with direct PostgreSQL pool
  */
 
-import { Pool } from 'pg';
+import { Pool, types } from 'pg';
+
+// Return DATE columns (start_date, end_date, dispatch_date) as plain
+// 'YYYY-MM-DD' strings, matching the `string | null` types the app uses.
+// By default pg turns them into Date objects, which crashed string code like
+// dispatch_date.split("T") (e.g. "Mark done" on Consultation silently failing).
+types.setTypeParser(types.builtins.DATE, (value: string) => value);
 
 // Create PostgreSQL connection pool
 const pool = new Pool({
