@@ -32,19 +32,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { WhatsAppNudgeButtons } from "@/components/WhatsAppNudgeButtons"
+import { STAGE_MATCHERS, stageState, getStageAlerts, buildStageAlertMessage, type ColumnKey, type StageState } from "@/lib/stagePlan"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-
-type StageState = 'vacant' | 'not-needed' | 'in-progress' | 'completed'
-type ColumnKey = 'finishing' | 'stitching' | 'cutting' | 'pattern' | 'embroidery' | 'dye' | 'print' | 'fabricFinalize' | 'consultation'
-
-const stageState = (design: Design, stage: string): StageState =>
-  (design.stage_status?.[stage] as StageState) || 'vacant'
-
-// A stage counts as "cleared" once it's completed, or explicitly not needed
-// for this design (e.g. a repeat order that reuses an existing pattern).
-const isCleared = (state: StageState) => state === 'completed' || state === 'not-needed'
-const isPending = (state: StageState) => state === 'vacant' || state === 'in-progress'
 
 // Columns run right-to-left through the pipeline: start from what's closest
 // to shipping (Finishing) and work back through whatever is still blocking
@@ -60,7 +51,7 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     hint: 'Stitched — final step before shipping',
     icon: PackageCheck,
     accent: 'border-cyan-300 bg-cyan-50 text-cyan-800',
-    matches: (d) => isCleared(stageState(d, 'Stitching')) && isPending(stageState(d, 'Finishing')),
+    matches: STAGE_MATCHERS.finishing,
   },
   {
     key: 'stitching',
@@ -69,7 +60,7 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     hint: 'Cut and waiting on a karigaar',
     icon: Shirt,
     accent: 'border-pink-300 bg-pink-50 text-pink-800',
-    matches: (d) => isCleared(stageState(d, 'Cutting')) && isPending(stageState(d, 'Stitching')),
+    matches: STAGE_MATCHERS.stitching,
   },
   {
     key: 'cutting',
@@ -78,13 +69,7 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     hint: 'Fabric, dye, print, pattern and embroidery all done',
     icon: Scissors,
     accent: 'border-orange-300 bg-orange-50 text-orange-800',
-    matches: (d) =>
-      isCleared(stageState(d, 'Fabric Finalize')) &&
-      isCleared(stageState(d, 'Dye')) &&
-      isCleared(stageState(d, 'Print')) &&
-      isCleared(stageState(d, 'Pattern')) &&
-      isCleared(stageState(d, 'Embroidery')) &&
-      isPending(stageState(d, 'Cutting')),
+    matches: STAGE_MATCHERS.cutting,
   },
   {
     key: 'pattern',
@@ -93,7 +78,7 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     hint: 'New orders waiting on a pattern',
     icon: PenTool,
     accent: 'border-blue-300 bg-blue-50 text-blue-800',
-    matches: (d) => isCleared(stageState(d, 'Consultation')) && isPending(stageState(d, 'Pattern')),
+    matches: STAGE_MATCHERS.pattern,
   },
   {
     key: 'embroidery',
@@ -102,7 +87,7 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     hint: 'Currently with the embroidery unit',
     icon: Sparkles,
     accent: 'border-violet-300 bg-violet-50 text-violet-800',
-    matches: (d) => isCleared(stageState(d, 'Fabric Finalize')) && isPending(stageState(d, 'Embroidery')),
+    matches: STAGE_MATCHERS.embroidery,
   },
   {
     key: 'dye',
@@ -111,7 +96,7 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     hint: 'Currently with the dye unit',
     icon: Droplet,
     accent: 'border-rose-300 bg-rose-50 text-rose-800',
-    matches: (d) => isCleared(stageState(d, 'Fabric Finalize')) && isPending(stageState(d, 'Dye')),
+    matches: STAGE_MATCHERS.dye,
   },
   {
     key: 'print',
@@ -120,7 +105,7 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     hint: 'Currently with the print unit',
     icon: Printer,
     accent: 'border-lime-300 bg-lime-50 text-lime-800',
-    matches: (d) => isCleared(stageState(d, 'Fabric Finalize')) && isPending(stageState(d, 'Print')),
+    matches: STAGE_MATCHERS.print,
   },
   {
     key: 'fabricFinalize',
@@ -129,7 +114,7 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     hint: 'Needed before dye, print or embroidery can start',
     icon: Layers,
     accent: 'border-teal-300 bg-teal-50 text-teal-800',
-    matches: (d) => isCleared(stageState(d, 'Consultation')) && isPending(stageState(d, 'Fabric Finalize')),
+    matches: STAGE_MATCHERS.fabricFinalize,
   },
   {
     key: 'consultation',
@@ -138,7 +123,7 @@ const COLUMNS: { key: ColumnKey; stage: string; title: string; hint: string; ico
     hint: 'Requirement gathering & design consultation with the client',
     icon: Users,
     accent: 'border-indigo-300 bg-indigo-50 text-indigo-800',
-    matches: (d) => isPending(stageState(d, 'Consultation')),
+    matches: STAGE_MATCHERS.consultation,
   },
 ]
 
@@ -190,6 +175,9 @@ export default function TodaysPlanBoard() {
     }
     return result
   }, [filteredDesigns])
+
+  // Overload alerts look at the whole team, not the current filters.
+  const stageAlerts = useMemo(() => getStageAlerts(designs), [designs])
 
   const applyLocalStageUpdate = (designId: string, stage: string, state: StageState) => {
     setDesigns(prev =>
@@ -368,6 +356,23 @@ export default function TodaysPlanBoard() {
           </Select>
         </div>
       </div>
+
+      {!loading && stageAlerts.length > 0 && (
+        <div className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 flex items-start justify-between gap-4 flex-wrap">
+          <div className="space-y-1">
+            {stageAlerts.map(alert => (
+              <div key={alert.key} className="text-sm text-red-800">
+                <span className="font-semibold">{alert.title}: {alert.count} pending</span>
+                <span className="text-red-600"> (limit {alert.limit})</span>
+                <span className="text-red-700/80"> · {alert.byMerchandiser.map(m => `${m.name} ${m.count}`).join(', ')}</span>
+              </div>
+            ))}
+          </div>
+          <WhatsAppNudgeButtons
+            message={buildStageAlertMessage(stageAlerts, new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10))}
+          />
+        </div>
+      )}
 
       <div className="flex gap-5 overflow-x-auto pb-4">
         {COLUMNS.map(column => {

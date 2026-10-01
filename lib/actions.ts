@@ -10,6 +10,7 @@ import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { STAGE_FIXED_EMPLOYEES } from '@/lib/employees'
 import { hashPassword, verifyPassword } from '@/lib/auth'
+import { getStageAlerts, type CheckinSummary, type DailyReport, type DailyReportData } from '@/lib/stagePlan'
 
 export type Client = {
   id: string
@@ -184,6 +185,83 @@ export async function setClientCheckin(clientId: string, checked: boolean) {
     [clientId, checked ? new Date() : null]
   )
   revalidatePath('/todays-plan')
+  try {
+    await refreshTodaysReport()
+  } catch (error) {
+    console.error('Error refreshing daily report:', error)
+  }
+}
+
+// Daily Report - one snapshot row per IST day of check-in % per
+// merchandiser (plus any overloaded Today's Plan stages). Check-ins only
+// keep the latest tick, so instead of a midnight job the snapshot is
+// re-saved on every check-in change and whenever the report is opened; the
+// last save of a day is that day's end-of-day state.
+const DAILY_REPORT_RETENTION_DAYS = 90
+
+async function ensureDailyReportsTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS daily_reports (
+      report_date DATE PRIMARY KEY,
+      data JSONB NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `)
+}
+
+async function buildDailyReportData(): Promise<DailyReportData> {
+  const [checkins, merchandisers, designs] = await Promise.all([
+    getClientCheckins(),
+    getMerchandisers(),
+    getDesignsWithClients(),
+  ])
+
+  const byName = new Map<string, CheckinSummary['merchandisers'][number]>()
+  for (const m of merchandisers) byName.set(m.name, { name: m.name, total: 0, checked: 0, unchecked: [] })
+  for (const c of checkins) {
+    const name = c.merchandiser || 'Unassigned'
+    if (!byName.has(name)) byName.set(name, { name, total: 0, checked: 0, unchecked: [] })
+    const entry = byName.get(name)!
+    entry.total++
+    if (c.checked_today) entry.checked++
+    else entry.unchecked.push(c.client_name)
+  }
+
+  return {
+    checkins: {
+      total: checkins.length,
+      checked: checkins.filter((c) => c.checked_today).length,
+      merchandisers: Array.from(byName.values()).filter((m) => m.total > 0),
+    },
+    stageAlerts: getStageAlerts(designs),
+  }
+}
+
+export async function refreshTodaysReport() {
+  await ensureDailyReportsTable()
+  const data = await buildDailyReportData()
+  await pool.query(
+    `INSERT INTO daily_reports (report_date, data, updated_at)
+     VALUES ($1, $2, NOW())
+     ON CONFLICT (report_date) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
+    [istDateKey(new Date()), JSON.stringify(data)]
+  )
+}
+
+export async function getDailyReports(): Promise<DailyReport[]> {
+  await refreshTodaysReport()
+  await pool.query(
+    `DELETE FROM daily_reports WHERE report_date < CURRENT_DATE - $1::int`,
+    [DAILY_REPORT_RETENTION_DAYS]
+  )
+  const result = await pool.query(
+    'SELECT report_date, data, updated_at FROM daily_reports ORDER BY report_date DESC'
+  )
+  return result.rows.map((row) => ({
+    report_date: row.report_date,
+    data: row.data,
+    updated_at: new Date(row.updated_at).toISOString(),
+  }))
 }
 
 // Dashboard Users - named logins in addition to the shared admin password.

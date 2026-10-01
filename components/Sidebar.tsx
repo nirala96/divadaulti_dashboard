@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { LayoutDashboard, Package, Calendar, ClipboardList, ClipboardCheck, CheckCircle2, DollarSign, PauseCircle, Activity, ListChecks, FileText, MessageCircleQuestion, ChevronDown, History, KeyRound, LogOut } from "lucide-react"
+import { LayoutDashboard, Package, Calendar, ClipboardList, ClipboardCheck, CheckCircle2, DollarSign, PauseCircle, Activity, ListChecks, FileText, MessageCircleQuestion, ChevronDown, History, BarChart3, KeyRound, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getCurrentSession } from "@/lib/actions"
 import { MERCHANDISER_ALLOWED_PATHS } from "@/lib/roles"
@@ -16,6 +16,7 @@ const groups = [
       { name: "Dashboard", href: "/", icon: LayoutDashboard },
       { name: "Today's Plan", href: "/todays-plan", icon: ListChecks },
       { name: "Daily Check-In", href: "/daily-checkin", icon: ClipboardCheck },
+      { name: "Daily Report", href: "/daily-report", icon: BarChart3 },
       { name: "Timeline", href: "/timeline", icon: Calendar },
       { name: "Work Points", href: "/work-points", icon: ClipboardList },
     ],
