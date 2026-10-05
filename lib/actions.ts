@@ -356,6 +356,12 @@ export async function getCurrentSession(): Promise<{ username: string; displayNa
   return { username, displayName: result.rows[0]?.display_name || username, role }
 }
 
+// Non-stage events in the Activity Log reuse the stage column with these markers.
+const ACTIVITY_DELETED = 'DELETED'
+const ACTIVITY_DISPATCHED = 'DISPATCHED'
+
+const ALL_STAGES = ['Consultation', 'Fabric Finalize', 'Dye', 'Print', 'Pattern', 'Embroidery', 'Cutting', 'Stitching', 'Finishing']
+
 async function logActivity(stage: string, designId: string, designTitle: string | null, clientName: string | null) {
   const actor = await getCurrentActor()
   await pool.query(
@@ -676,6 +682,7 @@ export async function updateDesignStageStatus(
       await logActivity(stage, designId, designTitle, clientName)
     }
 
+    await completeDesignIfAllStagesDone(designId)
     revalidatePath('/')
     revalidatePath('/performance')
     return
@@ -699,7 +706,33 @@ export async function updateDesignStageStatus(
     await logActivity(stage, designId, designTitle, clientName)
   }
 
+  if (status === 'completed' || status === 'not-needed') {
+    await completeDesignIfAllStagesDone(designId)
+  }
   revalidatePath('/')
+}
+
+// Ticking the last stage (completed, or not needed) moves the order to
+// Completed Orders, same as the "Complete" button. Before this, an order
+// whose stages were all ticked one by one was hidden from the dashboard but
+// never reached Completed Orders, so it disappeared entirely.
+async function completeDesignIfAllStagesDone(designId: string) {
+  const result = await pool.query(
+    `UPDATE designs
+     SET status = 'Dispatch', completed_at = NOW()
+     WHERE id = $1
+       AND status != 'Dispatch'
+       AND NOT EXISTS (
+         SELECT 1 FROM unnest($2::text[]) AS s(stage)
+         WHERE COALESCE(stage_status ->> s.stage, 'vacant') NOT IN ('completed', 'not-needed')
+       )
+     RETURNING title AS design_title, (SELECT name FROM clients WHERE id = designs.client_id) AS client_name`,
+    [designId, ALL_STAGES]
+  )
+  if (result.rows[0]) {
+    await logActivity(ACTIVITY_DISPATCHED, designId, result.rows[0].design_title, result.rows[0].client_name)
+    revalidatePath('/completed-orders')
+  }
 }
 
 export async function getStageWorkLogs(): Promise<StageWorkLog[]> {
@@ -793,7 +826,16 @@ export async function updateDesignCompletedQuantity(designId: string, completedQ
 }
 
 export async function deleteDesign(designId: string) {
-  await pool.query('DELETE FROM designs WHERE id = $1', [designId])
+  // Snapshot title/client before the row is gone so the Activity Log can
+  // still say who deleted what.
+  const result = await pool.query(
+    `DELETE FROM designs WHERE id = $1
+     RETURNING title AS design_title, (SELECT name FROM clients WHERE id = designs.client_id) AS client_name`,
+    [designId]
+  )
+  if (result.rows[0]) {
+    await logActivity(ACTIVITY_DELETED, designId, result.rows[0].design_title, result.rows[0].client_name)
+  }
   revalidatePath('/')
   revalidatePath('/orders')
   revalidatePath('/completed-orders')
@@ -813,12 +855,16 @@ export async function completeDesign(designId: string) {
     'Finishing': 'completed'
   }
   
-  await pool.query(
+  const result = await pool.query(
     `UPDATE designs
      SET stage_status = $1, status = 'Dispatch', completed_at = NOW()
-     WHERE id = $2`,
+     WHERE id = $2
+     RETURNING title AS design_title, (SELECT name FROM clients WHERE id = designs.client_id) AS client_name`,
     [JSON.stringify(allStages), designId]
   )
+  if (result.rows[0]) {
+    await logActivity(ACTIVITY_DISPATCHED, designId, result.rows[0].design_title, result.rows[0].client_name)
+  }
   revalidatePath('/')
 }
 

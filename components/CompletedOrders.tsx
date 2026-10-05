@@ -77,7 +77,8 @@ export function CompletedOrders() {
 
   const isDesignCompleted = (design: DesignWithClient): boolean => {
     if (!design.stage_status) return false
-    return STAGES.every(stage => design.stage_status?.[stage] === 'completed')
+    // "Not needed" counts as done - an order can skip e.g. Embroidery.
+    return STAGES.every(stage => ['completed', 'not-needed'].includes(design.stage_status?.[stage]))
   }
 
   const fetchCompletedDesigns = async () => {

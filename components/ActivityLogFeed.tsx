@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { getActivityLog, type ActivityLogEntry } from "@/lib/actions"
-import { CheckCircle2, Loader2 } from "lucide-react"
+import { CheckCircle2, Loader2, PackageCheck, Trash2 } from "lucide-react"
 
 function formatWhen(iso: string): string {
   const date = new Date(iso)
@@ -42,7 +42,7 @@ export function ActivityLogFeed() {
   if (entries.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
-        No activity yet. Entries show up here as stages get marked complete.
+        No activity yet. Entries show up here as stages get marked complete, orders are completed or deleted.
       </div>
     )
   }
@@ -54,11 +54,25 @@ export function ActivityLogFeed() {
           key={entry.id}
           className="flex items-start gap-3 bg-white rounded-lg border border-gray-200 p-4 shadow-sm"
         >
-          <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+          {entry.stage === "DELETED" ? (
+            <Trash2 className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+          ) : entry.stage === "DISPATCHED" ? (
+            <PackageCheck className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+          ) : (
+            <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+          )}
           <div className="min-w-0 flex-1">
             <p className="text-sm text-gray-900">
-              <span className="font-semibold">{entry.actor_display_name}</span> marked{" "}
-              <span className="font-medium">{entry.stage}</span> completed
+              <span className="font-semibold">{entry.actor_display_name}</span>{" "}
+              {entry.stage === "DELETED" ? (
+                <span className="font-medium text-red-600">deleted an order</span>
+              ) : entry.stage === "DISPATCHED" ? (
+                <span className="font-medium">moved an order to Completed Orders</span>
+              ) : (
+                <>
+                  marked <span className="font-medium">{entry.stage}</span> completed
+                </>
+              )}
               {entry.client_name && (
                 <>
                   {" "}
