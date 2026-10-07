@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { getActivityLog, type ActivityLogEntry } from "@/lib/actions"
-import { CheckCircle2, Loader2, PackageCheck, Trash2 } from "lucide-react"
+import { CheckCircle2, Loader2, PackageCheck, RotateCcw, Trash2 } from "lucide-react"
 
 function formatWhen(iso: string): string {
   const date = new Date(iso)
@@ -58,6 +58,8 @@ export function ActivityLogFeed() {
             <Trash2 className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
           ) : entry.stage === "DISPATCHED" ? (
             <PackageCheck className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+          ) : entry.stage === "RESTORED" ? (
+            <RotateCcw className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
           ) : (
             <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
           )}
@@ -68,6 +70,8 @@ export function ActivityLogFeed() {
                 <span className="font-medium text-red-600">deleted an order</span>
               ) : entry.stage === "DISPATCHED" ? (
                 <span className="font-medium">moved an order to Completed Orders</span>
+              ) : entry.stage === "RESTORED" ? (
+                <span className="font-medium">restored an order back to the dashboard</span>
               ) : (
                 <>
                   marked <span className="font-medium">{entry.stage}</span> completed

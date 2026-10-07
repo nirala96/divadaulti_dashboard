@@ -359,6 +359,7 @@ export async function getCurrentSession(): Promise<{ username: string; displayNa
 // Non-stage events in the Activity Log reuse the stage column with these markers.
 const ACTIVITY_DELETED = 'DELETED'
 const ACTIVITY_DISPATCHED = 'DISPATCHED'
+const ACTIVITY_RESTORED = 'RESTORED'
 
 const ALL_STAGES = ['Consultation', 'Fabric Finalize', 'Dye', 'Print', 'Pattern', 'Embroidery', 'Cutting', 'Stitching', 'Finishing']
 
@@ -706,16 +707,19 @@ export async function updateDesignStageStatus(
     await logActivity(stage, designId, designTitle, clientName)
   }
 
-  if (status === 'completed' || status === 'not-needed') {
+  if (status === 'completed') {
     await completeDesignIfAllStagesDone(designId)
   }
   revalidatePath('/')
 }
 
-// Ticking the last stage (completed, or not needed) moves the order to
-// Completed Orders, same as the "Complete" button. Before this, an order
-// whose stages were all ticked one by one was hidden from the dashboard but
-// never reached Completed Orders, so it disappeared entirely.
+// Ticking the last stage moves the order to Completed Orders, same as the
+// "Complete" button. Before this, an order whose stages were all ticked one
+// by one was hidden from the dashboard but never reached Completed Orders,
+// so it disappeared entirely. Only every stage *completed* counts - the same
+// rule the dashboard uses to hide an order. Orders with "not needed" stages
+// (e.g. a design-service order that's only Consultation) stay on the
+// dashboard until someone presses "Complete".
 async function completeDesignIfAllStagesDone(designId: string) {
   const result = await pool.query(
     `UPDATE designs
@@ -724,7 +728,7 @@ async function completeDesignIfAllStagesDone(designId: string) {
        AND status != 'Dispatch'
        AND NOT EXISTS (
          SELECT 1 FROM unnest($2::text[]) AS s(stage)
-         WHERE COALESCE(stage_status ->> s.stage, 'vacant') NOT IN ('completed', 'not-needed')
+         WHERE COALESCE(stage_status ->> s.stage, 'vacant') != 'completed'
        )
      RETURNING title AS design_title, (SELECT name FROM clients WHERE id = designs.client_id) AS client_name`,
     [designId, ALL_STAGES]
@@ -1042,12 +1046,16 @@ export async function restoreDesign(designId: string) {
     'Finishing': 'vacant'
   }
 
-  await pool.query(
+  const result = await pool.query(
     `UPDATE designs
      SET stage_status = $1, status = 'Fabric Finalize', completed_at = NULL
-     WHERE id = $2`,
+     WHERE id = $2
+     RETURNING title AS design_title, (SELECT name FROM clients WHERE id = designs.client_id) AS client_name`,
     [JSON.stringify(vacantStageStatus), designId]
   )
+  if (result.rows[0]) {
+    await logActivity(ACTIVITY_RESTORED, designId, result.rows[0].design_title, result.rows[0].client_name)
+  }
   revalidatePath('/completed-orders')
   revalidatePath('/')
 }
