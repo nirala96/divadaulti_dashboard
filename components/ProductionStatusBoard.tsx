@@ -1644,7 +1644,8 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       {/* CRM-Style Table */}
       <div className="bg-white rounded-lg shadow">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50 sticky top-0 z-30 shadow-md border-b border-gray-200">
+          {/* -top-8 cancels the p-8 on the page's scrolling <main>, so the header pins flush to the top instead of 32px down with rows showing above it */}
+          <thead className="bg-gray-50 sticky -top-8 z-30 shadow-md border-b border-gray-200">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64 bg-gray-50">
                 Client / Product
