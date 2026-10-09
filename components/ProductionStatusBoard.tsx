@@ -293,6 +293,10 @@ interface ProductionStatusBoardProps {
   filter?: DesignType | 'All'
 }
 
+// Header cells stay pinned while scrolling; the bottom shadow replaces the
+// thead border/shadow, which doesn't move with sticky cells.
+const STICKY_TH = 'sticky -top-8 z-30 shadow-[0_2px_4px_-1px_rgba(0,0,0,0.1),0_1px_0_0_rgb(229,231,235)]'
+
 export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardProps) {
   const { merchandiserNames } = useMerchandiserNames()
   const [clientGroups, setClientGroups] = useState<ClientGroup[]>([])
@@ -1644,16 +1648,18 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       {/* CRM-Style Table */}
       <div className="bg-white rounded-lg shadow">
         <table className="min-w-full divide-y divide-gray-200">
-          {/* -top-8 cancels the p-8 on the page's scrolling <main>, so the header pins flush to the top instead of 32px down with rows showing above it */}
-          <thead className="bg-gray-50 sticky -top-8 z-30 shadow-md border-b border-gray-200">
+          {/* Sticky is set on each <th> (STICKY_TH), not the <thead>: iPad
+              Safari/WebKit doesn't pin a sticky <thead>. -top-8 cancels the
+              p-8 on the page's scrolling <main> so it pins flush to the top. */}
+          <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64 bg-gray-50">
+              <th className={`${STICKY_TH} px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64 bg-gray-50`}>
                 Client / Product
               </th>
                 {STAGES.map(stage => (
                   <th 
                     key={stage} 
-                    className={`px-4 py-3 text-center text-xs font-medium uppercase tracking-wider cursor-pointer transition-colors ${
+                    className={`${STICKY_TH} px-4 py-3 text-center text-xs font-medium uppercase tracking-wider cursor-pointer transition-colors ${
                       activeStageFilter === stage 
                         ? 'bg-blue-100 text-blue-700 font-bold' 
                         : 'text-gray-500 hover:bg-gray-100 bg-gray-50'
@@ -1664,7 +1670,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                     {stage}
                   </th>
                 ))}
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32 bg-gray-50">
+                <th className={`${STICKY_TH} px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-32 bg-gray-50`}>
                   Actions
                 </th>
               </tr>
