@@ -1,5 +1,6 @@
 "use client"
 
+import { SkuBadge } from "@/components/SkuBadge"
 import { useState, useEffect, useMemo } from "react"
 import { getCompletedDesigns, deleteDesign, restoreDesign, type Design } from "@/lib/actions"
 import { formatDisplayDate } from "@/lib/timeline"
@@ -336,6 +337,7 @@ export function CompletedOrders() {
                               <span className="ml-2 text-xs text-green-600 font-semibold no-underline">✓ COMPLETED</span>
                             </div>
                             <div className="flex items-center gap-2 mt-1">
+                              <SkuBadge sku={design.sku} />
                               <span className="text-xs text-gray-400 no-underline">{design.quantity} pcs</span>
                               {design.notes && design.notes.trim() && (
                                 <button

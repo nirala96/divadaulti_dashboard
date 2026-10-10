@@ -1,5 +1,6 @@
 "use client"
 
+import { SkuBadge } from "@/components/SkuBadge"
 import { useState, useEffect } from "react"
 import { getHeldClientsWithDesigns, unholdClient, type Design } from "@/lib/actions"
 import { Button } from "@/components/ui/button"
@@ -227,6 +228,7 @@ export function OnHoldOrders() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-medium">{design.title}</span>
+                              <SkuBadge sku={design.sku} />
                               <Badge variant="outline" className="text-xs">
                                 {design.type}
                               </Badge>

@@ -1,5 +1,6 @@
 "use client"
 
+import { SkuBadge } from "@/components/SkuBadge"
 import { useState, useEffect, useMemo } from "react"
 import {
   getDesignsWithClients,
@@ -437,6 +438,7 @@ export default function TodaysPlanBoard() {
                             </div>
                             <div className="text-sm text-gray-600 truncate">{design.title}</div>
                             <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
+                              <SkuBadge sku={design.sku} />
                               <span>{design.type}</span>
                               <span>&middot;</span>
                               <span>Qty {design.quantity}</span>

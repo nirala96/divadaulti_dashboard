@@ -30,6 +30,7 @@ export type Client = {
 
 export type Design = {
   id: string
+  sku: string
   client_id: string
   title: string
   type: 'Sampling' | 'Production'

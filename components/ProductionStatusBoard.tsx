@@ -1,5 +1,6 @@
 "use client"
 
+import { SkuBadge } from "@/components/SkuBadge"
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { compressImage } from "@/lib/imageUtils"
 import {
@@ -2657,6 +2658,7 @@ function ClientGroupRow({
                     {design.title}
                   </div>
                   <div className="flex items-center gap-2 mt-1">
+                    <SkuBadge sku={design.sku} />
                     <Badge
                       variant={design.type === 'Sampling' ? 'secondary' : 'default'}
                       className="text-xs"

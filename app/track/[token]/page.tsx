@@ -154,7 +154,7 @@ export default async function ClientTrackingPage({ params }: PageProps) {
                     <div>
                       <h3 className="text-xl font-bold text-white">{design.title}</h3>
                       <p className="text-purple-100">
-                        {design.type} • Quantity: {design.quantity}
+                        {design.sku && <>{design.sku} • </>}{design.type} • Quantity: {design.quantity}
                       </p>
                     </div>
                     {design.is_priority && (
