@@ -42,6 +42,7 @@ export type Design = {
   price: number | null
   stage_status: Record<string, string>
   stage_started_at: Record<string, string>
+  stage_completed_at?: Record<string, string>
   start_date: string | null
   end_date: string | null
   dispatch_date: string | null
@@ -641,9 +642,10 @@ export async function updateDesignStageStatus(
     await pool.query(
       `UPDATE designs
        SET stage_status = jsonb_set(COALESCE(stage_status, '{}'::jsonb), $2::text[], $3::jsonb),
-           stage_started_at = jsonb_set(COALESCE(stage_started_at, '{}'::jsonb), $2::text[], to_jsonb(NOW()::text))
+           stage_started_at = jsonb_set(COALESCE(stage_started_at, '{}'::jsonb), $2::text[], to_jsonb(NOW()::text)),
+           stage_completed_at = COALESCE(stage_completed_at, '{}'::jsonb) - $4::text
        WHERE id = $1`,
-      [designId, `{${stage}}`, JSON.stringify(status)]
+      [designId, `{${stage}}`, JSON.stringify(status), stage]
     )
     revalidatePath('/')
     return
@@ -654,7 +656,8 @@ export async function updateDesignStageStatus(
   if (status === 'completed' && employee) {
     const result = await pool.query(
       `UPDATE designs
-       SET stage_status = jsonb_set(COALESCE(stage_status, '{}'::jsonb), $2::text[], $3::jsonb)
+       SET stage_status = jsonb_set(COALESCE(stage_status, '{}'::jsonb), $2::text[], $3::jsonb),
+           stage_completed_at = jsonb_set(COALESCE(stage_completed_at, '{}'::jsonb), $2::text[], to_jsonb(NOW()))
        WHERE id = $1
        RETURNING
          stage_started_at ->> $4 AS started_at,
@@ -690,16 +693,23 @@ export async function updateDesignStageStatus(
     return
   }
 
+  // Finish time feeds the stage-delay markers: stamped when a stage is
+  // completed or marked not needed, cleared if it's reset.
+  const isFinished = status === 'completed' || status === 'not-needed'
   const result = await pool.query(
     `UPDATE designs
      SET stage_status = jsonb_set(
        COALESCE(stage_status, '{}'::jsonb),
        $2::text[],
        $3::jsonb
-     )
+     ),
+     stage_completed_at = CASE WHEN $4::boolean
+       THEN jsonb_set(COALESCE(stage_completed_at, '{}'::jsonb), $2::text[], to_jsonb(NOW()))
+       ELSE COALESCE(stage_completed_at, '{}'::jsonb) - $5::text
+     END
      WHERE id = $1
      RETURNING title AS design_title, (SELECT name FROM clients WHERE id = designs.client_id) AS client_name`,
-    [designId, `{${stage}}`, JSON.stringify(status)]
+    [designId, `{${stage}}`, JSON.stringify(status), isFinished, stage]
   )
 
   if (status === 'completed') {
@@ -1049,7 +1059,9 @@ export async function restoreDesign(designId: string) {
 
   const result = await pool.query(
     `UPDATE designs
-     SET stage_status = $1, status = 'Fabric Finalize', completed_at = NULL
+     SET stage_status = $1, status = 'Fabric Finalize', completed_at = NULL,
+         stage_completed_at = COALESCE(stage_completed_at, '{}'::jsonb)
+           - ARRAY['Fabric Finalize', 'Dye', 'Print', 'Pattern', 'Embroidery', 'Cutting', 'Stitching', 'Finishing']
      WHERE id = $2
      RETURNING title AS design_title, (SELECT name FROM clients WHERE id = designs.client_id) AS client_name`,
     [JSON.stringify(vacantStageStatus), designId]

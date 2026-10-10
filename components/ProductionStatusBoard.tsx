@@ -1,6 +1,8 @@
 "use client"
 
 import { SkuBadge } from "@/components/SkuBadge"
+import { StageDelayMarker } from "@/components/StageDelayMarker"
+import { getStageTiming, STAGE_COLUMN_KEY, withStageChange } from "@/lib/stagePlan"
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { compressImage } from "@/lib/imageUtils"
 import {
@@ -722,7 +724,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
         ...group,
         designs: group.designs.map(d =>
           d.id === designId
-            ? { ...d, stage_status: { ...d.stage_status, [stage]: newState } }
+            ? withStageChange(d, stage, newState)
             : d
         )
       }))
@@ -747,7 +749,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
 
     updateLocalDesignState(designId, design => ({
       ...design,
-      stage_status: { ...design.stage_status, [stage]: 'completed' }
+      ...withStageChange(design, stage, 'completed')
     }))
     setStitchingPrompt(null)
 
@@ -770,10 +772,9 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
     const { designId, clientId, stage } = consultationPrompt
 
     updateLocalDesignState(designId, design => ({
-      ...design,
+      ...withStageChange(design, stage, 'completed'),
       client_merchandiser: consultationMerchandiser,
       dispatch_date: consultationDeliveryDate,
-      stage_status: { ...design.stage_status, [stage]: 'completed' }
     }))
     handleMerchandiserSaved(clientId, consultationMerchandiser)
     setConsultationPrompt(null)
@@ -2728,8 +2729,11 @@ function ClientGroupRow({
                 </div>
               </div>
             </td>
-            {STAGES.map(stage => (
+            {STAGES.map(stage => {
+              const timing = STAGE_COLUMN_KEY[stage] ? getStageTiming(design, STAGE_COLUMN_KEY[stage]) : null
+              return (
               <td key={stage} className="px-4 py-4 text-center">
+                <div className="relative inline-block">
                 <StatusIndicator
                   design={design}
                   stage={stage}
@@ -2744,8 +2748,11 @@ function ClientGroupRow({
                     }
                   }}
                 />
+                {timing?.overdue && <StageDelayMarker timing={timing} className="absolute -top-1 -right-1 pointer-events-none" />}
+                </div>
               </td>
-            ))}
+              )
+            })}
             <td className="px-4 py-4">
               <div className="flex items-center justify-center gap-2">
                 <Button

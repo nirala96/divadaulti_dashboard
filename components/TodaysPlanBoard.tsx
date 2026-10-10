@@ -1,6 +1,7 @@
 "use client"
 
 import { SkuBadge } from "@/components/SkuBadge"
+import { StageDelayMarker } from "@/components/StageDelayMarker"
 import { useState, useEffect, useMemo } from "react"
 import {
   getDesignsWithClients,
@@ -34,7 +35,7 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { WhatsAppNudgeButtons } from "@/components/WhatsAppNudgeButtons"
-import { STAGE_MATCHERS, stageState, getStageAlerts, buildStageAlertMessage, type ColumnKey, type StageState } from "@/lib/stagePlan"
+import { STAGE_MATCHERS, getStageTiming, withStageChange, formatSince, stageState, getStageAlerts, buildStageAlertMessage, type ColumnKey, type StageState } from "@/lib/stagePlan"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
@@ -182,7 +183,7 @@ export default function TodaysPlanBoard() {
 
   const applyLocalStageUpdate = (designId: string, stage: string, state: StageState) => {
     setDesigns(prev =>
-      prev.map(d => (d.id === designId ? { ...d, stage_status: { ...d.stage_status, [stage]: state } } : d))
+      prev.map(d => (d.id === designId ? withStageChange(d, stage, state) : d))
     )
   }
 
@@ -236,10 +237,9 @@ export default function TodaysPlanBoard() {
       prev.map(d =>
         d.id === design.id
           ? {
-              ...d,
+              ...withStageChange(d, 'Consultation', 'completed'),
               client_merchandiser: consultationMerchandiser,
               dispatch_date: consultationDeliveryDate,
-              stage_status: { ...d.stage_status, Consultation: 'completed' },
             }
           : d
       )
@@ -403,6 +403,7 @@ export default function TodaysPlanBoard() {
                   const isBusy = busyId === design.id
                   const fixedEmployee =
                     column.key === 'pattern' ? PATTERN_MASTER : column.key === 'cutting' ? CUTTING_MASTER : null
+                  const timing = getStageTiming(design, column.key)
 
                   return (
                     <div
@@ -445,6 +446,15 @@ export default function TodaysPlanBoard() {
                               <span>&middot;</span>
                               <span>{daysWaiting(design.created_at)}d waiting</span>
                             </div>
+                            {timing && (
+                              <div className={`flex items-center gap-1.5 mt-1 text-xs ${timing.overdue ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                                {timing.overdue && <StageDelayMarker timing={timing} />}
+                                <span>
+                                  Since: {formatSince(timing)} · {Math.floor(timing.days)}d
+                                  {timing.overdue && timing.limit !== null && ` (limit ${timing.limit}d)`}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <button

@@ -73,3 +73,12 @@
 .stage-in-progress {
   animation: pulse-dot 1.5s ease-in-out infinite;
 }
+
+/* Stage-delay "!" marker: design has sat at a stage longer than its limit. */
+@keyframes stage-delay-blink {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.6); }
+  50% { opacity: 0.25; box-shadow: 0 0 0 4px rgba(220, 38, 38, 0); }
+}
+.stage-delay-blink {
+  animation: stage-delay-blink 1s ease-in-out infinite;
+}
