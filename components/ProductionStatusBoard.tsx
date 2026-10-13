@@ -2,6 +2,7 @@
 
 import { SkuBadge } from "@/components/SkuBadge"
 import { StageDelayMarker } from "@/components/StageDelayMarker"
+import { useStickyHeaderFallback } from "@/lib/useStickyHeaderFallback"
 import { getStageTiming, STAGE_COLUMN_KEY, withStageChange } from "@/lib/stagePlan"
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { compressImage } from "@/lib/imageUtils"
@@ -302,9 +303,11 @@ const STICKY_TH = 'sticky -top-8 z-30 shadow-[0_2px_4px_-1px_rgba(0,0,0,0.1),0_1
 
 export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardProps) {
   const { merchandiserNames } = useMerchandiserNames()
+  const tableRef = useRef<HTMLTableElement>(null)
   const [clientGroups, setClientGroups] = useState<ClientGroup[]>([])
   const [completedTotal, setCompletedTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  useStickyHeaderFallback(tableRef, !loading)
   const [activeFilter, setActiveFilter] = useState<DesignType | 'All'>(filter)
   const [activeStageFilter, setActiveStageFilter] = useState<DesignStatus | null>(null)
   const [activeMerchandiserFilter, setActiveMerchandiserFilter] = useState<string | null>(null)
@@ -1649,10 +1652,11 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
 
       {/* CRM-Style Table */}
       <div className="bg-white rounded-lg shadow">
-        <table className="min-w-full divide-y divide-gray-200">
+        <table ref={tableRef} className="min-w-full divide-y divide-gray-200">
           {/* Sticky is set on each <th> (STICKY_TH), not the <thead>: iPad
               Safari/WebKit doesn't pin a sticky <thead>. -top-8 cancels the
-              p-8 on the page's scrolling <main> so it pins flush to the top. */}
+              p-8 on the page's scrolling <main> so it pins flush to the top.
+              useStickyHeaderFallback covers browsers where even that fails. */}
           <thead className="bg-gray-50">
             <tr>
               <th className={`${STICKY_TH} px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64 bg-gray-50`}>
