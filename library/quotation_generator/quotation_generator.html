@@ -43,6 +43,23 @@
   #newBtn{background:#fff;color:#a33;border:1px solid #a33 !important;}
   #invoiceBtn{background:#fff;color:#0a8a5f;border:1px solid #0a8a5f !important;}
   #invoiceBtn:disabled{color:#aaa;border-color:#ddd !important;cursor:not-allowed;}
+  #exportBtn{background:#fff;color:#b45309;border:1px solid #b45309 !important;}
+  #exportBtn:disabled{color:#aaa;border-color:#ddd !important;cursor:not-allowed;}
+  .doc-type-badge.export{background:#fdf0dc;color:#b45309;}
+  .export-block{border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:12px 0;background:var(--lavender);}
+  .export-block h4{font-size:12px;text-transform:uppercase;color:var(--accent);margin:0 0 8px;}
+  .export-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;font-size:13px;}
+  .export-grid .ex-row{display:flex;gap:6px;align-items:flex-start;}
+  .export-grid .ex-row label{font-weight:600;color:#555;white-space:normal;flex-shrink:0;}
+  .export-grid .ex-row .editable{flex:1;min-width:0;word-break:break-word;}
+  .export-wide{margin-top:8px;font-size:13px;}
+  .export-wide label{font-weight:600;color:#555;display:block;margin-bottom:2px;}
+  .export-wide .editable{white-space:pre-wrap;word-break:break-word;min-height:20px;}
+  .export-block .editable:empty:before{content:attr(data-placeholder);color:#aaa;}
+  /* Foreign-currency-primary layout on a Commercial Invoice */
+  .export-mode .rate-fx, .export-mode .amt-fx, .export-mode .totals-fx{font-weight:700;color:var(--text);font-size:13px;}
+  .export-mode .amt-val{font-size:11px;color:#888;}
+  @media (max-width:700px){ .export-grid{grid-template-columns:1fr;} }
   .doc-type-badge{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:10px;margin-left:6px;vertical-align:middle;}
   .doc-type-badge.quotation{background:var(--lavender);color:var(--primary);}
   .doc-type-badge.invoice{background:#e3f7ef;color:#0a8a5f;}
@@ -231,6 +248,15 @@
     padding:5px 6px;font-size:13.5px;font-family:inherit;background:transparent;
   }
   input.cell:hover, input.cell:focus{border:1px solid var(--border);background:var(--lavender);outline:none;}
+  /* Item description: a wrapping, auto-growing box so long names are always fully visible */
+  textarea.cell.desc{
+    width:100%;border:1px solid transparent;border-radius:4px;
+    padding:5px 6px;font-size:13.5px;font-family:inherit;background:transparent;
+    resize:none;overflow:hidden;min-height:34px;line-height:1.4;
+    white-space:pre-wrap;word-break:break-word;display:block;
+  }
+  .desc-print{display:none;}
+  textarea.cell.desc:hover, textarea.cell.desc:focus{border:1px solid var(--border);background:var(--lavender);outline:none;}
   input.qty, input.rate{text-align:right;}
   td.amount{text-align:right;font-weight:600;white-space:normal;word-break:break-word;}
   .rm-row{
@@ -294,8 +320,15 @@
   @media print{
     .gstin-verify-link, .gstin-msg, .req-star, .gstin-fetch-btn, .gstin-fetch-result{display:none !important;}
     #custGstin{border:none !important;background:none !important;padding:0;}
-    #custGstin::placeholder, input.desc::placeholder, input.hsn::placeholder{color:transparent !important;}
+    #custGstin::placeholder, .desc::placeholder, input.hsn::placeholder{color:transparent !important;}
+    /* Print uses a plain wrapping block instead of the textarea, so every word shows at any length */
+    textarea.cell.desc{display:none !important;}
+    .desc-print{display:block !important;font-size:13.5px;line-height:1.4;padding:5px 6px;white-space:pre-wrap;word-break:break-word;overflow:visible;height:auto;}
+    td, tr{height:auto !important;overflow:visible !important;}
+    tr{page-break-inside:avoid;}
     #customerAddress:empty:before{content:none !important;}
+    .export-block .editable:empty:before{content:none !important;}
+    .export-block{background:#fff;}
     #customNoteText:empty:before{content:none !important;}
     body{background:#fff;padding:0;}
     .toolbar, .rm-row, #addRowBtn{display:none !important;}
@@ -307,29 +340,7 @@
     .gst-toggle-row{display:none !important;}
     .fx-toggle-row{display:none !important;}
     .note-toggle-row{display:none !important;}
-    .recent-section{display:none !important;}
   }
-
-  .recent-section{max-width:1100px;margin:28px auto 0;}
-  .recent-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px;}
-  .recent-head h3{margin:0;font-size:17px;color:var(--primary);}
-  .recent-sub{font-size:12px;color:#888;margin-left:8px;font-weight:400;}
-  #recentSearch{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;min-width:220px;max-width:100%;}
-  .recent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;}
-  .recent-tile{
-    position:relative;background:#fff;border:1px solid var(--border);border-radius:10px;
-    padding:12px 14px;cursor:pointer;transition:box-shadow .15s, border-color .15s;min-width:0;
-  }
-  .recent-tile:hover{border-color:var(--accent);box-shadow:0 4px 14px rgba(108,76,224,.12);}
-  .recent-tile.current{border-color:var(--primary);box-shadow:0 0 0 2px var(--lavender);}
-  .rt-cust{font-weight:700;font-size:14.5px;padding-right:22px;word-break:break-word;}
-  .rt-no{font-size:12px;color:var(--primary);margin-top:3px;word-break:break-word;}
-  .rt-total{font-size:15px;font-weight:700;margin-top:8px;}
-  .rt-meta{font-size:11.5px;color:#888;margin-top:4px;}
-  .rt-meta .rt-expiring{color:#b35900;font-weight:600;}
-  .rt-del{position:absolute;top:8px;right:8px;background:none;border:none;color:#b33;cursor:pointer;font-size:14px;padding:2px 5px;border-radius:4px;}
-  .rt-del:hover{background:#fbeaea;color:#800;}
-  .recent-empty{font-size:13px;color:#888;padding:18px;text-align:center;background:#fff;border:1px dashed var(--border);border-radius:10px;}
 
   @media (max-width:700px){
     .header, .parties, .footer-sign{flex-direction:column;}
@@ -354,6 +365,7 @@
   </div>
   <button id="saveBtn">Save Quotation</button>
   <button id="invoiceBtn" disabled title="Turn on GST and enter the Customer GSTIN to enable this">Generate Tax Invoice</button>
+  <button id="exportBtn" disabled title="Turn on a foreign currency (USD/EUR/GBP/AED/AUD) to enable this">Generate Commercial Invoice</button>
   <button id="printBtn">Print / Save PDF</button>
   <button id="newBtn">New Quotation</button>
 </div>
@@ -387,7 +399,7 @@
 
   <div class="parties">
     <div class="party">
-      <h4>Quotation For</h4>
+      <h4 id="partyHeading">Quotation For</h4>
       <div class="editable" contenteditable="true" style="font-size:16px;font-weight:600;" id="customerName">Customer Name</div>
       <div class="editable" contenteditable="true" id="customerAddress" data-placeholder="Customer address (city, state, PIN)" style="font-size:13px;color:#555;margin-top:2px;"></div>
       <div class="cust-gstin-row" id="custGstinRow" style="display:none;">
@@ -418,6 +430,27 @@
       </div>
       <div class="payment-final" id="paymentFinal"></div>
     </div>
+  </div>
+
+  <div class="export-block" id="exportBlock" style="display:none;">
+    <h4>Export Details</h4>
+    <div class="export-grid">
+      <div class="ex-row"><label>Buyer Tax / VAT ID:</label><span class="editable" contenteditable="true" id="exBuyerTaxId" data-placeholder="if any"></span></div>
+      <div class="ex-row"><label>Country of Destination:</label><span class="editable" contenteditable="true" id="exDestCountry" data-placeholder="e.g. United States"></span></div>
+      <div class="ex-row"><label>Incoterms:</label><span class="editable" contenteditable="true" id="exIncoterm" data-placeholder="e.g. FOB Delhi / CIF"></span></div>
+      <div class="ex-row"><label>Mode of Shipment:</label><span class="editable" contenteditable="true" id="exMode" data-placeholder="Sea / Air / Courier"></span></div>
+      <div class="ex-row"><label>Port of Loading:</label><span class="editable" contenteditable="true" id="exPortLoading" data-placeholder="e.g. ICD Tughlakabad / Delhi Air Cargo"></span></div>
+      <div class="ex-row"><label>Port of Discharge:</label><span class="editable" contenteditable="true" id="exPortDischarge" data-placeholder="e.g. New York"></span></div>
+      <div class="ex-row"><label>Country of Origin:</label><span class="editable" contenteditable="true" id="exOrigin">India</span></div>
+      <div class="ex-row"><label>No. of Packages:</label><span class="editable" contenteditable="true" id="exPackages" data-placeholder="e.g. 12 cartons"></span></div>
+      <div class="ex-row"><label>Net Weight:</label><span class="editable" contenteditable="true" id="exNetWt" data-placeholder="e.g. 85 kg"></span></div>
+      <div class="ex-row"><label>Gross Weight:</label><span class="editable" contenteditable="true" id="exGrossWt" data-placeholder="e.g. 95 kg"></span></div>
+      <div class="ex-row"><label>Marks &amp; Numbers:</label><span class="editable" contenteditable="true" id="exMarks" data-placeholder="e.g. DD/EXP/001"></span></div>
+      <div class="ex-row"><label>LUT ARN &amp; Date:</label><span class="editable" contenteditable="true" id="exLut" data-placeholder="ARN no. / date"></span></div>
+    </div>
+    <div class="export-wide"><label>Ship To / Consignee (if different from buyer)</label><div class="editable" contenteditable="true" id="exConsignee" data-placeholder="Name, address, country"></div></div>
+    <div class="export-wide"><label>Bank Details for Payment</label><div class="editable" contenteditable="true" id="exBank" data-placeholder="Beneficiary name, bank &amp; branch, A/c no., SWIFT/BIC, IFSC, AD code"></div></div>
+    <div class="export-wide"><label>Declaration</label><div class="editable" contenteditable="true" id="exDeclaration">We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct. Supply meant for export under Letter of Undertaking (LUT) without payment of Integrated Tax.</div></div>
   </div>
 
   <div class="fx-toggle-row">
@@ -540,16 +573,9 @@
 
 </div>
 
-<div class="recent-section" id="recentSection">
-  <div class="recent-head">
-    <h3>Recent Quotations<span class="recent-sub">Saved for 15 days, then cleared automatically</span></h3>
-    <input type="search" id="recentSearch" placeholder="Search customer or number…">
-  </div>
-  <div class="recent-grid" id="recentGrid"><div class="recent-empty">Loading…</div></div>
-</div>
-
 <script>
 const itemsBody = document.getElementById('itemsBody');
+const STORAGE_KEY = 'quotation_generator_library_v2';
 
 // Document type: 'quotation' (default) or 'invoice'. A Tax Invoice is
 // generated from a quotation already on screen — same items/customer/totals,
@@ -568,26 +594,44 @@ let sourceQuoteNoForInvoice = '';
 // silently overwritten.
 const QUOTATION_TERMS_LINE4 = '4. Quotation valid as per validity mentioned above.';
 const INVOICE_TERMS_LINE4 = '4. This is a computer-generated Tax Invoice issued against the quotation referenced above.';
+const EXPORT_TERMS_LINE4 = '4. Goods are of Indian origin. Supply meant for export under LUT without payment of IGST. Payment as per the terms above; bank charges outside India are to be borne by the buyer.';
 function updateTermsForDocType(){
   const el = document.getElementById('termsText');
-  const isInvoice = docType === 'invoice';
-  if(isInvoice && el.textContent.includes(QUOTATION_TERMS_LINE4)){
-    el.textContent = el.textContent.replace(QUOTATION_TERMS_LINE4, INVOICE_TERMS_LINE4);
-  }else if(!isInvoice && el.textContent.includes(INVOICE_TERMS_LINE4)){
-    el.textContent = el.textContent.replace(INVOICE_TERMS_LINE4, QUOTATION_TERMS_LINE4);
-  }
+  const target = docType === 'export' ? EXPORT_TERMS_LINE4 : (docType === 'invoice' ? INVOICE_TERMS_LINE4 : QUOTATION_TERMS_LINE4);
+  [QUOTATION_TERMS_LINE4, INVOICE_TERMS_LINE4, EXPORT_TERMS_LINE4].forEach(line=>{
+    if(line !== target && el.textContent.includes(line)){
+      el.textContent = el.textContent.replace(line, target);
+    }
+  });
 }
 
 function applyDocType(){
   const isInvoice = docType === 'invoice';
-  document.getElementById('docTitle').textContent = isInvoice ? 'TAX INVOICE' : 'QUOTATION';
-  document.getElementById('docNoLabel').textContent = isInvoice ? 'Invoice No:' : 'Quotation No:';
-  document.getElementById('validUntilRow').style.display = isInvoice ? 'none' : 'flex';
-  document.getElementById('sourceQuoteRow').style.display = (isInvoice && sourceQuoteNoForInvoice) ? 'flex' : 'none';
+  const isExport = docType === 'export';
+  const isFinal = isInvoice || isExport; // any invoice type (not a quotation)
+  document.getElementById('docTitle').textContent = isExport ? 'COMMERCIAL INVOICE' : (isInvoice ? 'TAX INVOICE' : 'QUOTATION');
+  document.getElementById('docNoLabel').textContent = isFinal ? 'Invoice No:' : 'Quotation No:';
+  document.getElementById('partyHeading').textContent = isExport ? 'Invoice To (Buyer)' : 'Quotation For';
+  document.getElementById('validUntilRow').style.display = isFinal ? 'none' : 'flex';
+  document.getElementById('sourceQuoteRow').style.display = (isFinal && sourceQuoteNoForInvoice) ? 'flex' : 'none';
   document.getElementById('sourceQuoteNo').textContent = sourceQuoteNoForInvoice || '';
+  document.getElementById('exportBlock').style.display = isExport ? 'block' : 'none';
+  document.getElementById('sheet').classList.toggle('export-mode', isExport);
   updateTermsForDocType();
+  if(typeof applyGstVisibility === 'function') applyGstVisibility();
   if(typeof updateInvoiceBtnState === 'function') updateInvoiceBtnState();
 }
+
+// Resizes a description box to fit all of its text (wraps onto extra lines).
+function autoGrow(el){
+  el.style.height = 'auto';
+  el.style.height = (Math.max(el.scrollHeight, 34) + 4) + 'px';
+  const mirror = el.parentElement && el.parentElement.querySelector('.desc-print');
+  if(mirror) mirror.textContent = el.value;
+}
+function growAllDescs(){ document.querySelectorAll('#itemsBody textarea.desc').forEach(autoGrow); }
+window.addEventListener('resize', growAllDescs);
+window.addEventListener('beforeprint', growAllDescs);
 
 function rowTemplate(data){
   data = data || {};
@@ -599,7 +643,7 @@ function rowTemplate(data){
         <input type="file" accept="image/*" style="display:none;">
       </div>
     </td>
-    <td><input type="text" class="cell desc" placeholder="e.g. Stainless Steel Bracket - Model A" value="${data.desc || ''}"></td>
+    <td><textarea class="cell desc" rows="1" placeholder="e.g. Stainless Steel Bracket - Model A"></textarea><div class="desc-print"></div></td>
     <td class="hsn-col" style="display:none;"><input type="text" class="cell hsn" placeholder="e.g. 6111" value="${data.hsn || ''}"></td>
     <td class="num"><input type="number" class="cell qty" value="${data.qty ?? 1}" min="0"></td>
     <td><input type="text" class="cell unit" value="${data.unit || 'pcs'}"></td>
@@ -617,6 +661,10 @@ function rowTemplate(data){
     <td><button class="rm-row" title="Remove row">✕</button></td>
   `;
   itemsBody.appendChild(tr);
+  const descEl = tr.querySelector('.desc');
+  descEl.value = data.desc || '';
+  descEl.addEventListener('input', ()=> autoGrow(descEl));
+  autoGrow(descEl);
   if(data.paid) tr.classList.add('row-paid');
   const hsnCell = tr.querySelector('.hsn-col');
   if(hsnCell) hsnCell.style.display = document.getElementById('gstToggle').checked ? 'table-cell' : 'none';
@@ -707,6 +755,7 @@ function getCustomerStateCode(){
 }
 
 function isIntraStateSupply(){
+  if(docType === 'export') return false; // export = IGST (0% under LUT), never CGST+SGST
   const custCode = getCustomerStateCode();
   if(!custCode) return true; // no customer GSTIN yet — assume intra-state until known
   return custCode === SUPPLIER_STATE_CODE;
@@ -716,6 +765,7 @@ function isIntraStateSupply(){
 // while the field still holds a previous auto-filled value or the placeholder
 // — if the user has typed their own place of supply, we leave it alone.
 function updatePlaceOfSupply(){
+  if(docType === 'export') return; // fixed to "Outside India (Export)" on generation
   const el = document.getElementById('placeOfSupply');
   const custCode = getCustomerStateCode();
   const autoText = custCode && STATE_CODES[custCode] ? (STATE_CODES[custCode] + ' (' + custCode + ')') : '—';
@@ -762,7 +812,7 @@ function recalc(){
   const halfPctStr = (Math.round(halfPct * 100) / 100).toString();
   document.getElementById('cgstLabel').textContent = `CGST (${halfPctStr}%)`;
   document.getElementById('sgstLabel').textContent = `SGST (${halfPctStr}%)`;
-  document.getElementById('igstLabel').textContent = `IGST (${gstPct}%)`;
+  document.getElementById('igstLabel').textContent = (docType === 'export' && gstPct === 0) ? 'IGST (0% — export under LUT)' : `IGST (${gstPct}%)`;
   document.getElementById('cgstAmt').textContent = currency(cgstAmt);
   document.getElementById('sgstAmt').textContent = currency(sgstAmt);
   document.getElementById('igstAmt').textContent = currency(igstAmt);
@@ -792,8 +842,11 @@ function applyGstVisibility(){
   const on = document.getElementById('gstToggle').checked;
   document.getElementById('gstRateRow').style.display = on ? 'flex' : 'none';
   document.getElementById('gstinLine').style.display = on ? 'block' : 'none';
-  document.getElementById('custGstinRow').style.display = on ? 'block' : 'none';
+  // Customer GSTIN doesn't apply to a foreign buyer (Commercial Invoice).
+  document.getElementById('custGstinRow').style.display = (on && docType !== 'export') ? 'block' : 'none';
   document.getElementById('hsnHeader').style.display = on ? 'table-cell' : 'none';
+  document.getElementById('hsnHeader').textContent = docType === 'export' ? 'HS Code' : 'HSN/SAC';
+  growAllDescs(); // column widths changed — refit description boxes
   document.querySelectorAll('#itemsBody .hsn-col').forEach(td=>{ td.style.display = on ? 'table-cell' : 'none'; });
   updateInvoiceBtnState();
 }
@@ -882,10 +935,18 @@ function updateInvoiceBtnState(){
   const gstOn = document.getElementById('gstToggle').checked;
   const gstinVal = document.getElementById('custGstin').value.trim();
   const btn = document.getElementById('invoiceBtn');
-  btn.disabled = docType === 'invoice' || !gstOn || !gstinVal;
-  btn.title = docType === 'invoice'
-    ? 'This is already a Tax Invoice'
+  btn.disabled = docType !== 'quotation' || !gstOn || !gstinVal;
+  btn.title = docType !== 'quotation'
+    ? 'Start from a quotation to generate a Tax Invoice'
     : (!gstOn ? 'Turn on GST first' : (!gstinVal ? 'Enter the Customer GSTIN to enable this' : 'Generate a Tax Invoice from this quotation'));
+
+  // Commercial Invoice (export): needs a foreign currency switched on.
+  const exBtn = document.getElementById('exportBtn');
+  const anyFx = ['usdToggle','eurToggle','gbpToggle','aedToggle','audToggle'].some(id => document.getElementById(id).checked);
+  exBtn.disabled = docType !== 'quotation' || !anyFx;
+  exBtn.title = docType !== 'quotation'
+    ? 'Start from a quotation to generate a Commercial Invoice'
+    : (!anyFx ? 'Turn on a foreign currency (USD/EUR/GBP/AED/AUD) to enable this' : 'Generate a Commercial Invoice for a foreign buyer');
 }
 
 // Business-detail lookup via gstincheck.co.in (needs an account API key —
@@ -960,6 +1021,7 @@ function applyFxVisibility(){
   document.getElementById('gbpToggleWrap').classList.toggle('on', document.getElementById('gbpToggle').checked);
   document.getElementById('aedToggleWrap').classList.toggle('on', document.getElementById('aedToggle').checked);
   document.getElementById('audToggleWrap').classList.toggle('on', document.getElementById('audToggle').checked);
+  if(typeof updateInvoiceBtnState === 'function') updateInvoiceBtnState();
 }
 
 ['usdToggle','eurToggle','gbpToggle','aedToggle','audToggle'].forEach(id=>{
@@ -1138,7 +1200,16 @@ function bumpQuoteNo(){
 
 const _originalTitle = document.title;
 document.getElementById('printBtn').addEventListener('click', ()=>{
-  if(document.getElementById('gstToggle').checked){
+  if(docType === 'export'){
+    const anyFx = ['usdToggle','eurToggle','gbpToggle','aedToggle','audToggle'].some(id => document.getElementById(id).checked);
+    const problems = [];
+    if(!anyFx) problems.push('no invoice currency is switched on');
+    if(Array.from(itemsBody.querySelectorAll('tr')).some(tr => !tr.querySelector('.hsn').value.trim())) problems.push('one or more items are missing an HS code');
+    [['exDestCountry','Country of Destination'],['exIncoterm','Incoterms'],['exPortLoading','Port of Loading'],['exPortDischarge','Port of Discharge'],['exBank','Bank details']].forEach(([id,label])=>{
+      if(!document.getElementById(id).textContent.trim()) problems.push(label + ' is empty');
+    });
+    if(problems.length && !confirm('Commercial Invoice check:\n• ' + problems.join('\n• ') + '\n\nPrint anyway?')) return;
+  }else if(document.getElementById('gstToggle').checked){
     const gstinVal = document.getElementById('custGstin').value.trim();
     const check = validateGSTIN(gstinVal);
     if(!gstinVal){
@@ -1159,87 +1230,59 @@ document.getElementById('printBtn').addEventListener('click', ()=>{
   }
   const rawName = (document.getElementById('customerName').textContent || 'Quotation').trim();
   const safeName = rawName.replace(/[^a-zA-Z0-9 _-]/g, '').trim().replace(/\s+/g, '_') || 'Client';
-  document.title = `${safeName}_${docType === 'invoice' ? 'Tax_Invoice' : 'Quotation'}`;
-  // Every printed quotation/invoice is also saved, so it shows up in Recent
-  // Quotations even if nobody pressed "Save Quotation" first. Serialize
-  // before the number is bumped below.
-  if(document.getElementById('quoteNo').textContent.trim()){
-    saveQuotationToServer(serialize()).then(ok => { if(ok) refreshRecent(); });
-  }
+  document.title = `${safeName}_${docType === 'export' ? 'Commercial_Invoice' : (docType === 'invoice' ? 'Tax_Invoice' : 'Quotation')}`;
   window.print();
   setTimeout(()=>{ document.title = _originalTitle; }, 1000);
   bumpQuoteNo();
 });
 
-// Saved quotations & tax invoices - persisted server-side (shared across
-// every device/user on this dashboard) instead of browser localStorage.
-// Each is kept under its own number and updated every time it's saved again;
-// the server flushes anything not re-saved within RETENTION_DAYS.
-const RETENTION_DAYS = 15;
-let savedList = []; // latest [{quote_no, customer_name, grand_total, saved_at}, ...]
-
-async function fetchLibraryList(){
-  try{
-    const res = await fetch('/api/quotations');
-    if(!res.ok) return savedList;
-    savedList = await res.json();
-  }catch(err){ /* keep the last list we had */ }
-  return savedList;
+// Saved quotations library (browser localStorage, per-device).
+// Every quotation is kept under its own Quotation No, and is overwritten
+// (kept up to date) each time you hit "Save Quotation" after editing it.
+function getLibrary(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+  catch(err){ return {}; }
 }
 
-async function fetchQuotationData(quoteNo){
-  try{
-    const res = await fetch('/api/quotations/' + encodeURIComponent(quoteNo));
-    if(!res.ok) return null;
-    return await res.json();
-  }catch(err){
-    return null;
-  }
-}
-
-async function saveQuotationToServer(data){
-  try{
-    const res = await fetch('/api/quotations', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(data)
-    });
-    return res.ok;
-  }catch(err){
-    return false;
-  }
-}
-
-async function deleteQuotationFromServer(quoteNo){
-  try{
-    const res = await fetch('/api/quotations/' + encodeURIComponent(quoteNo), { method: 'DELETE' });
-    return res.ok;
-  }catch(err){
-    return false;
-  }
-}
-
-function isInvoiceNo(no){ return /^INV-/i.test(no || ''); }
-
-// Numbers always increase within a series: <prefix>-<year>-<seq>, seq = 1
-// higher than the highest one saved so far this year (shared across the
-// whole team). Quotations use QT-, Tax Invoices their own independent INV-
-// series, so the two never collide or have to match.
-async function getNextNoInSeries(prefix){
+// Quotation numbers always increase: QT-<year>-<seq>, seq = 1 higher than the
+// highest one saved so far this year (across all clients), so every new
+// quotation you start automatically picks up from wherever you left off.
+function getNextQuoteNo(){
   const year = new Date().getFullYear();
-  const entries = await fetchLibraryList();
-  const re = new RegExp('^' + prefix + '-(\\d{4})-(\\d+)$');
+  const lib = getLibrary();
   let maxNum = 0;
-  entries.forEach(entry=>{
-    const m = (entry.quote_no || '').match(re);
+  Object.keys(lib).forEach(key=>{
+    const m = key.match(/^QT-(\d{4})-(\d+)$/);
+    if(m && parseInt(m[1], 10) === year){
+      maxNum = Math.max(maxNum, parseInt(m[2], 10));
+    }
+  });
+  return 'QT-' + year + '-' + String(maxNum + 1).padStart(3, '0');
+}
+
+// Tax Invoice numbers use their own independent series — INV-<year>-<seq> —
+// so invoice numbering never collides with, or has to match, quotation numbers.
+function getNextInvoiceNo(prefix){
+  prefix = prefix || 'INV';
+  const year = new Date().getFullYear();
+  const lib = getLibrary();
+  let maxNum = 0;
+  const re = new RegExp('^' + prefix + '-(\\d{4})-(\\d+)$');
+  Object.keys(lib).forEach(key=>{
+    const m = key.match(re);
     if(m && parseInt(m[1], 10) === year){
       maxNum = Math.max(maxNum, parseInt(m[2], 10));
     }
   });
   return prefix + '-' + year + '-' + String(maxNum + 1).padStart(3, '0');
 }
-function getNextQuoteNo(){ return getNextNoInSeries('QT'); }
-function getNextInvoiceNo(){ return getNextNoInSeries('INV'); }
+
+// Commercial Invoice (export) numbers: their own series, EXP-<year>-<seq>.
+function getNextExportNo(){ return getNextInvoiceNo('EXP'); }
+
+function setLibrary(lib){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(lib));
+}
 
 function serialize(){
   const items = [];
@@ -1289,12 +1332,31 @@ function serialize(){
     customNoteOn: document.getElementById('customNoteToggle').checked,
     customNoteText: document.getElementById('customNoteText').innerHTML,
     termsHTML: document.getElementById('termsText').innerHTML,
+    exportFields: (function(){
+      const o = {};
+      EXPORT_FIELD_IDS.forEach(id => { o[id] = document.getElementById(id).textContent.trim(); });
+      return o;
+    })(),
   };
 }
 
+// Editable Commercial Invoice fields (saved/loaded/reset as a group).
+const EXPORT_FIELD_IDS = ['exBuyerTaxId','exDestCountry','exIncoterm','exMode','exPortLoading','exPortDischarge','exOrigin','exPackages','exNetWt','exGrossWt','exMarks','exLut','exConsignee','exBank','exDeclaration'];
+const EXPORT_FIELD_DEFAULTS = {
+  exOrigin: 'India',
+  exDeclaration: 'We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct. Supply meant for export under Letter of Undertaking (LUT) without payment of Integrated Tax.',
+};
+function resetExportFields(values){
+  values = values || {};
+  EXPORT_FIELD_IDS.forEach(id=>{
+    document.getElementById(id).textContent = (values[id] !== undefined && values[id] !== '') ? values[id] : (EXPORT_FIELD_DEFAULTS[id] || '');
+  });
+}
+
 function loadQuotationData(data){
-  docType = data.docType === 'invoice' ? 'invoice' : 'quotation';
+  docType = (data.docType === 'invoice' || data.docType === 'export') ? data.docType : 'quotation';
   sourceQuoteNoForInvoice = data.sourceQuoteNo || '';
+  resetExportFields(data.exportFields);
   if(data.termsHTML) document.getElementById('termsText').innerHTML = data.termsHTML;
   applyDocType();
   itemsBody.innerHTML = '';
@@ -1339,26 +1401,17 @@ function loadQuotationData(data){
   recalc();
 }
 
-document.getElementById('saveBtn').addEventListener('click', async ()=>{
+document.getElementById('saveBtn').addEventListener('click', ()=>{
   const quoteNo = document.getElementById('quoteNo').textContent.trim();
-  const label = docType === 'invoice' ? 'Tax Invoice' : 'Quotation';
-  if(!quoteNo){ alert(`Please enter a ${docType === 'invoice' ? 'Invoice' : 'Quotation'} No before saving.`); return; }
-  const btn = document.getElementById('saveBtn');
-  const originalLabel = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
+  const label = docType === 'export' ? 'Commercial Invoice' : (docType === 'invoice' ? 'Tax Invoice' : 'Quotation');
+  if(!quoteNo){ alert(`Please enter a ${docType === 'quotation' ? 'Quotation' : 'Invoice'} No before saving.`); return; }
   try{
-    const ok = await saveQuotationToServer(serialize());
-    if(ok){
-      bumpQuoteNo();
-      refreshRecent();
-      alert(`${label} "${quoteNo}" saved and stays available to view/edit for ${RETENTION_DAYS} days (see Recent Quotations below). ${label} No is now ${document.getElementById('quoteNo').textContent.trim()} for the next one.`);
-    }else{
-      alert('Could not save. Please check your connection and try again.');
-    }
-  }finally{
-    btn.disabled = false;
-    btn.textContent = originalLabel;
+    const lib = getLibrary();
+    lib[quoteNo] = serialize();
+    setLibrary(lib);
+    alert(`${label} "${quoteNo}" saved. It will stay saved (and update each time you save again) until you edit and save it next.`);
+  }catch(err){
+    alert('Could not save (data may be too large). Try using fewer / smaller images.');
   }
 });
 
@@ -1367,20 +1420,20 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
 // INVOICE", forces GST on (a GST tax invoice must show GST; without GST it
 // would be a Bill of Supply), gives it its own INV-<year>-<seq> number
 // (independent of the QT- series) and today's date, and saves it as a brand
-// new entry - the original quotation stays exactly as it was, untouched.
-document.getElementById('invoiceBtn').addEventListener('click', async ()=>{
-  if(docType === 'invoice'){
-    alert('This is already a Tax Invoice.');
+// new entry in the saved-quotations library — the original quotation stays
+// exactly as it was, untouched, so nothing is lost.
+document.getElementById('invoiceBtn').addEventListener('click', ()=>{
+  if(docType !== 'quotation'){
+    alert('Tax Invoices can only be generated from a quotation.');
     return;
   }
   if(!confirm('Generate a Tax Invoice from this quotation? It will get its own invoice number, today\'s date, and GST will be switched on. It will be saved as a new entry — this quotation stays untouched.')) return;
 
-  const invoiceNo = await getNextInvoiceNo();
   sourceQuoteNoForInvoice = document.getElementById('quoteNo').textContent.trim();
   docType = 'invoice';
   applyDocType();
 
-  document.getElementById('quoteNo').textContent = invoiceNo;
+  document.getElementById('quoteNo').textContent = getNextInvoiceNo();
   document.getElementById('quoteDate').textContent = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
 
   if(!document.getElementById('gstToggle').checked){
@@ -1389,96 +1442,53 @@ document.getElementById('invoiceBtn').addEventListener('click', async ()=>{
   }
   recalc();
 
-  if(await saveQuotationToServer(serialize())){
-    refreshRecent();
+  const invoiceNo = document.getElementById('quoteNo').textContent.trim();
+  try{
+    const lib = getLibrary();
+    lib[invoiceNo] = serialize();
+    setLibrary(lib);
     alert(`Tax Invoice "${invoiceNo}" created from Quotation "${sourceQuoteNoForInvoice}" and saved. Please check the Customer GSTIN, then use Print / Save PDF.`);
-  }else{
-    alert('Tax Invoice created on screen, but could not be saved. Please check your connection and use "Save Quotation" to try again, or print directly.');
+  }catch(err){
+    alert('Tax Invoice created on screen, but could not be auto-saved (data may be too large). Use "Save Quotation" to try again, or print directly.');
   }
 });
 
-function escapeHtml(str){
-  return String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
+// Generates a Commercial Invoice (export, foreign buyer) from the quotation on
+// screen: own EXP-<year>-<seq> number, today's date, GST forced on at 0% IGST
+// ("export under LUT"), place of supply "Outside India (Export)", HS-code
+// column and the export details block (incoterms, ports, packages, weights,
+// bank details, declaration) shown. Saved as a new entry; quotation untouched.
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  if(docType !== 'quotation'){ alert('Commercial Invoices can only be generated from a quotation.'); return; }
+  if(!confirm('Generate a Commercial Invoice for a foreign buyer from this quotation? It will get its own EXP- number, today\'s date, and be set to 0% IGST (export under LUT). Saved as a new entry — this quotation stays untouched.')) return;
 
-function formatSavedDate(iso){
-  return iso ? new Date(iso).toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'}) : '';
-}
+  sourceQuoteNoForInvoice = document.getElementById('quoteNo').textContent.trim();
+  docType = 'export';
+  document.getElementById('gstToggle').checked = true;
+  document.getElementById('gstPct').value = 0;
+  document.getElementById('placeOfSupply').textContent = 'Outside India (Export)';
+  document.getElementById('reverseCharge').textContent = 'No';
+  applyDocType();
 
-function daysLeft(iso){
-  if(!iso) return RETENTION_DAYS;
-  const expires = new Date(iso).getTime() + RETENTION_DAYS * 86400000;
-  return Math.max(0, Math.ceil((expires - Date.now()) / 86400000));
-}
+  document.getElementById('quoteNo').textContent = getNextExportNo();
+  document.getElementById('quoteDate').textContent = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+  recalc();
 
-async function loadSavedEntry(quoteNo){
-  const label = isInvoiceNo(quoteNo) ? 'tax invoice' : 'quotation';
-  if(!confirm(`Load ${label} "${quoteNo}"? This will replace what's currently on screen.`)) return false;
-  const data = await fetchQuotationData(quoteNo);
-  if(!data){ alert(`Could not load that ${label} — it may have expired.`); refreshRecent(); return false; }
-  loadQuotationData(data);
-  renderRecentTiles();
-  window.scrollTo({top: 0, behavior: 'smooth'});
-  return true;
-}
-
-async function deleteSavedEntry(quoteNo){
-  const label = isInvoiceNo(quoteNo) ? 'tax invoice' : 'quotation';
-  if(!confirm(`Delete saved ${label} "${quoteNo}"? This cannot be undone.`)) return false;
-  await deleteQuotationFromServer(quoteNo);
-  await refreshRecent();
-  return true;
-}
-
-// Recent Quotations: one tile per saved quotation/invoice from the last
-// RETENTION_DAYS days, shown below the sheet so a returning customer's
-// quotation is one click away.
-function renderRecentTiles(){
-  const grid = document.getElementById('recentGrid');
-  const q = document.getElementById('recentSearch').value.trim().toLowerCase();
-  const current = document.getElementById('quoteNo').textContent.trim();
-  const entries = savedList.filter(e => !q
-    || (e.customer_name || '').toLowerCase().includes(q)
-    || (e.quote_no || '').toLowerCase().includes(q));
-  grid.innerHTML = '';
-  if(entries.length === 0){
-    grid.innerHTML = `<div class="recent-empty">${savedList.length ? 'No saved quotations match your search.' : `No quotations saved in the last ${RETENTION_DAYS} days yet. Use "Save Quotation" (or Print) and they'll show up here.`}</div>`;
-    return;
+  const invoiceNo = document.getElementById('quoteNo').textContent.trim();
+  try{
+    const lib = getLibrary();
+    lib[invoiceNo] = serialize();
+    setLibrary(lib);
+    alert(`Commercial Invoice "${invoiceNo}" created from Quotation "${sourceQuoteNoForInvoice}" and saved. Fill in the Export Details (incoterms, ports, packages, weights, bank details, HS codes, LUT), then use Print / Save PDF.`);
+  }catch(err){
+    alert('Commercial Invoice created on screen, but could not be auto-saved (data may be too large). Use "Save Quotation" to try again, or print directly.');
   }
-  entries.forEach(entry=>{
-    const invoice = isInvoiceNo(entry.quote_no);
-    const left = daysLeft(entry.saved_at);
-    const tile = document.createElement('div');
-    tile.className = 'recent-tile' + (entry.quote_no === current ? ' current' : '');
-    tile.title = 'Click to open';
-    tile.innerHTML = `
-      <button class="rt-del" title="Delete">✕</button>
-      <div class="rt-cust">${escapeHtml(entry.customer_name || 'Customer Name')}</div>
-      <div class="rt-no">${escapeHtml(entry.quote_no)}<span class="doc-type-badge ${invoice ? 'invoice' : 'quotation'}">${invoice ? 'TAX INVOICE' : 'QUOTATION'}</span></div>
-      <div class="rt-total">${escapeHtml(entry.grand_total || '')}</div>
-      <div class="rt-meta">Saved ${formatSavedDate(entry.saved_at)} · <span class="${left <= 3 ? 'rt-expiring' : ''}">${left === 1 ? '1 day' : left + ' days'} left</span></div>
-    `;
-    tile.addEventListener('click', ()=> loadSavedEntry(entry.quote_no));
-    tile.querySelector('.rt-del').addEventListener('click', (e)=>{
-      e.stopPropagation();
-      deleteSavedEntry(entry.quote_no);
-    });
-    grid.appendChild(tile);
-  });
-}
+});
 
-async function refreshRecent(){
-  await fetchLibraryList();
-  renderRecentTiles();
-}
-
-document.getElementById('recentSearch').addEventListener('input', renderRecentTiles);
-
-async function renderSavedPanel(){
+function renderSavedPanel(){
   const panel = document.getElementById('savedPanel');
-  panel.innerHTML = '<div class="empty">Loading…</div>';
-  const entries = await fetchLibraryList();
-  renderRecentTiles();
+  const lib = getLibrary();
+  const entries = Object.values(lib).sort((a,b)=> (b.savedAt||'').localeCompare(a.savedAt||''));
   panel.innerHTML = '';
   if(entries.length === 0){
     const empty = document.createElement('div');
@@ -1487,86 +1497,77 @@ async function renderSavedPanel(){
     panel.appendChild(empty);
   }else{
     entries.forEach(entry=>{
-      const invoice = isInvoiceNo(entry.quote_no);
       const row = document.createElement('div');
       row.className = 'saved-item';
+      const dateStr = entry.savedAt ? new Date(entry.savedAt).toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'}) : '';
       row.innerHTML = `
         <div class="si-info">
-          <div class="si-no">${escapeHtml(entry.quote_no || '(no number)')}<span class="doc-type-badge ${invoice ? 'invoice' : 'quotation'}">${invoice ? 'TAX INVOICE' : 'QUOTATION'}</span></div>
-          <div class="si-meta">${escapeHtml(entry.customer_name || '')} · ${escapeHtml(entry.grand_total || '')} · ${formatSavedDate(entry.saved_at)}</div>
+          <div class="si-no">${entry.quoteNo || '(no number)'}<span class="doc-type-badge ${entry.docType === 'export' ? 'export' : (entry.docType === 'invoice' ? 'invoice' : 'quotation')}">${entry.docType === 'export' ? 'COMMERCIAL INVOICE' : (entry.docType === 'invoice' ? 'TAX INVOICE' : 'QUOTATION')}</span></div>
+          <div class="si-meta">${entry.customerName || ''} · ${entry.grandTotal || ''} · ${dateStr}</div>
         </div>
         <button class="si-del" title="Delete">✕</button>
       `;
-      row.querySelector('.si-info').addEventListener('click', async ()=>{
-        if(await loadSavedEntry(entry.quote_no)) panel.classList.remove('open');
+      row.querySelector('.si-info').addEventListener('click', ()=>{
+        const entryLabel = entry.docType === 'export' ? 'commercial invoice' : (entry.docType === 'invoice' ? 'tax invoice' : 'quotation');
+        if(!confirm(`Load ${entryLabel} "${entry.quoteNo}"? This will replace what's currently on screen.`)) return;
+        loadQuotationData(entry);
+        panel.classList.remove('open');
       });
-      row.querySelector('.si-del').addEventListener('click', async (e)=>{
+      row.querySelector('.si-del').addEventListener('click', (e)=>{
         e.stopPropagation();
-        if(await deleteSavedEntry(entry.quote_no)) renderSavedPanel();
+        const delLabel = entry.docType === 'export' ? 'commercial invoice' : (entry.docType === 'invoice' ? 'tax invoice' : 'quotation');
+        if(!confirm(`Delete saved ${delLabel} "${entry.quoteNo}"? This cannot be undone.`)) return;
+        const l = getLibrary();
+        delete l[entry.quoteNo];
+        setLibrary(l);
+        renderSavedPanel();
       });
       panel.appendChild(row);
     });
   }
 
-  // Backup footer: export everything saved (server-side) to a real JSON
-  // file you keep yourself, and import it back in - restoring each entry
-  // to the server - since saved quotations are flushed after
-  // RETENTION_DAYS days and a shared table is one accidental deletion away
-  // from needing a manual safety copy.
+  // Backup footer: export everything saved to a real JSON file you keep
+  // yourself, and import it back in (here, on another computer, or after
+  // a browser reset) — since browser storage alone can be lost or can
+  // fail to carry over if the file is moved, renamed, or reopened in a
+  // different browser.
   const footer = document.createElement('div');
   footer.className = 'saved-panel-footer';
   footer.innerHTML = `
     <button id="exportLibBtn" title="Download all saved quotations as a JSON backup file">⬇ Export backup</button>
-    <button id="importLibBtn" title="Restore quotations from a previously exported JSON backup file">⬆ Import backup</button>
+    <button id="importLibBtn" title="Load quotations from a previously exported JSON backup file">⬆ Import backup</button>
   `;
   panel.appendChild(footer);
 
-  footer.querySelector('#exportLibBtn').addEventListener('click', async (e)=>{
+  footer.querySelector('#exportLibBtn').addEventListener('click', (e)=>{
     e.stopPropagation();
-    const btn = e.currentTarget;
-    const originalLabel = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Preparing…';
-    try{
-      const list = await fetchLibraryList();
-      const full = {};
-      for(const entry of list){
-        const data = await fetchQuotationData(entry.quote_no);
-        if(data) full[entry.quote_no] = data;
-      }
-      const blob = new Blob([JSON.stringify(full, null, 2)], {type: 'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'quotations_backup_' + new Date().toISOString().slice(0,10) + '.json';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    }finally{
-      btn.disabled = false;
-      btn.textContent = originalLabel;
-    }
+    const blob = new Blob([JSON.stringify(getLibrary(), null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'quotations_backup_' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   });
 
   footer.querySelector('#importLibBtn').addEventListener('click', (e)=>{
     e.stopPropagation();
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'application/json,.json';
+    input.accept = 'application/json';
     input.addEventListener('change', ()=>{
       const file = input.files[0];
       if(!file) return;
       const reader = new FileReader();
-      reader.onload = async (ev)=>{
+      reader.onload = (ev)=>{
         try{
           const imported = JSON.parse(ev.target.result);
-          const entries = Object.values(imported);
-          let ok = 0;
-          for(const data of entries){
-            if(data && data.quoteNo && await saveQuotationToServer(data)) ok++;
-          }
-          alert(`Backup imported. ${ok} of ${entries.length} quotation(s) restored (existing ones with the same number were updated).`);
+          const current = getLibrary();
+          const merged = Object.assign({}, current, imported);
+          setLibrary(merged);
+          alert('Backup imported. Saved quotations from the file have been added (existing ones with the same Quotation No were updated).');
           renderSavedPanel();
         }catch(err){
           alert('Could not read that file — make sure it\'s a JSON backup exported from this tool.');
@@ -1592,15 +1593,15 @@ document.addEventListener('click', (e)=>{
   }
 });
 
-document.getElementById('newBtn').addEventListener('click', async ()=>{
-  if(!confirm(`Start a new blank quotation? (Anything already saved stays in "Recent Quotations" for ${RETENTION_DAYS} days — this only clears the screen.)`)) return;
+document.getElementById('newBtn').addEventListener('click', ()=>{
+  if(!confirm('Start a new blank quotation? (Anything already saved stays in "Saved Quotations" — this only clears the screen.)')) return;
   docType = 'quotation';
   sourceQuoteNoForInvoice = '';
+  resetExportFields();
   applyDocType();
   itemsBody.innerHTML = '';
   rowTemplate();
-  document.getElementById('quoteNo').textContent = await getNextQuoteNo();
-  renderRecentTiles();
+  document.getElementById('quoteNo').textContent = getNextQuoteNo();
   document.getElementById('customerName').textContent = 'Customer Name';
   document.getElementById('customerAddress').textContent = '';
   document.getElementById('custGstin').value = '';
@@ -1631,7 +1632,7 @@ document.getElementById('newBtn').addEventListener('click', async ()=>{
 // init
 applyDocType();
 document.getElementById('quoteDate').textContent = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
-getNextQuoteNo().then(n => { document.getElementById('quoteNo').textContent = n; renderRecentTiles(); });
+document.getElementById('quoteNo').textContent = getNextQuoteNo();
 rowTemplate({desc:'Item / Product Name', qty:100, unit:'pcs', rate:150});
 rowTemplate({desc:'Item / Product Name', qty:500, unit:'pcs', rate:95});
 </script>
