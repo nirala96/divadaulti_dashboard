@@ -160,8 +160,10 @@ const STAGE_GATES: Record<ColumnKey, string[]> = {
 
 // Days a design may sit at a stage before it's flagged as concerning.
 export const STAGE_DAY_LIMITS: Partial<Record<string, number>> = {
+  Consultation: 3,
   'Fabric Finalize': 3,
   Dye: 2,
+  Print: 3,
   Embroidery: 2,
   Pattern: 3,
   Cutting: 2,
