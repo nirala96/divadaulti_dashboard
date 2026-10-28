@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react"
-import { CalendarDays, Image as ImageIcon, PencilLine, Plus, Scissors, Trash2, Undo2, Users, X } from "lucide-react"
+import { CalendarDays, Image as ImageIcon, Loader2, PencilLine, Plus, Scissors, Trash2, Undo2, Upload, Users, X } from "lucide-react"
 
 type WorkerRole = "tailor" | "cutting"
 
@@ -37,6 +37,7 @@ type CustomOrderDraft = {
   tailorId: string
   dateKey: string
   startQuarter: number
+  imageUrl?: string
 }
 
 type WorkerDraft = {
@@ -63,6 +64,9 @@ const SLOT_HEIGHT = 24
 const MIN_VISIBLE_DAYS = 7
 // Empty days shown after the last planned order so there is room to drop more work.
 const TRAILING_BUFFER_DAYS = 3
+// Past days kept above today so recent work can still be seen by scrolling up.
+const MIN_PAST_DAYS = 7
+const MAX_PAST_DAYS = 60
 // How far ahead auto-assign may look for a free slot.
 const PLANNING_HORIZON_DAYS = 90
 const MS_PER_DAY = 86_400_000
@@ -114,10 +118,16 @@ const initialTailors: Tailor[] = [
   { id: "tailor-5", name: "Tailor E", accent: TAILOR_COLORS[4], role: "tailor" },
 ]
 
-const getDateRange = (days = 7) => {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return Array.from({ length: days }, (_, index) => formatDateKey(addDays(today, index)))
+const getDateRange = (days: number, startKey: string) => {
+  const start = new Date(`${startKey}T00:00:00`)
+  return Array.from({ length: days }, (_, index) => formatDateKey(addDays(start, index)))
+}
+
+// Local testing only: ?today=YYYY-MM-DD makes the board behave as if it were opened on that date.
+const getTestTodayOverride = () => {
+  if (process.env.NODE_ENV === "production") return null
+  const override = new URLSearchParams(window.location.search).get("today")
+  return override && /^\d{4}-\d{2}-\d{2}$/.test(override) ? override : null
 }
 
 const initialTasks = (): StitchingTask[] => {
@@ -372,6 +382,93 @@ const TaskThumbnail = ({ task, className }: { task: StitchingTask; className: st
   </div>
 )
 
+const uploadImage = async (file: File) => {
+  const formData = new FormData()
+  formData.append("files", file)
+
+  const response = await fetch("/api/upload", { method: "POST", body: formData })
+  if (!response.ok) throw new Error("Failed to upload image")
+
+  const data = await response.json()
+  return data.urls[0] as string
+}
+
+const ImagePicker = ({
+  imageUrl,
+  onChange,
+  onUploadingChange,
+}: {
+  imageUrl?: string
+  onChange: (imageUrl: string | undefined) => void
+  onUploadingChange: (isUploading: boolean) => void
+}) => {
+  const [isUploading, setIsUploading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return
+
+    setError(null)
+    setIsUploading(true)
+    onUploadingChange(true)
+    try {
+      onChange(await uploadImage(file))
+    } catch {
+      setError("Upload failed. Please try again.")
+    } finally {
+      setIsUploading(false)
+      onUploadingChange(false)
+      if (inputRef.current) inputRef.current.value = ""
+    }
+  }
+
+  return (
+    <div>
+      <span className="mb-2 block text-sm font-medium text-slate-700">Image</span>
+      <div className="flex items-center gap-3">
+        <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+          {isUploading ? (
+            <Loader2 className="h-5 w-5 animate-spin text-violet-500" />
+          ) : imageUrl ? (
+            <img src={imageUrl} alt="Order" className="h-full w-full object-cover" />
+          ) : (
+            <ImageIcon className="h-5 w-5 text-slate-400" />
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={isUploading}
+            onClick={() => inputRef.current?.click()}
+            className="flex items-center gap-1.5 rounded-xl border border-violet-200 bg-white px-3 py-2 text-sm font-medium text-violet-700 transition hover:bg-violet-50 disabled:opacity-50"
+          >
+            <Upload className="h-4 w-4" />
+            {imageUrl ? "Change image" : "Add image"}
+          </button>
+          {imageUrl && !isUploading && (
+            <button
+              type="button"
+              onClick={() => onChange(undefined)}
+              className="rounded-xl px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-red-600"
+            >
+              Remove
+            </button>
+          )}
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(event) => handleFile(event.target.files?.[0])}
+        />
+      </div>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    </div>
+  )
+}
+
 const inputClassName =
   "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-base font-medium text-slate-800 outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
 
@@ -382,12 +479,25 @@ export function ProductionStitchingBoard() {
   const [dropTarget, setDropTarget] = useState<string | null>(null)
   const [selectedTask, setSelectedTask] = useState<StitchingTask | null>(null)
   const [editedDays, setEditedDays] = useState(1)
+  const [editedImageUrl, setEditedImageUrl] = useState<string | undefined>(undefined)
+  const [isImageUploading, setIsImageUploading] = useState(false)
   const [customOrderDraft, setCustomOrderDraft] = useState<CustomOrderDraft | null>(null)
   const [isTeamOpen, setIsTeamOpen] = useState(false)
   const [workerDraft, setWorkerDraft] = useState<WorkerDraft>({ name: "", role: "tailor" })
   const [isTrashActive, setIsTrashActive] = useState(false)
   const [lastRemoval, setLastRemoval] = useState<{ designName: string; previousTasks: StitchingTask[] } | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("loading")
+  const [todayKey, setTodayKey] = useState(() => formatDateKey(new Date()))
+  const [isTestDate, setIsTestDate] = useState(false)
+
+  // Read in an effect so the server and first client render agree on the date.
+  useEffect(() => {
+    const override = getTestTodayOverride()
+    if (override) {
+      setTodayKey(override)
+      setIsTestDate(true)
+    }
+  }, [])
   // Saving only starts once the stored plan has loaded, so a failed load never overwrites it with seed data.
   const hasLoadedRef = useRef(false)
 
@@ -433,19 +543,41 @@ export function ProductionStitchingBoard() {
     return () => clearTimeout(timeout)
   }, [tailors, tasks])
 
-  const planningDateKeys = useMemo(() => getDateRange(PLANNING_HORIZON_DAYS), [])
+  const planningDateKeys = useMemo(() => getDateRange(PLANNING_HORIZON_DAYS, todayKey), [todayKey])
 
-  // Show from today until the last planned day, so the board scrolls as far as work is scheduled.
+  // Cover past work (scroll up) through the last planned day (scroll down); the board opens scrolled to today.
   const dateKeys = useMemo(() => {
-    const todayNumber = toDayNumber(planningDateKeys[0])
-    const lastPlannedIndex = tasks.reduce((latest, task) => {
-      if (!task.dateKey) return latest
-      const lastSlot = getTaskStartSlot(task) + getTaskSlotCount(task) - 1
-      return Math.max(latest, Math.floor(lastSlot / SLOTS_PER_DAY) - todayNumber)
-    }, -1)
+    const todayNumber = toDayNumber(todayKey)
+    let firstDay = todayNumber - MIN_PAST_DAYS
+    let lastDay = todayNumber + MIN_VISIBLE_DAYS - 1
 
-    return getDateRange(Math.max(MIN_VISIBLE_DAYS, lastPlannedIndex + 1 + TRAILING_BUFFER_DAYS))
-  }, [tasks, planningDateKeys])
+    for (const task of tasks) {
+      if (!task.dateKey) continue
+      const startSlot = getTaskStartSlot(task)
+      firstDay = Math.min(firstDay, Math.floor(startSlot / SLOTS_PER_DAY))
+      lastDay = Math.max(lastDay, Math.floor((startSlot + getTaskSlotCount(task) - 1) / SLOTS_PER_DAY) + TRAILING_BUFFER_DAYS)
+    }
+
+    firstDay = Math.max(firstDay, todayNumber - MAX_PAST_DAYS)
+    return getDateRange(lastDay - firstDay + 1, fromDayNumber(firstDay))
+  }, [tasks, todayKey])
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const boardHeaderRef = useRef<HTMLDivElement>(null)
+  const todayRowRef = useRef<HTMLDivElement>(null)
+  const scrolledToDayRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (saveStatus === "loading" || scrolledToDayRef.current === todayKey) return
+
+    const container = scrollContainerRef.current
+    const todayRow = todayRowRef.current
+    if (!container || !todayRow) return
+
+    const headerHeight = (boardHeaderRef.current?.offsetHeight ?? 0) + 8
+    container.scrollTop += todayRow.getBoundingClientRect().top - container.getBoundingClientRect().top - headerHeight
+    scrolledToDayRef.current = todayKey
+  }, [saveStatus, todayKey, dateKeys])
 
   useEffect(() => {
     setTasks((current) => autoAssignTasks(current, tailors, planningDateKeys))
@@ -509,6 +641,7 @@ export function ProductionStitchingBoard() {
   const openTaskEditor = (task: StitchingTask) => {
     setSelectedTask(task)
     setEditedDays(task.estimatedDays)
+    setEditedImageUrl(task.imageUrl)
   }
 
   const saveTaskUpdate = () => {
@@ -520,6 +653,7 @@ export function ProductionStitchingBoard() {
           ? {
               ...task,
               estimatedDays: normalizeDuration(editedDays, getTailorRole(task.tailorId)),
+              imageUrl: editedImageUrl,
               autoAssign: task.tailorId ? true : task.autoAssign,
             }
           : task
@@ -543,7 +677,7 @@ export function ProductionStitchingBoard() {
       quantity: "",
       estimatedDays: 1,
       tailorId: "",
-      dateKey: dateKeys[0],
+      dateKey: todayKey,
       startQuarter: 0,
     })
   }
@@ -563,6 +697,7 @@ export function ProductionStitchingBoard() {
       estimatedDays: normalizeDuration(customOrderDraft.estimatedDays, targetTailor?.role ?? null),
       autoAssign: false,
       isCustom: true,
+      imageUrl: customOrderDraft.imageUrl,
     }
 
     setTasks((current) => {
@@ -655,6 +790,11 @@ export function ProductionStitchingBoard() {
           <h2 className="text-4xl font-black tracking-[-0.04em] text-slate-800">Tailor workload planner</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {isTestDate && (
+            <span className="rounded-lg bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+              Test date: {formatDateLabel(todayKey)}
+            </span>
+          )}
           <span
             className={`text-xs font-medium ${
               saveStatus === "load-error" || saveStatus === "save-error" ? "text-red-600" : "text-slate-400"
@@ -664,7 +804,7 @@ export function ProductionStitchingBoard() {
           </span>
           <div className="flex items-center gap-2 rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-sm text-violet-700">
             <CalendarDays className="h-4 w-4" />
-            {formatDateLabel(dateKeys[0])} – {formatDateLabel(dateKeys[dateKeys.length - 1])} · {dateKeys.length} days
+            Today {formatDateLabel(todayKey)} · planned until {formatDateLabel(dateKeys[dateKeys.length - 1])}
           </div>
           <button
             type="button"
@@ -690,7 +830,10 @@ export function ProductionStitchingBoard() {
       )}
 
       {/* Hidden until the saved plan arrives so the seed data never flashes on screen. */}
-      <div className={`max-h-[70vh] overflow-auto rounded-xl pb-3 ${saveStatus === "loading" ? "hidden" : ""}`}>
+      <div
+        ref={scrollContainerRef}
+        className={`max-h-[70vh] overflow-auto rounded-xl pb-3 ${saveStatus === "loading" ? "hidden" : ""}`}
+      >
         <div style={{ minWidth: 120 + columnWidths.reduce((total, width) => total + width + 8, 0) }}>
           <div
             className="grid gap-x-2"
@@ -699,7 +842,7 @@ export function ProductionStitchingBoard() {
               gridTemplateRows: `auto repeat(${dateKeys.length * SLOTS_PER_DAY}, ${SLOT_HEIGHT}px)`,
             }}
           >
-            <div className="sticky left-0 top-0 z-30 mb-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <div ref={boardHeaderRef} className="sticky left-0 top-0 z-30 mb-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               Date
             </div>
 
@@ -721,15 +864,28 @@ export function ProductionStitchingBoard() {
               </div>
             ))}
 
-            {dateKeys.map((dateKey, dayIndex) => (
-              <div
-                key={dateKey}
-                className="sticky left-0 z-20 my-1 flex items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-600"
-                style={{ gridColumn: 1, gridRow: `${dayIndex * SLOTS_PER_DAY + 2} / span ${SLOTS_PER_DAY}` }}
-              >
-                {formatDateLabel(dateKey)}
-              </div>
-            ))}
+            {dateKeys.map((dateKey, dayIndex) => {
+              const isToday = dateKey === todayKey
+              const isPast = dateKey < todayKey
+
+              return (
+                <div
+                  key={dateKey}
+                  ref={isToday ? todayRowRef : undefined}
+                  className={`sticky left-0 z-20 my-1 flex flex-col justify-center rounded-xl border px-3 text-sm font-medium ${
+                    isToday
+                      ? "border-violet-300 bg-violet-100 text-violet-800"
+                      : isPast
+                        ? "border-slate-200 bg-slate-100 text-slate-400"
+                        : "border-slate-200 bg-slate-50 text-slate-600"
+                  }`}
+                  style={{ gridColumn: 1, gridRow: `${dayIndex * SLOTS_PER_DAY + 2} / span ${SLOTS_PER_DAY}` }}
+                >
+                  {formatDateLabel(dateKey)}
+                  {isToday && <span className="text-[10px] font-semibold uppercase tracking-wide">Today</span>}
+                </div>
+              )
+            })}
 
             {tailors.map((tailor, columnIndex) =>
               dateKeys.map((dateKey, dayIndex) => {
@@ -970,16 +1126,19 @@ export function ProductionStitchingBoard() {
             </div>
 
             <div className="space-y-3 text-sm text-slate-600">
-              <div className="flex items-center gap-3 rounded-xl bg-violet-50 p-3">
-                <TaskThumbnail task={selectedTask} className="h-12 w-12" />
-                <div className="min-w-0">
-                  <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-violet-700">Client</span>
-                  <span className="mt-1 block truncate text-base font-semibold text-slate-800">
-                    {selectedTask.clientName}
-                    {selectedTask.quantity ? ` · ${selectedTask.quantity} pcs` : ""}
-                  </span>
-                </div>
+              <div className="rounded-xl bg-violet-50 p-3">
+                <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-violet-700">Client</span>
+                <span className="mt-1 block truncate text-base font-semibold text-slate-800">
+                  {selectedTask.clientName}
+                  {selectedTask.quantity ? ` · ${selectedTask.quantity} pcs` : ""}
+                </span>
               </div>
+
+              <ImagePicker
+                imageUrl={editedImageUrl}
+                onChange={setEditedImageUrl}
+                onUploadingChange={setIsImageUploading}
+              />
 
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-700">Estimated completion days</span>
@@ -1017,9 +1176,10 @@ export function ProductionStitchingBoard() {
               <button
                 type="button"
                 onClick={saveTaskUpdate}
-                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700"
+                disabled={isImageUploading}
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:opacity-50"
               >
-                Save estimate
+                Save
               </button>
             </div>
           </div>
@@ -1091,6 +1251,12 @@ export function ProductionStitchingBoard() {
                 </label>
               </div>
 
+              <ImagePicker
+                imageUrl={customOrderDraft.imageUrl}
+                onChange={(imageUrl) => setCustomOrderDraft((draft) => (draft ? { ...draft, imageUrl } : draft))}
+                onUploadingChange={setIsImageUploading}
+              />
+
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-700">Client / order (optional)</span>
                 <input
@@ -1122,7 +1288,7 @@ export function ProductionStitchingBoard() {
                   <span className="mb-2 block text-sm font-medium text-slate-700">Start date</span>
                   <input
                     type="date"
-                    min={dateKeys[0]}
+                    min={todayKey}
                     disabled={!customOrderDraft.tailorId}
                     value={customOrderDraft.dateKey}
                     onChange={(event) => setCustomOrderDraft({ ...customOrderDraft, dateKey: event.target.value })}
@@ -1167,7 +1333,8 @@ export function ProductionStitchingBoard() {
               </button>
               <button
                 type="submit"
-                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700"
+                disabled={isImageUploading}
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700 disabled:opacity-50"
               >
                 Add order
               </button>
