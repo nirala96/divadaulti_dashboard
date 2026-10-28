@@ -19,6 +19,7 @@ const groups = [
       { name: "Daily Report", href: "/daily-report", icon: BarChart3 },
       { name: "Timeline", href: "/timeline", icon: Calendar },
       { name: "Work Points", href: "/work-points", icon: ClipboardList },
+      { name: "Production Stitching", href: "/production-stitching", icon: ClipboardList },
     ],
   },
   {
