@@ -352,6 +352,12 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const [consultationPrompt, setConsultationPrompt] = useState<{ designId: string, clientId: string, stage: DesignStatus } | null>(null)
   const [consultationMerchandiser, setConsultationMerchandiser] = useState("")
   const [consultationDeliveryDate, setConsultationDeliveryDate] = useState("")
+  const [consultationRequirements, setConsultationRequirements] = useState({
+    pattern: null as "yes" | "no" | null,
+    dye: null as "yes" | "no" | null,
+    print: null as "yes" | "no" | null,
+    embroidery: null as "yes" | "no" | null,
+  })
 
   const sortDesignsForDisplay = useCallback((designs: DesignWithClient[]) => {
     return [...designs].sort((a, b) => {
@@ -767,26 +773,46 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
   const requestConsultationComplete = (design: DesignWithClient, stage: DesignStatus) => {
     setConsultationMerchandiser(design.client_merchandiser || "")
     setConsultationDeliveryDate(design.dispatch_date ? design.dispatch_date.split("T")[0] : "")
+    setConsultationRequirements({
+      pattern: design.stage_status?.Pattern === 'not-needed' ? 'no' : (design.stage_status?.Pattern ? 'yes' : null),
+      dye: design.stage_status?.Dye === 'not-needed' ? 'no' : (design.stage_status?.Dye ? 'yes' : null),
+      print: design.stage_status?.Print === 'not-needed' ? 'no' : (design.stage_status?.Print ? 'yes' : null),
+      embroidery: design.stage_status?.Embroidery === 'not-needed' ? 'no' : (design.stage_status?.Embroidery ? 'yes' : null),
+    })
     setConsultationPrompt({ designId: design.id, clientId: design.client_id!, stage })
   }
 
   const confirmConsultationComplete = async () => {
     if (!consultationPrompt || !consultationMerchandiser || !consultationDeliveryDate) return
+    if (Object.values(consultationRequirements).some((value) => value === null)) return
+
     const { designId, clientId, stage } = consultationPrompt
+    const nextStages = {
+      Pattern: consultationRequirements.pattern === 'yes' ? 'vacant' : 'not-needed',
+      Dye: consultationRequirements.dye === 'yes' ? 'vacant' : 'not-needed',
+      Print: consultationRequirements.print === 'yes' ? 'vacant' : 'not-needed',
+      Embroidery: consultationRequirements.embroidery === 'yes' ? 'vacant' : 'not-needed',
+    }
 
     updateLocalDesignState(designId, design => ({
       ...withStageChange(design, stage, 'completed'),
       client_merchandiser: consultationMerchandiser,
       dispatch_date: consultationDeliveryDate,
+      stage_status: { ...(design.stage_status || {}), Consultation: 'completed', ...nextStages },
     }))
     handleMerchandiserSaved(clientId, consultationMerchandiser)
     setConsultationPrompt(null)
+    setConsultationRequirements({ pattern: null, dye: null, print: null, embroidery: null })
 
     try {
       await Promise.all([
         updateClientMerchandiser(clientId, consultationMerchandiser),
         updateDesignDispatchDate(designId, consultationDeliveryDate),
         updateDesignStageStatus(designId, stage, 'completed'),
+        updateDesignStageStatus(designId, 'Pattern', nextStages.Pattern),
+        updateDesignStageStatus(designId, 'Dye', nextStages.Dye),
+        updateDesignStageStatus(designId, 'Print', nextStages.Print),
+        updateDesignStageStatus(designId, 'Embroidery', nextStages.Embroidery),
       ])
     } catch (error: any) {
       console.error('Error completing consultation:', error)
@@ -2077,11 +2103,11 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
       </Dialog>
 
       <Dialog open={!!consultationPrompt} onOpenChange={(open) => !open && setConsultationPrompt(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Finish Consultation</DialogTitle>
             <DialogDescription>
-              Both fields are required before production can begin - they can still be changed later.
+              Merchandiser, delivery date, and the four production requirements are required before production can begin.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
@@ -2109,6 +2135,33 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
                 onChange={(e) => setConsultationDeliveryDate(e.target.value)}
               />
             </div>
+
+            <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="text-sm font-semibold text-slate-700">Production requirements</div>
+              {[
+                { key: 'pattern', label: 'Is pattern required?' },
+                { key: 'dye', label: 'Is dye required?' },
+                { key: 'print', label: 'Is print required?' },
+                { key: 'embroidery', label: 'Is embroidery required?' },
+              ].map((item) => (
+                <div key={item.key} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-white px-3 py-2">
+                  <span className="text-sm text-slate-700">{item.label}</span>
+                  <div className="flex items-center gap-2">
+                    {(['yes', 'no'] as const).map((option) => (
+                      <label key={option} className="inline-flex items-center gap-1.5 text-sm text-slate-700">
+                        <input
+                          type="radio"
+                          name={item.key}
+                          checked={consultationRequirements[item.key as keyof typeof consultationRequirements] === option}
+                          onChange={() => setConsultationRequirements((prev) => ({ ...prev, [item.key]: option }))}
+                        />
+                        {option}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -2120,7 +2173,7 @@ export function ProductionStatusBoard({ filter = 'All' }: ProductionStatusBoardP
             </Button>
             <Button
               onClick={confirmConsultationComplete}
-              disabled={!consultationMerchandiser || !consultationDeliveryDate}
+              disabled={!consultationMerchandiser || !consultationDeliveryDate || Object.values(consultationRequirements).some((value) => value === null)}
             >
               Mark Complete
             </Button>

@@ -256,6 +256,12 @@
     white-space:pre-wrap;word-break:break-word;display:block;
   }
   .desc-print{display:none;}
+  .drag-col{width:22px;padding:0 !important;text-align:center;}
+  .drag-handle{cursor:grab;color:#aaa;font-size:16px;letter-spacing:-3px;user-select:none;display:inline-block;padding:6px 4px;}
+  .drag-handle:hover{color:var(--primary);}
+  tr.dragging{opacity:0.45;}
+  tr.drop-before td{box-shadow:inset 0 3px 0 var(--primary);}
+  tr.drop-after td{box-shadow:inset 0 -3px 0 var(--primary);}
   textarea.cell.desc:hover, textarea.cell.desc:focus{border:1px solid var(--border);background:var(--lavender);outline:none;}
   input.qty, input.rate{text-align:right;}
   td.amount{text-align:right;font-weight:600;white-space:normal;word-break:break-word;}
@@ -323,6 +329,7 @@
     #custGstin::placeholder, .desc::placeholder, input.hsn::placeholder{color:transparent !important;}
     /* Print uses a plain wrapping block instead of the textarea, so every word shows at any length */
     textarea.cell.desc{display:none !important;}
+    .drag-col{display:none !important;}
     .desc-print{display:block !important;font-size:13.5px;line-height:1.4;padding:5px 6px;white-space:pre-wrap;word-break:break-word;overflow:visible;height:auto;}
     td, tr{height:auto !important;overflow:visible !important;}
     tr{page-break-inside:avoid;}
@@ -501,6 +508,7 @@
   <table>
     <thead>
       <tr>
+        <th class="drag-col" style="width:22px;"></th>
         <th style="width:60px;">Image</th>
         <th>Item Description</th>
         <th class="hsn-col" id="hsnHeader" style="width:80px;display:none;">HSN/SAC</th>
@@ -622,6 +630,52 @@ function applyDocType(){
   if(typeof updateInvoiceBtnState === 'function') updateInvoiceBtnState();
 }
 
+// Drag-and-drop reordering of item rows. Only the ⋮⋮ handle starts a drag
+// (so text selection inside the fields keeps working normally).
+(function(){
+  let dragRow = null;
+  function clearMarks(){ itemsBody.querySelectorAll('tr').forEach(r => r.classList.remove('drop-before','drop-after')); }
+  itemsBody.addEventListener('mousedown', e=>{
+    const h = e.target.closest('.drag-handle');
+    if(h) h.closest('tr').draggable = true;
+  });
+  itemsBody.addEventListener('dragstart', e=>{
+    const tr = e.target.closest && e.target.closest('tr');
+    if(!tr || !tr.draggable){ return; }
+    dragRow = tr;
+    tr.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    try{ e.dataTransfer.setData('text/plain', 'row'); }catch(_){}
+  });
+  itemsBody.addEventListener('dragover', e=>{
+    if(!dragRow) return;
+    e.preventDefault();
+    const over = e.target.closest('tr');
+    clearMarks();
+    if(!over || over === dragRow) return;
+    const rect = over.getBoundingClientRect();
+    over.classList.add(e.clientY < rect.top + rect.height/2 ? 'drop-before' : 'drop-after');
+  });
+  itemsBody.addEventListener('drop', e=>{
+    if(!dragRow) return;
+    e.preventDefault();
+    const over = e.target.closest('tr');
+    if(over && over !== dragRow){
+      const rect = over.getBoundingClientRect();
+      if(e.clientY < rect.top + rect.height/2) itemsBody.insertBefore(dragRow, over);
+      else itemsBody.insertBefore(dragRow, over.nextSibling);
+    }
+    clearMarks();
+    recalc();
+    growAllDescs();
+  });
+  itemsBody.addEventListener('dragend', ()=>{
+    if(dragRow){ dragRow.classList.remove('dragging'); dragRow.draggable = false; }
+    dragRow = null;
+    clearMarks();
+  });
+})();
+
 // Resizes a description box to fit all of its text (wraps onto extra lines).
 function autoGrow(el){
   el.style.height = 'auto';
@@ -637,6 +691,7 @@ function rowTemplate(data){
   data = data || {};
   const tr = document.createElement('tr');
   tr.innerHTML = `
+    <td class="drag-col"><span class="drag-handle" title="Drag to reorder this item">⋮⋮</span></td>
     <td>
       <div class="item-img" title="Click to browse, or hover here and press Ctrl+V to paste an image">
         ${data.img ? `<img src="${data.img}">` : `<span>Add<br>image</span>`}
