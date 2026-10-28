@@ -17,6 +17,7 @@ type StitchingTask = {
   dateKey: string | null
   estimatedDays: number
   imageUrl?: string
+  autoAssign?: boolean
 }
 
 const TAILOR_COLORS = [
@@ -72,6 +73,7 @@ const initialTasks = (): StitchingTask[] => {
       dateKey: null,
       estimatedDays: 4,
       imageUrl: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=600&q=80",
+      autoAssign: false,
     },
     {
       id: "task-2",
@@ -81,6 +83,7 @@ const initialTasks = (): StitchingTask[] => {
       dateKey: null,
       estimatedDays: 6,
       imageUrl: "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=600&q=80",
+      autoAssign: false,
     },
     {
       id: "task-3",
@@ -90,6 +93,7 @@ const initialTasks = (): StitchingTask[] => {
       dateKey: formatDateKey(addDays(today, 0)),
       estimatedDays: 5,
       imageUrl: "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=600&q=80",
+      autoAssign: true,
     },
     {
       id: "task-4",
@@ -99,6 +103,7 @@ const initialTasks = (): StitchingTask[] => {
       dateKey: formatDateKey(addDays(today, 1)),
       estimatedDays: 3,
       imageUrl: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80",
+      autoAssign: true,
     },
     {
       id: "task-5",
@@ -108,6 +113,7 @@ const initialTasks = (): StitchingTask[] => {
       dateKey: formatDateKey(addDays(today, 2)),
       estimatedDays: 7,
       imageUrl: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=600&q=80",
+      autoAssign: true,
     },
     {
       id: "task-6",
@@ -117,6 +123,7 @@ const initialTasks = (): StitchingTask[] => {
       dateKey: formatDateKey(addDays(today, 3)),
       estimatedDays: 8,
       imageUrl: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=600&q=80",
+      autoAssign: true,
     },
   ]
 }
@@ -156,7 +163,7 @@ const autoAssignTasks = (tasks: StitchingTask[], tailors: Tailor[], dateKeys: st
   const next = tasks.map((task) => ({ ...task }))
 
   for (const task of next) {
-    if (task.tailorId && task.dateKey) continue
+    if (task.autoAssign === false || (task.tailorId && task.dateKey)) continue
 
     let bestOption: { tailorId: string; dateKey: string } | null = null
 
@@ -192,7 +199,10 @@ export function ProductionStitchingBoard() {
     setTasks((current) => autoAssignTasks(current, tailors, dateKeys))
   }, [tailors, dateKeys])
 
-  const readyTasks = useMemo(() => tasks.filter((task) => !task.tailorId || !task.dateKey), [tasks])
+  const readyTasks = useMemo(
+    () => tasks.filter((task) => !task.tailorId && !task.dateKey && task.autoAssign === false),
+    [tasks]
+  )
 
   const moveTask = (taskId: string, tailorId: string | null, dateKey: string | null) => {
     setTasks((current) => {
@@ -202,6 +212,7 @@ export function ProductionStitchingBoard() {
               ...task,
               tailorId,
               dateKey,
+              autoAssign: true,
             }
           : task
       )
@@ -221,7 +232,11 @@ export function ProductionStitchingBoard() {
     setTasks((current) => {
       const updated = current.map((task) =>
         task.id === selectedTask.id
-          ? { ...task, estimatedDays: Math.max(1, Number(editedDays) || 1) }
+          ? {
+              ...task,
+              estimatedDays: Math.max(1, Number(editedDays) || 1),
+              autoAssign: task.tailorId ? true : task.autoAssign,
+            }
           : task
       )
 
@@ -306,81 +321,81 @@ export function ProductionStitchingBoard() {
                       setDraggingTaskId(null)
                     }
                   }}
+                  style={{ minHeight: `${dateKeys.length * 88}px` }}
                 >
-                  <div
-                    className="grid gap-2"
-                    style={{ gridTemplateRows: `repeat(${dateKeys.length}, minmax(82px, 1fr))` }}
-                  >
-                    {dateKeys.map((dateKey) => (
+                  {dateKeys.map((dateKey) => (
+                    <div
+                      key={`${tailor.id}-${dateKey}`}
+                      className="mb-2 rounded-xl border border-dashed border-slate-200 bg-white/30"
+                      style={{ height: "82px" }}
+                    />
+                  ))}
+
+                  {columnTasks.map((task) => {
+                    if (!task.dateKey) return null
+
+                    const startIndex = dateKeys.indexOf(task.dateKey)
+                    const duration = Math.max(1, Number(task.estimatedDays) || 1)
+                    const rowHeight = 82
+                    const gap = 8
+                    const top = startIndex * (rowHeight + gap)
+                    const height = Math.max(rowHeight, duration * rowHeight - (duration - 1) * gap)
+
+                    return (
                       <div
-                        key={`${tailor.id}-${dateKey}`}
-                        className="rounded-xl border border-dashed border-slate-200 bg-white/30"
-                      />
-                    ))}
-
-                    {columnTasks.map((task) => {
-                      if (!task.dateKey) return null
-
-                      const startIndex = dateKeys.indexOf(task.dateKey)
-                      const duration = Math.max(1, Number(task.estimatedDays) || 1)
-                      const span = Math.min(duration, dateKeys.length - startIndex)
-
-                      return (
-                        <div
-                          key={task.id}
-                          draggable
-                          onDragStart={() => setDraggingTaskId(task.id)}
-                          onDragEnd={() => setDraggingTaskId(null)}
-                          onClick={() => openTaskEditor(task)}
-                          title={`${task.designName} · ${task.clientName} · ${task.estimatedDays} days`}
-                          className="group relative z-10 cursor-grab overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing"
-                          style={{
-                            gridColumn: "1",
-                            gridRow: `${startIndex + 1} / span ${span}`,
-                            borderLeft: `4px solid ${tailor.accent}`,
-                          }}
-                        >
-                          <div className="flex items-start gap-2">
-                            <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
-                              {task.imageUrl ? (
-                                <img src={task.imageUrl} alt={task.designName} className="h-full w-full object-cover" />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-100 to-slate-100 text-[10px] font-bold text-violet-700">
-                                  <ImageIcon className="h-4 w-4" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-start justify-between gap-2">
-                                <p className="truncate text-[11px] font-bold text-slate-800">{task.designName}</p>
-                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 text-violet-700">
-                                  <GripVertical className="h-3 w-3" />
-                                </span>
+                        key={task.id}
+                        draggable
+                        onDragStart={() => setDraggingTaskId(task.id)}
+                        onDragEnd={() => setDraggingTaskId(null)}
+                        onClick={() => openTaskEditor(task)}
+                        title={`${task.designName} · ${task.clientName} · ${task.estimatedDays} days`}
+                        className="group absolute left-2 right-2 z-10 cursor-grab overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing"
+                        style={{
+                          top: `${top + 4}px`,
+                          height: `${height}px`,
+                          borderLeft: `4px solid ${tailor.accent}`,
+                        }}
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+                            {task.imageUrl ? (
+                              <img src={task.imageUrl} alt={task.designName} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-100 to-slate-100 text-[10px] font-bold text-violet-700">
+                                <ImageIcon className="h-4 w-4" />
                               </div>
-                              <p className="mt-1 truncate text-[10px] text-slate-500">{task.clientName}</p>
-                            </div>
+                            )}
                           </div>
-
-                          <div className="mt-2 flex items-center justify-between">
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-600">
-                              {task.estimatedDays}d
-                            </span>
-                            <button
-                              type="button"
-                              aria-label={`Edit ${task.designName}`}
-                              className="rounded-md border border-slate-200 bg-white p-1 text-slate-500 opacity-80 transition hover:border-violet-200 hover:text-violet-700"
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                openTaskEditor(task)
-                              }}
-                            >
-                              <PencilLine className="h-3 w-3" />
-                            </button>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className="truncate text-[11px] font-bold text-slate-800">{task.designName}</p>
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+                                <GripVertical className="h-3 w-3" />
+                              </span>
+                            </div>
+                            <p className="mt-1 truncate text-[10px] text-slate-500">{task.clientName}</p>
                           </div>
                         </div>
-                      )
-                    })}
-                  </div>
+
+                        <div className="mt-2 flex items-center justify-between">
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-600">
+                            {task.estimatedDays}d
+                          </span>
+                          <button
+                            type="button"
+                            aria-label={`Edit ${task.designName}`}
+                            className="rounded-md border border-slate-200 bg-white p-1 text-slate-500 opacity-80 transition hover:border-violet-200 hover:text-violet-700"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              openTaskEditor(task)
+                            }}
+                          >
+                            <PencilLine className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )
             })}
