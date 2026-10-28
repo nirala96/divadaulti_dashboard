@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react"
-import { CalendarDays, Image as ImageIcon, Loader2, PencilLine, Plus, Scissors, Trash2, Undo2, Upload, Users, X } from "lucide-react"
+import { CalendarDays, ClipboardPaste, Image as ImageIcon, Loader2, PencilLine, Plus, Scissors, Trash2, Undo2, Upload, Users, X } from "lucide-react"
 
 type WorkerRole = "tailor" | "cutting"
 
@@ -57,6 +57,8 @@ const TAILOR_COLORS = [
 ]
 
 const CUTTING_ACCENT = "#475569"
+const CUTTING_COLUMN_WIDTH = 160
+const TAILOR_COLUMN_WIDTH = 210
 
 // Every day row is split into quarters so cutting work can be planned in 0.25 day steps.
 const SLOTS_PER_DAY = 4
@@ -423,6 +425,41 @@ const ImagePicker = ({
     }
   }
 
+  // ⌘V / Ctrl+V anywhere while the picker is open uploads a copied image. Text pastes are left alone.
+  const handleFileRef = useRef(handleFile)
+  handleFileRef.current = handleFile
+
+  useEffect(() => {
+    const handlePaste = (event: ClipboardEvent) => {
+      const imageFile = Array.from(event.clipboardData?.files ?? []).find((file) => file.type.startsWith("image/"))
+      if (!imageFile) return
+
+      event.preventDefault()
+      handleFileRef.current(imageFile)
+    }
+
+    window.addEventListener("paste", handlePaste)
+    return () => window.removeEventListener("paste", handlePaste)
+  }, [])
+
+  // The Paste button reads the clipboard directly, which is the only way to paste on phones.
+  const pasteFromClipboard = async () => {
+    setError(null)
+    try {
+      for (const item of await navigator.clipboard.read()) {
+        const imageType = item.types.find((type) => type.startsWith("image/"))
+        if (imageType) {
+          const blob = await item.getType(imageType)
+          await handleFile(new File([blob], `pasted-image.${imageType.split("/")[1]}`, { type: imageType }))
+          return
+        }
+      }
+      setError("No image found on the clipboard. Copy an image first.")
+    } catch {
+      setError("Couldn't read the clipboard. Try ⌘V / Ctrl+V instead.")
+    }
+  }
+
   return (
     <div>
       <span className="mb-2 block text-sm font-medium text-slate-700">Image</span>
@@ -446,6 +483,15 @@ const ImagePicker = ({
             <Upload className="h-4 w-4" />
             {imageUrl ? "Change image" : "Add image"}
           </button>
+          <button
+            type="button"
+            disabled={isUploading}
+            onClick={pasteFromClipboard}
+            className="flex items-center gap-1.5 rounded-xl border border-violet-200 bg-white px-3 py-2 text-sm font-medium text-violet-700 transition hover:bg-violet-50 disabled:opacity-50"
+          >
+            <ClipboardPaste className="h-4 w-4" />
+            Paste
+          </button>
           {imageUrl && !isUploading && (
             <button
               type="button"
@@ -464,7 +510,11 @@ const ImagePicker = ({
           onChange={(event) => handleFile(event.target.files?.[0])}
         />
       </div>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error ? (
+        <p className="mt-1 text-xs text-red-600">{error}</p>
+      ) : (
+        <p className="mt-1 text-xs text-slate-400">Tip: copy an image and press ⌘V / Ctrl+V to paste it here.</p>
+      )}
     </div>
   )
 }
@@ -597,7 +647,7 @@ export function ProductionStitchingBoard() {
   const visibleStartSlot = toDayNumber(dateKeys[0]) * SLOTS_PER_DAY
   const visibleEndSlot = visibleStartSlot + dateKeys.length * SLOTS_PER_DAY
 
-  const columnWidths = tailors.map((tailor) => (tailor.role === "cutting" ? 120 : 210))
+  const columnWidths = tailors.map((tailor) => (tailor.role === "cutting" ? CUTTING_COLUMN_WIDTH : TAILOR_COLUMN_WIDTH))
 
   const getTailorRole = (tailorId: string | null) => tailors.find((tailor) => tailor.id === tailorId)?.role ?? null
 
@@ -838,7 +888,7 @@ export function ProductionStitchingBoard() {
           <div
             className="grid gap-x-2"
             style={{
-              gridTemplateColumns: `120px ${columnWidths.map((width) => `minmax(${width}px, ${width === 120 ? 0.5 : 1}fr)`).join(" ")}`,
+              gridTemplateColumns: `120px ${columnWidths.map((width) => `minmax(${width}px, ${width === CUTTING_COLUMN_WIDTH ? 0.7 : 1}fr)`).join(" ")}`,
               gridTemplateRows: `auto repeat(${dateKeys.length * SLOTS_PER_DAY}, ${SLOT_HEIGHT}px)`,
             }}
           >
@@ -953,7 +1003,7 @@ export function ProductionStitchingBoard() {
                     onClick={() => openTaskEditor(task)}
                     title={`${task.designName} · ${task.clientName}${quantityLabel} · ${task.estimatedDays} days`}
                     className={`group relative z-10 cursor-grab overflow-hidden border border-slate-200 bg-white shadow-sm transition duration-200 hover:shadow-md active:cursor-grabbing ${
-                      isCutting ? "flex items-center justify-center rounded-lg p-0.5" : "m-1 flex flex-col justify-between rounded-xl"
+                      isCutting ? "flex items-center gap-1.5 rounded-lg p-0.5 pr-1.5" : "m-1 flex flex-col justify-between rounded-xl"
                     }`}
                     style={{
                       gridColumn: columnIndex + 2,
@@ -967,7 +1017,10 @@ export function ProductionStitchingBoard() {
                     }}
                   >
                     {isCutting ? (
-                      <TaskThumbnail task={task} className="aspect-square h-full max-h-10" />
+                      <>
+                        <TaskThumbnail task={task} className="aspect-square h-full max-h-10" />
+                        <span className="min-w-0 truncate text-[10px] font-semibold text-slate-700">{task.clientName}</span>
+                      </>
                     ) : (
                       <>
                         <div className="flex items-start gap-2">
