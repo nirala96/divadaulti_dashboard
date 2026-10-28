@@ -11,25 +11,24 @@ import { Pool, types } from 'pg';
 // dispatch_date.split("T") (e.g. "Mark done" on Consultation silently failing).
 types.setTypeParser(types.builtins.DATE, (value: string) => value);
 
-// Create PostgreSQL connection pool
+// Create PostgreSQL connection pool without crashing the app when Railway
+// is still provisioning or the DATABASE_URL is temporarily unavailable.
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' 
-    ? { rejectUnauthorized: false } 
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres',
+  ssl: process.env.NODE_ENV === 'production'
+    ? { rejectUnauthorized: false }
     : false,
-  max: 20, // Maximum connections in pool
+  max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 });
 
-// Test connection on startup
 pool.on('connect', () => {
   console.log('✅ Connected to Railway PostgreSQL');
 });
 
 pool.on('error', (err) => {
   console.error('❌ Unexpected error on database client', err);
-  process.exit(-1);
 });
 
 export default pool;

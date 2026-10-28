@@ -3,6 +3,13 @@ import pool from '@/lib/database'
 
 export async function GET() {
   try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json({
+        success: false,
+        error: 'DATABASE_URL is not configured yet.'
+      }, { status: 503 })
+    }
+
     const client = await pool.connect()
     
     try {
