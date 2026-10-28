@@ -1,9 +1,11 @@
 "use client"
 
-import { useEffect, useMemo, useState, type DragEvent } from "react"
-import { CalendarDays, Image as ImageIcon, PencilLine, Plus, Scissors, Trash2, Users, X } from "lucide-react"
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react"
+import { CalendarDays, Image as ImageIcon, PencilLine, Plus, Scissors, Trash2, Undo2, Users, X } from "lucide-react"
 
 type WorkerRole = "tailor" | "cutting"
+
+type SaveStatus = "loading" | "load-error" | "saving" | "saved" | "save-error"
 
 type Tailor = {
   id: string
@@ -64,6 +66,17 @@ const TRAILING_BUFFER_DAYS = 3
 // How far ahead auto-assign may look for a free slot.
 const PLANNING_HORIZON_DAYS = 90
 const MS_PER_DAY = 86_400_000
+const UNDO_TIMEOUT_MS = 6000
+const SAVE_DEBOUNCE_MS = 800
+const PLANNER_API = "/api/production-planner"
+
+const SAVE_STATUS_LABELS: Record<SaveStatus, string> = {
+  loading: "Loading…",
+  "load-error": "Couldn't load saved plan — changes won't be saved",
+  saving: "Saving…",
+  saved: "All changes saved",
+  "save-error": "Couldn't save — check your connection",
+}
 
 const QUARTER_LABELS = ["Start of day", "¼ day in", "½ day in", "¾ day in"]
 
@@ -372,6 +385,53 @@ export function ProductionStitchingBoard() {
   const [customOrderDraft, setCustomOrderDraft] = useState<CustomOrderDraft | null>(null)
   const [isTeamOpen, setIsTeamOpen] = useState(false)
   const [workerDraft, setWorkerDraft] = useState<WorkerDraft>({ name: "", role: "tailor" })
+  const [isTrashActive, setIsTrashActive] = useState(false)
+  const [lastRemoval, setLastRemoval] = useState<{ designName: string; previousTasks: StitchingTask[] } | null>(null)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("loading")
+  // Saving only starts once the stored plan has loaded, so a failed load never overwrites it with seed data.
+  const hasLoadedRef = useRef(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    fetch(PLANNER_API)
+      .then(async (response) => {
+        if (cancelled) return
+        if (response.ok) {
+          const data = await response.json()
+          if (Array.isArray(data.tailors)) setTailors(data.tailors)
+          if (Array.isArray(data.tasks)) setTasks(data.tasks)
+        } else if (response.status !== 404) {
+          throw new Error(`Failed to load planner (${response.status})`)
+        }
+        hasLoadedRef.current = true
+        setSaveStatus("saved")
+      })
+      .catch(() => {
+        if (!cancelled) setSaveStatus("load-error")
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!hasLoadedRef.current) return
+
+    setSaveStatus("saving")
+    const timeout = setTimeout(() => {
+      fetch(PLANNER_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tailors, tasks }),
+      })
+        .then((response) => setSaveStatus(response.ok ? "saved" : "save-error"))
+        .catch(() => setSaveStatus("save-error"))
+    }, SAVE_DEBOUNCE_MS)
+
+    return () => clearTimeout(timeout)
+  }, [tailors, tasks])
 
   const planningDateKeys = useMemo(() => getDateRange(PLANNING_HORIZON_DAYS), [])
 
@@ -390,6 +450,12 @@ export function ProductionStitchingBoard() {
   useEffect(() => {
     setTasks((current) => autoAssignTasks(current, tailors, planningDateKeys))
   }, [tailors, planningDateKeys])
+
+  useEffect(() => {
+    if (!lastRemoval) return
+    const timeout = setTimeout(() => setLastRemoval(null), UNDO_TIMEOUT_MS)
+    return () => clearTimeout(timeout)
+  }, [lastRemoval])
 
   const readyTasks = useMemo(
     () => tasks.filter((task) => !task.tailorId && !task.dateKey && task.autoAssign === false),
@@ -417,6 +483,7 @@ export function ProductionStitchingBoard() {
   const endDrag = () => {
     setDraggingTaskId(null)
     setDropTarget(null)
+    setIsTrashActive(false)
   }
 
   const dropZoneProps = (tailor: Tailor, dateKey: string, startQuarter: number) => {
@@ -515,6 +582,9 @@ export function ProductionStitchingBoard() {
   }
 
   const removeTask = (taskId: string) => {
+    const removedTask = tasks.find((task) => task.id === taskId)
+    if (removedTask) setLastRemoval({ designName: removedTask.designName, previousTasks: tasks })
+
     setTasks((current) => {
       const next = current.map((task) => ({ ...task }))
       const removedTask = next.find((task) => task.id === taskId)
@@ -522,6 +592,12 @@ export function ProductionStitchingBoard() {
       return next.filter((task) => task.id !== taskId)
     })
     setSelectedTask(null)
+  }
+
+  const undoRemoval = () => {
+    if (!lastRemoval) return
+    setTasks(lastRemoval.previousTasks)
+    setLastRemoval(null)
   }
 
   const addWorker = () => {
@@ -579,6 +655,13 @@ export function ProductionStitchingBoard() {
           <h2 className="text-4xl font-black tracking-[-0.04em] text-slate-800">Tailor workload planner</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`text-xs font-medium ${
+              saveStatus === "load-error" || saveStatus === "save-error" ? "text-red-600" : "text-slate-400"
+            }`}
+          >
+            {SAVE_STATUS_LABELS[saveStatus]}
+          </span>
           <div className="flex items-center gap-2 rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-sm text-violet-700">
             <CalendarDays className="h-4 w-4" />
             {formatDateLabel(dateKeys[0])} – {formatDateLabel(dateKeys[dateKeys.length - 1])} · {dateKeys.length} days
@@ -602,7 +685,12 @@ export function ProductionStitchingBoard() {
         </div>
       </div>
 
-      <div className="max-h-[70vh] overflow-auto rounded-xl pb-3">
+      {saveStatus === "loading" && (
+        <div className="py-10 text-center text-sm text-slate-400">Loading planner…</div>
+      )}
+
+      {/* Hidden until the saved plan arrives so the seed data never flashes on screen. */}
+      <div className={`max-h-[70vh] overflow-auto rounded-xl pb-3 ${saveStatus === "loading" ? "hidden" : ""}`}>
         <div style={{ minWidth: 120 + columnWidths.reduce((total, width) => total + width + 8, 0) }}>
           <div
             className="grid gap-x-2"
@@ -769,7 +857,7 @@ export function ProductionStitchingBoard() {
         </div>
       </div>
 
-      <div className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className={`mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-4 ${saveStatus === "loading" ? "hidden" : ""}`}>
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.12em] text-slate-600">
           Ready to cut
         </div>
@@ -824,6 +912,45 @@ export function ProductionStitchingBoard() {
         </div>
       </div>
 
+      {draggingTaskId && (
+        <div
+          className={`fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-2xl border-2 border-dashed px-8 py-5 text-sm font-semibold shadow-2xl transition ${
+            isTrashActive ? "scale-110 border-red-500 bg-red-50 text-red-600" : "border-red-300 bg-white text-red-500"
+          }`}
+          onDragOver={(event) => {
+            event.preventDefault()
+            event.dataTransfer.dropEffect = "move"
+            setIsTrashActive(true)
+          }}
+          onDragLeave={() => setIsTrashActive(false)}
+          onDrop={(event) => {
+            event.preventDefault()
+            const taskId = event.dataTransfer.getData("text/plain") || draggingTaskId
+            if (taskId) removeTask(taskId)
+            endDrag()
+          }}
+        >
+          <Trash2 className="h-6 w-6" />
+          Drop here to delete order
+        </div>
+      )}
+
+      {lastRemoval && (
+        <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-4 rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-2xl">
+          <span>
+            Deleted <strong>{lastRemoval.designName}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={undoRemoval}
+            className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 font-semibold transition hover:bg-white/20"
+          >
+            <Undo2 className="h-4 w-4" />
+            Undo
+          </button>
+        </div>
+      )}
+
       {selectedTask && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
@@ -872,16 +999,14 @@ export function ProductionStitchingBoard() {
             </div>
 
             <div className="mt-5 flex items-center justify-end gap-3">
-              {selectedTask.isCustom && (
-                <button
-                  type="button"
-                  onClick={() => removeTask(selectedTask.id)}
-                  className="mr-auto flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Remove order
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => removeTask(selectedTask.id)}
+                className="mr-auto flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                Remove order
+              </button>
               <button
                 type="button"
                 onClick={() => setSelectedTask(null)}
