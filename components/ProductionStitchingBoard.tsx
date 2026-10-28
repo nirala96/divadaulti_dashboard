@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { CalendarDays, GripVertical, Image as ImageIcon, PencilLine, Scissors, X } from "lucide-react"
 
 type Tailor = {
@@ -121,6 +121,64 @@ const initialTasks = (): StitchingTask[] => {
   ]
 }
 
+const getTaskDateSet = (task: Pick<StitchingTask, "dateKey" | "estimatedDays">) => {
+  if (!task.dateKey) return []
+
+  const start = new Date(`${task.dateKey}T00:00:00`)
+  const count = Math.max(1, Number(task.estimatedDays) || 1)
+
+  return Array.from({ length: count }, (_, index) => formatDateKey(addDays(start, index)))
+}
+
+const findEarliestFreeSlot = (
+  task: StitchingTask,
+  tailorId: string,
+  tasks: StitchingTask[],
+  dateKeys: string[]
+) => {
+  const duration = Math.max(1, Number(task.estimatedDays) || 1)
+
+  for (const dateKey of dateKeys) {
+    const candidateDates = new Set(getTaskDateSet({ dateKey, estimatedDays: duration }))
+    const conflict = tasks.some((existingTask) => {
+      if (existingTask.id === task.id || existingTask.tailorId !== tailorId || !existingTask.dateKey) return false
+      const existingDates = new Set(getTaskDateSet(existingTask))
+      return Array.from(candidateDates).some((value) => existingDates.has(value))
+    })
+
+    if (!conflict) return dateKey
+  }
+
+  return null
+}
+
+const autoAssignTasks = (tasks: StitchingTask[], tailors: Tailor[], dateKeys: string[]) => {
+  const next = tasks.map((task) => ({ ...task }))
+
+  for (const task of next) {
+    if (task.tailorId && task.dateKey) continue
+
+    let bestOption: { tailorId: string; dateKey: string } | null = null
+
+    for (const tailor of tailors) {
+      const candidateDate = findEarliestFreeSlot(task, tailor.id, next, dateKeys)
+      if (!candidateDate) continue
+
+      const isEarlier = !bestOption || candidateDate < bestOption.dateKey
+      if (isEarlier) {
+        bestOption = { tailorId: tailor.id, dateKey: candidateDate }
+      }
+    }
+
+    if (bestOption) {
+      task.tailorId = bestOption.tailorId
+      task.dateKey = bestOption.dateKey
+    }
+  }
+
+  return next
+}
+
 export function ProductionStitchingBoard() {
   const [tailors] = useState<Tailor[]>(initialTailors)
   const [tasks, setTasks] = useState<StitchingTask[]>(() => initialTasks())
@@ -129,11 +187,16 @@ export function ProductionStitchingBoard() {
   const [editedDays, setEditedDays] = useState(1)
 
   const dateKeys = useMemo(() => getDateRange(7), [])
-  const readyTasks = useMemo(() => tasks.filter((task) => task.tailorId === null), [tasks])
+
+  useEffect(() => {
+    setTasks((current) => autoAssignTasks(current, tailors, dateKeys))
+  }, [tailors, dateKeys])
+
+  const readyTasks = useMemo(() => tasks.filter((task) => !task.tailorId || !task.dateKey), [tasks])
 
   const moveTask = (taskId: string, tailorId: string | null, dateKey: string | null) => {
-    setTasks((current) =>
-      current.map((task) =>
+    setTasks((current) => {
+      const updated = current.map((task) =>
         task.id === taskId
           ? {
               ...task,
@@ -142,7 +205,9 @@ export function ProductionStitchingBoard() {
             }
           : task
       )
-    )
+
+      return autoAssignTasks(updated, tailors, dateKeys)
+    })
   }
 
   const openTaskEditor = (task: StitchingTask) => {
@@ -153,13 +218,20 @@ export function ProductionStitchingBoard() {
   const saveTaskUpdate = () => {
     if (!selectedTask) return
 
-    setTasks((current) =>
-      current.map((task) =>
+    setTasks((current) => {
+      const updated = current.map((task) =>
         task.id === selectedTask.id
           ? { ...task, estimatedDays: Math.max(1, Number(editedDays) || 1) }
           : task
       )
-    )
+
+      const taskToReassign = updated.find((task) => task.id === selectedTask.id)
+      if (taskToReassign && (!taskToReassign.tailorId || !taskToReassign.dateKey)) {
+        return autoAssignTasks(updated, tailors, dateKeys)
+      }
+
+      return autoAssignTasks(updated, tailors, dateKeys)
+    })
     setSelectedTask(null)
   }
 
@@ -183,7 +255,7 @@ export function ProductionStitchingBoard() {
 
       <div className="overflow-x-auto pb-3">
         <div className="min-w-[1100px]">
-          <div className="grid grid-cols-[120px_repeat(5,minmax(190px,1fr))] gap-2">
+          <div className="grid grid-cols-[120px_repeat(5,minmax(210px,1fr))] gap-2">
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               Date
             </div>
@@ -208,87 +280,98 @@ export function ProductionStitchingBoard() {
                 </div>
 
                 {tailors.map((tailor) => {
-                  const tailoredTasks = tasks.filter(
-                    (task) => task.tailorId === tailor.id && task.dateKey === dateKey
+                  const columnTasks = tasks.filter(
+                    (task) => task.tailorId === tailor.id && task.dateKey && dateKeys.includes(task.dateKey)
                   )
 
                   return (
                     <div
                       key={`${tailor.id}-${dateKey}`}
-                      className="min-h-[110px] rounded-xl border border-dashed border-slate-200 bg-slate-50/60 p-2 transition-colors hover:border-violet-300 hover:bg-violet-50/40"
+                      className="relative grid min-h-[360px] rounded-xl border border-slate-200 bg-slate-50/60 p-2"
                       onDragOver={(event) => event.preventDefault()}
                       onDrop={() => {
                         if (draggingTaskId) {
-                          moveTask(draggingTaskId, tailor.id, dateKey)
+                          const task = tasks.find((entry) => entry.id === draggingTaskId)
+                          if (!task) return
+
+                          const candidateDate = findEarliestFreeSlot(task, tailor.id, tasks, dateKeys)
+                          if (!candidateDate) return
+
+                          moveTask(task.id, tailor.id, candidateDate)
                           setDraggingTaskId(null)
                         }
                       }}
                     >
-                      <div className="flex min-h-[90px] flex-col gap-2">
-                        {tailoredTasks.length === 0 && (
-                          <div className="flex h-full min-h-[70px] items-center justify-center rounded-lg border border-dashed border-slate-200 text-[11px] font-medium text-slate-400">
-                            Drop order here
-                          </div>
-                        )}
+                      {Array.from({ length: dateKeys.length }, (_, index) => (
+                        <div
+                          key={`${tailor.id}-${dateKey}-row-${index}`}
+                          className="rounded-md border border-dashed border-slate-200 bg-white/40"
+                        />
+                      ))}
 
-                        {tailoredTasks.map((task) => {
-                          const tileHeight = Math.max(78, 60 + task.estimatedDays * 8)
+                      {columnTasks.map((task) => {
+                        if (!task.dateKey) return null
 
-                          return (
-                            <div
-                              key={task.id}
-                              draggable
-                              onDragStart={() => setDraggingTaskId(task.id)}
-                              onDragEnd={() => setDraggingTaskId(null)}
-                              onClick={() => openTaskEditor(task)}
-                              title={`${task.designName} · ${task.clientName} · ${task.estimatedDays} days`}
-                              className="group relative cursor-grab overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing"
-                              style={{
-                                height: `${tileHeight}px`,
-                                borderLeft: `4px solid ${tailor.accent}`,
-                              }}
-                            >
-                              <div className="flex items-start gap-2">
-                                <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
-                                  {task.imageUrl ? (
-                                    <img src={task.imageUrl} alt={task.designName} className="h-full w-full object-cover" />
-                                  ) : (
-                                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-100 to-slate-100 text-[10px] font-bold text-violet-700">
-                                      <ImageIcon className="h-4 w-4" />
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <p className="truncate text-[11px] font-bold text-slate-800">{task.designName}</p>
-                                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 text-violet-700">
-                                      <GripVertical className="h-3 w-3" />
-                                    </span>
+                        const taskStartIndex = dateKeys.indexOf(task.dateKey)
+                        const span = Math.max(1, Number(task.estimatedDays) || 1)
+                        const rowIndex = dateKeys.indexOf(dateKey)
+
+                        if (rowIndex !== taskStartIndex) return null
+
+                        return (
+                          <div
+                            key={task.id}
+                            draggable
+                            onDragStart={() => setDraggingTaskId(task.id)}
+                            onDragEnd={() => setDraggingTaskId(null)}
+                            onClick={() => openTaskEditor(task)}
+                            title={`${task.designName} · ${task.clientName} · ${task.estimatedDays} days`}
+                            className="group relative z-10 cursor-grab overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing"
+                            style={{
+                              gridRow: `${taskStartIndex + 1} / span ${span}`,
+                              borderLeft: `4px solid ${tailor.accent}`,
+                            }}
+                          >
+                            <div className="flex items-start gap-2">
+                              <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+                                {task.imageUrl ? (
+                                  <img src={task.imageUrl} alt={task.designName} className="h-full w-full object-cover" />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-100 to-slate-100 text-[10px] font-bold text-violet-700">
+                                    <ImageIcon className="h-4 w-4" />
                                   </div>
-                                  <p className="mt-1 truncate text-[10px] text-slate-500">{task.clientName}</p>
-                                </div>
+                                )}
                               </div>
-
-                              <div className="mt-2 flex items-center justify-between">
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-600">
-                                  {task.estimatedDays}d
-                                </span>
-                                <button
-                                  type="button"
-                                  aria-label={`Edit ${task.designName}`}
-                                  className="rounded-md border border-slate-200 bg-white p-1 text-slate-500 opacity-80 transition hover:border-violet-200 hover:text-violet-700"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    openTaskEditor(task)
-                                  }}
-                                >
-                                  <PencilLine className="h-3 w-3" />
-                                </button>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="truncate text-[11px] font-bold text-slate-800">{task.designName}</p>
+                                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+                                    <GripVertical className="h-3 w-3" />
+                                  </span>
+                                </div>
+                                <p className="mt-1 truncate text-[10px] text-slate-500">{task.clientName}</p>
                               </div>
                             </div>
-                          )
-                        })}
-                      </div>
+
+                            <div className="mt-2 flex items-center justify-between">
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-600">
+                                {task.estimatedDays}d
+                              </span>
+                              <button
+                                type="button"
+                                aria-label={`Edit ${task.designName}`}
+                                className="rounded-md border border-slate-200 bg-white p-1 text-slate-500 opacity-80 transition hover:border-violet-200 hover:text-violet-700"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  openTaskEditor(task)
+                                }}
+                              >
+                                <PencilLine className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   )
                 })}
@@ -303,16 +386,7 @@ export function ProductionStitchingBoard() {
           Ready to cut
         </div>
 
-        <div
-          className="min-h-[110px] rounded-xl border border-dashed border-violet-200 bg-white p-3"
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={() => {
-            if (draggingTaskId) {
-              moveTask(draggingTaskId, null, null)
-              setDraggingTaskId(null)
-            }
-          }}
-        >
+        <div className="min-h-[110px] rounded-xl border border-dashed border-violet-200 bg-white p-3">
           {readyTasks.length === 0 ? (
             <div className="flex h-[70px] items-center justify-center text-sm text-slate-400">
               All production is assigned to tailors.
