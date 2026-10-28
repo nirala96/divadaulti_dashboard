@@ -1,12 +1,15 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { CalendarDays, GripVertical, Image as ImageIcon, PencilLine, Scissors, X } from "lucide-react"
+import { useEffect, useMemo, useState, type DragEvent } from "react"
+import { CalendarDays, Image as ImageIcon, PencilLine, Plus, Scissors, Trash2, Users, X } from "lucide-react"
+
+type WorkerRole = "tailor" | "cutting"
 
 type Tailor = {
   id: string
   name: string
   accent: string
+  role: WorkerRole
 }
 
 type StitchingTask = {
@@ -15,9 +18,28 @@ type StitchingTask = {
   clientName: string
   tailorId: string | null
   dateKey: string | null
+  // Quarter of the day the task starts in (0–3). Only cutting work starts mid-day.
+  startQuarter?: number
   estimatedDays: number
   imageUrl?: string
   autoAssign?: boolean
+  quantity?: number
+  isCustom?: boolean
+}
+
+type CustomOrderDraft = {
+  designName: string
+  clientName: string
+  quantity: string
+  estimatedDays: number
+  tailorId: string
+  dateKey: string
+  startQuarter: number
+}
+
+type WorkerDraft = {
+  name: string
+  role: WorkerRole
 }
 
 const TAILOR_COLORS = [
@@ -26,7 +48,24 @@ const TAILOR_COLORS = [
   "#f59e0b",
   "#ef4444",
   "#2563eb",
+  "#db2777",
+  "#16a34a",
+  "#ea580c",
 ]
+
+const CUTTING_ACCENT = "#475569"
+
+// Every day row is split into quarters so cutting work can be planned in 0.25 day steps.
+const SLOTS_PER_DAY = 4
+const SLOT_HEIGHT = 24
+const MIN_VISIBLE_DAYS = 7
+// Empty days shown after the last planned order so there is room to drop more work.
+const TRAILING_BUFFER_DAYS = 3
+// How far ahead auto-assign may look for a free slot.
+const PLANNING_HORIZON_DAYS = 90
+const MS_PER_DAY = 86_400_000
+
+const QUARTER_LABELS = ["Start of day", "¼ day in", "½ day in", "¾ day in"]
 
 const addDays = (base: Date, offset: number) => {
   const next = new Date(base)
@@ -46,12 +85,20 @@ const formatDateLabel = (dateKey: string) => {
   return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })
 }
 
+const toDayNumber = (dateKey: string) => {
+  const [year, month, day] = dateKey.split("-").map(Number)
+  return Math.round(Date.UTC(year, month - 1, day) / MS_PER_DAY)
+}
+
+const fromDayNumber = (dayNumber: number) => new Date(dayNumber * MS_PER_DAY).toISOString().slice(0, 10)
+
 const initialTailors: Tailor[] = [
-  { id: "tailor-1", name: "Tailor A", accent: TAILOR_COLORS[0] },
-  { id: "tailor-2", name: "Tailor B", accent: TAILOR_COLORS[1] },
-  { id: "tailor-3", name: "Tailor C", accent: TAILOR_COLORS[2] },
-  { id: "tailor-4", name: "Tailor D", accent: TAILOR_COLORS[3] },
-  { id: "tailor-5", name: "Tailor E", accent: TAILOR_COLORS[4] },
+  { id: "cutting-1", name: "Cutting Master", accent: CUTTING_ACCENT, role: "cutting" },
+  { id: "tailor-1", name: "Tailor A", accent: TAILOR_COLORS[0], role: "tailor" },
+  { id: "tailor-2", name: "Tailor B", accent: TAILOR_COLORS[1], role: "tailor" },
+  { id: "tailor-3", name: "Tailor C", accent: TAILOR_COLORS[2], role: "tailor" },
+  { id: "tailor-4", name: "Tailor D", accent: TAILOR_COLORS[3], role: "tailor" },
+  { id: "tailor-5", name: "Tailor E", accent: TAILOR_COLORS[4], role: "tailor" },
 ]
 
 const getDateRange = (days = 7) => {
@@ -89,7 +136,7 @@ const initialTasks = (): StitchingTask[] => {
       id: "task-3",
       designName: "Aarav Sherwani",
       clientName: "Aarav House",
-      tailorId: initialTailors[0].id,
+      tailorId: "tailor-1",
       dateKey: formatDateKey(addDays(today, 0)),
       estimatedDays: 5,
       imageUrl: "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=600&q=80",
@@ -99,7 +146,7 @@ const initialTasks = (): StitchingTask[] => {
       id: "task-4",
       designName: "Leah Dress",
       clientName: "Leah & Co",
-      tailorId: initialTailors[1].id,
+      tailorId: "tailor-2",
       dateKey: formatDateKey(addDays(today, 1)),
       estimatedDays: 3,
       imageUrl: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80",
@@ -109,7 +156,7 @@ const initialTasks = (): StitchingTask[] => {
       id: "task-5",
       designName: "Mira Blazer",
       clientName: "Mira Atelier",
-      tailorId: initialTailors[2].id,
+      tailorId: "tailor-3",
       dateKey: formatDateKey(addDays(today, 2)),
       estimatedDays: 7,
       imageUrl: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=600&q=80",
@@ -119,23 +166,68 @@ const initialTasks = (): StitchingTask[] => {
       id: "task-6",
       designName: "Kaira Suit",
       clientName: "Kaira Label",
-      tailorId: initialTailors[3].id,
+      tailorId: "tailor-4",
       dateKey: formatDateKey(addDays(today, 3)),
       estimatedDays: 8,
       imageUrl: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=600&q=80",
       autoAssign: true,
     },
+    {
+      id: "task-7",
+      designName: "Leah Dress cutting",
+      clientName: "Leah & Co",
+      tailorId: "cutting-1",
+      dateKey: formatDateKey(addDays(today, 0)),
+      startQuarter: 0,
+      estimatedDays: 0.25,
+      imageUrl: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80",
+      autoAssign: true,
+    },
+    {
+      id: "task-8",
+      designName: "Mira Blazer cutting",
+      clientName: "Mira Atelier",
+      tailorId: "cutting-1",
+      dateKey: formatDateKey(addDays(today, 0)),
+      startQuarter: 1,
+      estimatedDays: 0.5,
+      imageUrl: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=600&q=80",
+      autoAssign: true,
+    },
   ]
 }
 
-const getTaskDateSet = (task: Pick<StitchingTask, "dateKey" | "estimatedDays">) => {
+// Tailors work in whole days; the cutting master can book quarter days.
+const normalizeDuration = (days: number, role: WorkerRole | null) => {
+  const value = Number(days) || 0
+  if (role === "tailor") return Math.max(1, Math.ceil(value))
+  return Math.max(0.25, Math.round(value * SLOTS_PER_DAY) / SLOTS_PER_DAY)
+}
+
+const getTaskSlotCount = (task: Pick<StitchingTask, "estimatedDays">) =>
+  Math.max(1, Math.round((Number(task.estimatedDays) || 0) * SLOTS_PER_DAY))
+
+const getTaskStartSlot = (task: Pick<StitchingTask, "dateKey" | "startQuarter">) =>
+  toDayNumber(task.dateKey as string) * SLOTS_PER_DAY + (task.startQuarter ?? 0)
+
+const setTaskStartSlot = (task: StitchingTask, slot: number) => {
+  task.dateKey = fromDayNumber(Math.floor(slot / SLOTS_PER_DAY))
+  task.startQuarter = slot % SLOTS_PER_DAY
+}
+
+const getTaskDateSet = (task: Pick<StitchingTask, "dateKey" | "startQuarter" | "estimatedDays">) => {
   if (!task.dateKey) return []
 
-  const start = new Date(`${task.dateKey}T00:00:00`)
-  const count = Math.max(1, Number(task.estimatedDays) || 1)
+  const firstDay = Math.floor(getTaskStartSlot(task) / SLOTS_PER_DAY)
+  const lastDay = Math.floor((getTaskStartSlot(task) + getTaskSlotCount(task) - 1) / SLOTS_PER_DAY)
 
-  return Array.from({ length: count }, (_, index) => formatDateKey(addDays(start, index)))
+  return Array.from({ length: lastDay - firstDay + 1 }, (_, index) => fromDayNumber(firstDay + index))
 }
+
+const getTailorTimeline = (tasks: StitchingTask[], tailorId: string, excludeTaskId?: string) =>
+  tasks
+    .filter((task) => task.id !== excludeTaskId && task.tailorId === tailorId && task.dateKey)
+    .sort((a, b) => getTaskStartSlot(a) - getTaskStartSlot(b))
 
 const findEarliestFreeSlot = (
   task: StitchingTask,
@@ -143,14 +235,15 @@ const findEarliestFreeSlot = (
   tasks: StitchingTask[],
   dateKeys: string[]
 ) => {
-  const duration = Math.max(1, Number(task.estimatedDays) || 1)
+  const slotCount = getTaskSlotCount(task)
+  const timeline = getTailorTimeline(tasks, tailorId, task.id)
 
   for (const dateKey of dateKeys) {
-    const candidateDates = new Set(getTaskDateSet({ dateKey, estimatedDays: duration }))
-    const conflict = tasks.some((existingTask) => {
-      if (existingTask.id === task.id || existingTask.tailorId !== tailorId || !existingTask.dateKey) return false
-      const existingDates = new Set(getTaskDateSet(existingTask))
-      return Array.from(candidateDates).some((value) => existingDates.has(value))
+    const candidateStart = toDayNumber(dateKey) * SLOTS_PER_DAY
+    const candidateEnd = candidateStart + slotCount
+    const conflict = timeline.some((existingTask) => {
+      const existingStart = getTaskStartSlot(existingTask)
+      return existingStart < candidateEnd && candidateStart < existingStart + getTaskSlotCount(existingTask)
     })
 
     if (!conflict) return dateKey
@@ -159,15 +252,81 @@ const findEarliestFreeSlot = (
   return null
 }
 
+// Pull the tasks that followed a removed task earlier to close the gap it leaves behind.
+const closeGapInTailorTimeline = (tasks: StitchingTask[], removedTask: StitchingTask) => {
+  if (!removedTask.tailorId || !removedTask.dateKey) return
+
+  const removedStart = getTaskStartSlot(removedTask)
+  const removedSlots = getTaskSlotCount(removedTask)
+  let cursor = removedStart
+
+  for (const task of getTailorTimeline(tasks, removedTask.tailorId, removedTask.id)) {
+    const taskStart = getTaskStartSlot(task)
+    if (taskStart <= removedStart) continue
+
+    const newStart = Math.max(taskStart - removedSlots, cursor)
+    setTaskStartSlot(task, newStart)
+    cursor = newStart + getTaskSlotCount(task)
+  }
+}
+
+// Push every task that overlaps or follows the placed task down so nothing on the worker overlaps.
+const pushTailorTimeline = (tasks: StitchingTask[], placedTask: StitchingTask) => {
+  if (!placedTask.tailorId || !placedTask.dateKey) return
+
+  const placedStart = getTaskStartSlot(placedTask)
+  let cursor = placedStart + getTaskSlotCount(placedTask)
+
+  for (const task of getTailorTimeline(tasks, placedTask.tailorId, placedTask.id)) {
+    const taskStart = getTaskStartSlot(task)
+    const taskEnd = taskStart + getTaskSlotCount(task)
+
+    // Tasks that finish before the placed task starts stay where they are.
+    if (taskEnd <= placedStart) continue
+
+    if (taskStart < cursor) {
+      setTaskStartSlot(task, cursor)
+      cursor += getTaskSlotCount(task)
+    } else {
+      cursor = taskEnd
+    }
+  }
+}
+
+const insertTaskIntoTailorTimeline = (
+  tasks: StitchingTask[],
+  taskId: string,
+  tailor: Tailor,
+  startDateKey: string,
+  startQuarter = 0
+) => {
+  const next = tasks.map((task) => ({ ...task }))
+  const movedTask = next.find((task) => task.id === taskId)
+  if (!movedTask) return next
+
+  closeGapInTailorTimeline(next, movedTask)
+
+  movedTask.tailorId = tailor.id
+  movedTask.dateKey = startDateKey
+  movedTask.startQuarter = tailor.role === "cutting" ? startQuarter : 0
+  movedTask.estimatedDays = normalizeDuration(movedTask.estimatedDays, tailor.role)
+  movedTask.autoAssign = true
+
+  pushTailorTimeline(next, movedTask)
+
+  return next
+}
+
 const autoAssignTasks = (tasks: StitchingTask[], tailors: Tailor[], dateKeys: string[]) => {
   const next = tasks.map((task) => ({ ...task }))
+  const stitchingTailors = tailors.filter((tailor) => tailor.role === "tailor")
 
   for (const task of next) {
     if (task.autoAssign === false || (task.tailorId && task.dateKey)) continue
 
     let bestOption: { tailorId: string; dateKey: string } | null = null
 
-    for (const tailor of tailors) {
+    for (const tailor of stitchingTailors) {
       const candidateDate = findEarliestFreeSlot(task, tailor.id, next, dateKeys)
       if (!candidateDate) continue
 
@@ -180,45 +339,104 @@ const autoAssignTasks = (tasks: StitchingTask[], tailors: Tailor[], dateKeys: st
     if (bestOption) {
       task.tailorId = bestOption.tailorId
       task.dateKey = bestOption.dateKey
+      task.startQuarter = 0
+      task.estimatedDays = normalizeDuration(task.estimatedDays, "tailor")
     }
   }
 
   return next
 }
 
+const TaskThumbnail = ({ task, className }: { task: StitchingTask; className: string }) => (
+  <div className={`flex-shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-100 ${className}`}>
+    {task.imageUrl ? (
+      <img src={task.imageUrl} alt={task.designName} className="h-full w-full object-cover" />
+    ) : (
+      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-100 to-slate-100 text-[10px] font-bold text-violet-700">
+        <ImageIcon className="h-3.5 w-3.5" />
+      </div>
+    )}
+  </div>
+)
+
+const inputClassName =
+  "w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-base font-medium text-slate-800 outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+
 export function ProductionStitchingBoard() {
-  const [tailors] = useState<Tailor[]>(initialTailors)
+  const [tailors, setTailors] = useState<Tailor[]>(initialTailors)
   const [tasks, setTasks] = useState<StitchingTask[]>(() => initialTasks())
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<string | null>(null)
   const [selectedTask, setSelectedTask] = useState<StitchingTask | null>(null)
   const [editedDays, setEditedDays] = useState(1)
+  const [customOrderDraft, setCustomOrderDraft] = useState<CustomOrderDraft | null>(null)
+  const [isTeamOpen, setIsTeamOpen] = useState(false)
+  const [workerDraft, setWorkerDraft] = useState<WorkerDraft>({ name: "", role: "tailor" })
 
-  const dateKeys = useMemo(() => getDateRange(7), [])
+  const planningDateKeys = useMemo(() => getDateRange(PLANNING_HORIZON_DAYS), [])
+
+  // Show from today until the last planned day, so the board scrolls as far as work is scheduled.
+  const dateKeys = useMemo(() => {
+    const todayNumber = toDayNumber(planningDateKeys[0])
+    const lastPlannedIndex = tasks.reduce((latest, task) => {
+      if (!task.dateKey) return latest
+      const lastSlot = getTaskStartSlot(task) + getTaskSlotCount(task) - 1
+      return Math.max(latest, Math.floor(lastSlot / SLOTS_PER_DAY) - todayNumber)
+    }, -1)
+
+    return getDateRange(Math.max(MIN_VISIBLE_DAYS, lastPlannedIndex + 1 + TRAILING_BUFFER_DAYS))
+  }, [tasks, planningDateKeys])
 
   useEffect(() => {
-    setTasks((current) => autoAssignTasks(current, tailors, dateKeys))
-  }, [tailors, dateKeys])
+    setTasks((current) => autoAssignTasks(current, tailors, planningDateKeys))
+  }, [tailors, planningDateKeys])
 
   const readyTasks = useMemo(
     () => tasks.filter((task) => !task.tailorId && !task.dateKey && task.autoAssign === false),
     [tasks]
   )
 
-  const moveTask = (taskId: string, tailorId: string | null, dateKey: string | null) => {
-    setTasks((current) => {
-      const updated = current.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              tailorId,
-              dateKey,
-              autoAssign: true,
-            }
-          : task
-      )
+  const visibleStartSlot = toDayNumber(dateKeys[0]) * SLOTS_PER_DAY
+  const visibleEndSlot = visibleStartSlot + dateKeys.length * SLOTS_PER_DAY
 
-      return autoAssignTasks(updated, tailors, dateKeys)
-    })
+  const columnWidths = tailors.map((tailor) => (tailor.role === "cutting" ? 120 : 210))
+
+  const getTailorRole = (tailorId: string | null) => tailors.find((tailor) => tailor.id === tailorId)?.role ?? null
+
+  const moveTask = (taskId: string, tailor: Tailor, dateKey: string, startQuarter = 0) => {
+    setTasks((current) => insertTaskIntoTailorTimeline(current, taskId, tailor, dateKey, startQuarter))
+  }
+
+  const startDrag = (event: DragEvent, taskId: string) => {
+    event.dataTransfer.setData("text/plain", taskId)
+    event.dataTransfer.effectAllowed = "move"
+    // Defer so the browser captures the drag image before tiles stop receiving pointer events.
+    setTimeout(() => setDraggingTaskId(taskId), 0)
+  }
+
+  const endDrag = () => {
+    setDraggingTaskId(null)
+    setDropTarget(null)
+  }
+
+  const dropZoneProps = (tailor: Tailor, dateKey: string, startQuarter: number) => {
+    const targetId = `${tailor.id}-${dateKey}-${startQuarter}`
+
+    return {
+      onDragOver: (event: DragEvent) => {
+        event.preventDefault()
+        event.dataTransfer.dropEffect = "move"
+        setDropTarget(targetId)
+      },
+      onDragLeave: () => setDropTarget((current) => (current === targetId ? null : current)),
+      onDrop: (event: DragEvent) => {
+        event.preventDefault()
+        const taskId = event.dataTransfer.getData("text/plain") || draggingTaskId
+        if (taskId) moveTask(taskId, tailor, dateKey, startQuarter)
+        endDrag()
+      },
+      isActive: dropTarget === targetId,
+    }
   }
 
   const openTaskEditor = (task: StitchingTask) => {
@@ -234,23 +452,121 @@ export function ProductionStitchingBoard() {
         task.id === selectedTask.id
           ? {
               ...task,
-              estimatedDays: Math.max(1, Number(editedDays) || 1),
+              estimatedDays: normalizeDuration(editedDays, getTailorRole(task.tailorId)),
               autoAssign: task.tailorId ? true : task.autoAssign,
             }
           : task
       )
 
-      const taskToReassign = updated.find((task) => task.id === selectedTask.id)
-      if (taskToReassign && (!taskToReassign.tailorId || !taskToReassign.dateKey)) {
-        return autoAssignTasks(updated, tailors, dateKeys)
+      const updatedTask = updated.find((task) => task.id === selectedTask.id)
+      if (updatedTask?.tailorId && updatedTask.dateKey) {
+        pushTailorTimeline(updated, updatedTask)
+        return updated
       }
 
-      return autoAssignTasks(updated, tailors, dateKeys)
+      return autoAssignTasks(updated, tailors, planningDateKeys)
     })
     setSelectedTask(null)
   }
 
+  const openCustomOrderForm = () => {
+    setCustomOrderDraft({
+      designName: "",
+      clientName: "",
+      quantity: "",
+      estimatedDays: 1,
+      tailorId: "",
+      dateKey: dateKeys[0],
+      startQuarter: 0,
+    })
+  }
+
+  const saveCustomOrder = () => {
+    if (!customOrderDraft || !customOrderDraft.designName.trim()) return
+
+    const targetTailor = tailors.find((tailor) => tailor.id === customOrderDraft.tailorId)
+    const quantity = Number(customOrderDraft.quantity)
+    const newTask: StitchingTask = {
+      id: `custom-${Date.now()}`,
+      designName: customOrderDraft.designName.trim(),
+      clientName: customOrderDraft.clientName.trim() || "Custom order",
+      quantity: quantity > 0 ? quantity : undefined,
+      tailorId: null,
+      dateKey: null,
+      estimatedDays: normalizeDuration(customOrderDraft.estimatedDays, targetTailor?.role ?? null),
+      autoAssign: false,
+      isCustom: true,
+    }
+
+    setTasks((current) => {
+      const withNewTask = [...current, newTask]
+      if (!targetTailor || !customOrderDraft.dateKey) return withNewTask
+
+      // Slot the order in on the chosen day and push that worker's later work down.
+      return insertTaskIntoTailorTimeline(
+        withNewTask,
+        newTask.id,
+        targetTailor,
+        customOrderDraft.dateKey,
+        customOrderDraft.startQuarter
+      )
+    })
+    setCustomOrderDraft(null)
+  }
+
+  const removeTask = (taskId: string) => {
+    setTasks((current) => {
+      const next = current.map((task) => ({ ...task }))
+      const removedTask = next.find((task) => task.id === taskId)
+      if (removedTask) closeGapInTailorTimeline(next, removedTask)
+      return next.filter((task) => task.id !== taskId)
+    })
+    setSelectedTask(null)
+  }
+
+  const addWorker = () => {
+    const name = workerDraft.name.trim()
+    if (!name) return
+
+    setTailors((current) => [
+      ...current,
+      {
+        id: `${workerDraft.role}-${Date.now()}`,
+        name,
+        role: workerDraft.role,
+        accent:
+          workerDraft.role === "cutting"
+            ? CUTTING_ACCENT
+            : TAILOR_COLORS[current.filter((tailor) => tailor.role === "tailor").length % TAILOR_COLORS.length],
+      },
+    ])
+    setWorkerDraft({ name: "", role: workerDraft.role })
+  }
+
+  const removeWorker = (tailor: Tailor) => {
+    const assignedCount = taskCountForTailor(tailor.id)
+    if (
+      assignedCount > 0 &&
+      !window.confirm(`${tailor.name} has ${assignedCount} order(s). Remove them and move their orders to Ready to cut?`)
+    ) {
+      return
+    }
+
+    // Orders of a removed worker go back to the Ready to cut tray to be planned again.
+    setTasks((current) =>
+      current.map((task) =>
+        task.tailorId === tailor.id
+          ? { ...task, tailorId: null, dateKey: null, startQuarter: undefined, autoAssign: false }
+          : task
+      )
+    )
+    setTailors((current) => current.filter((entry) => entry.id !== tailor.id))
+  }
+
   const taskCountForTailor = (tailorId: string) => tasks.filter((task) => task.tailorId === tailorId).length
+
+  const selectedTaskRole = selectedTask ? getTailorRole(selectedTask.tailorId) : null
+  const customOrderRole = customOrderDraft ? getTailorRole(customOrderDraft.tailorId || null) : null
 
   return (
     <section className="rounded-2xl border border-violet-200 bg-white p-4 shadow-sm sm:p-6">
@@ -262,143 +578,193 @@ export function ProductionStitchingBoard() {
           </div>
           <h2 className="text-4xl font-black tracking-[-0.04em] text-slate-800">Tailor workload planner</h2>
         </div>
-        <div className="flex items-center gap-2 rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-sm text-violet-700">
-          <CalendarDays className="h-4 w-4" />
-          Starts today, {formatDateLabel(dateKeys[0])}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 rounded-xl border border-violet-100 bg-violet-50 px-3 py-2 text-sm text-violet-700">
+            <CalendarDays className="h-4 w-4" />
+            {formatDateLabel(dateKeys[0])} – {formatDateLabel(dateKeys[dateKeys.length - 1])} · {dateKeys.length} days
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsTeamOpen(true)}
+            className="flex items-center gap-2 rounded-xl border border-violet-200 bg-white px-3 py-2 text-sm font-semibold text-violet-700 transition hover:bg-violet-50"
+          >
+            <Users className="h-4 w-4" />
+            Manage team
+          </button>
+          <button
+            type="button"
+            onClick={openCustomOrderForm}
+            className="flex items-center gap-2 rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-violet-700"
+          >
+            <Plus className="h-4 w-4" />
+            Add custom order
+          </button>
         </div>
       </div>
 
-      <div className="overflow-x-auto pb-3">
-        <div className="min-w-[1100px]">
-          <div className="grid grid-cols-[120px_repeat(5,minmax(210px,1fr))] gap-2">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <div className="max-h-[70vh] overflow-auto rounded-xl pb-3">
+        <div style={{ minWidth: 120 + columnWidths.reduce((total, width) => total + width + 8, 0) }}>
+          <div
+            className="grid gap-x-2"
+            style={{
+              gridTemplateColumns: `120px ${columnWidths.map((width) => `minmax(${width}px, ${width === 120 ? 0.5 : 1}fr)`).join(" ")}`,
+              gridTemplateRows: `auto repeat(${dateKeys.length * SLOTS_PER_DAY}, ${SLOT_HEIGHT}px)`,
+            }}
+          >
+            <div className="sticky left-0 top-0 z-30 mb-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               Date
             </div>
 
             {tailors.map((tailor) => (
               <div
                 key={tailor.id}
-                className="flex items-center justify-between rounded-xl border border-violet-200 bg-violet-50 px-3 py-3 text-sm font-semibold text-violet-800"
+                className="sticky top-0 z-20 mb-2 flex items-center justify-between gap-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-3 text-sm font-semibold text-violet-800 shadow-sm"
                 style={{ borderLeft: `4px solid ${tailor.accent}` }}
               >
-                <span>{tailor.name}</span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate">{tailor.name}</span>
+                  {tailor.role === "cutting" && (
+                    <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-500">Cutting</span>
+                  )}
+                </span>
                 <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-slate-600">
                   {taskCountForTailor(tailor.id)}
                 </span>
               </div>
             ))}
 
-            <div className="flex flex-col gap-2">
-              {dateKeys.map((dateKey) => (
-                <div
-                  key={dateKey}
-                  className="flex items-center rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-600"
-                >
-                  {formatDateLabel(dateKey)}
-                </div>
-              ))}
-            </div>
+            {dateKeys.map((dateKey, dayIndex) => (
+              <div
+                key={dateKey}
+                className="sticky left-0 z-20 my-1 flex items-center rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-600"
+                style={{ gridColumn: 1, gridRow: `${dayIndex * SLOTS_PER_DAY + 2} / span ${SLOTS_PER_DAY}` }}
+              >
+                {formatDateLabel(dateKey)}
+              </div>
+            ))}
 
-            {tailors.map((tailor) => {
-              const columnTasks = tasks.filter(
-                (task) => task.tailorId === tailor.id && task.dateKey && dateKeys.includes(task.dateKey)
-              )
+            {tailors.map((tailor, columnIndex) =>
+              dateKeys.map((dateKey, dayIndex) => {
+                const dayRow = dayIndex * SLOTS_PER_DAY + 2
 
-              return (
-                <div
-                  key={tailor.id}
-                  className="relative rounded-xl border border-slate-200 bg-slate-50/60 p-2"
-                  onDragOver={(event) => event.preventDefault()}
-                  onDrop={() => {
-                    if (draggingTaskId) {
-                      const task = tasks.find((entry) => entry.id === draggingTaskId)
-                      if (!task) return
-
-                      const candidateDate = findEarliestFreeSlot(task, tailor.id, tasks, dateKeys)
-                      if (!candidateDate) return
-
-                      moveTask(task.id, tailor.id, candidateDate)
-                      setDraggingTaskId(null)
-                    }
-                  }}
-                  style={{ minHeight: `${dateKeys.length * 88}px` }}
-                >
-                  {dateKeys.map((dateKey) => (
+                if (tailor.role === "tailor") {
+                  const { isActive, ...handlers } = dropZoneProps(tailor, dateKey, 0)
+                  return (
                     <div
                       key={`${tailor.id}-${dateKey}`}
-                      className="mb-2 rounded-xl border border-dashed border-slate-200 bg-white/30"
-                      style={{ height: "82px" }}
+                      className={`my-1 rounded-xl border border-dashed transition-colors ${
+                        isActive ? "border-violet-400 bg-violet-100" : "border-slate-200 bg-slate-50/60"
+                      }`}
+                      style={{ gridColumn: columnIndex + 2, gridRow: `${dayRow} / span ${SLOTS_PER_DAY}` }}
+                      {...handlers}
                     />
-                  ))}
+                  )
+                }
 
-                  {columnTasks.map((task) => {
-                    if (!task.dateKey) return null
+                // Cutting master days get one drop zone per quarter day.
+                return (
+                  <div
+                    key={`${tailor.id}-${dateKey}`}
+                    className="my-1 flex flex-col overflow-hidden rounded-xl border border-dashed border-slate-200 bg-slate-50/60"
+                    style={{ gridColumn: columnIndex + 2, gridRow: `${dayRow} / span ${SLOTS_PER_DAY}` }}
+                  >
+                    {QUARTER_LABELS.map((label, quarter) => {
+                      const { isActive, ...handlers } = dropZoneProps(tailor, dateKey, quarter)
+                      return (
+                        <div
+                          key={label}
+                          title={label}
+                          className={`flex-1 transition-colors ${quarter > 0 ? "border-t border-dotted border-slate-200" : ""} ${
+                            isActive ? "bg-violet-100" : ""
+                          }`}
+                          {...handlers}
+                        />
+                      )
+                    })}
+                  </div>
+                )
+              })
+            )}
 
-                    const startIndex = dateKeys.indexOf(task.dateKey)
-                    const duration = Math.max(1, Number(task.estimatedDays) || 1)
-                    const rowHeight = 82
-                    const gap = 8
-                    const top = startIndex * (rowHeight + gap)
-                    const height = Math.max(rowHeight, duration * rowHeight - (duration - 1) * gap)
+            {tailors.map((tailor, columnIndex) =>
+              tasks.map((task) => {
+                if (task.tailorId !== tailor.id || !task.dateKey) return null
 
-                    return (
-                      <div
-                        key={task.id}
-                        draggable
-                        onDragStart={() => setDraggingTaskId(task.id)}
-                        onDragEnd={() => setDraggingTaskId(null)}
-                        onClick={() => openTaskEditor(task)}
-                        title={`${task.designName} · ${task.clientName} · ${task.estimatedDays} days`}
-                        className="group absolute left-2 right-2 z-10 cursor-grab overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing"
-                        style={{
-                          top: `${top + 4}px`,
-                          height: `${height}px`,
-                          borderLeft: `4px solid ${tailor.accent}`,
-                        }}
-                      >
+                // Clip the task to the visible range so it lines up with the date rows.
+                const startSlot = getTaskStartSlot(task)
+                const clippedStart = Math.max(startSlot, visibleStartSlot)
+                const clippedEnd = Math.min(startSlot + getTaskSlotCount(task), visibleEndSlot)
+                if (clippedEnd <= clippedStart) return null
+
+                const taskDates = getTaskDateSet(task)
+                const isCutting = tailor.role === "cutting"
+                const quantityLabel = task.quantity ? ` · ${task.quantity} pcs` : ""
+
+                return (
+                  <div
+                    key={task.id}
+                    draggable
+                    onDragStart={(event) => startDrag(event, task.id)}
+                    onDragEnd={endDrag}
+                    onClick={() => openTaskEditor(task)}
+                    title={`${task.designName} · ${task.clientName}${quantityLabel} · ${task.estimatedDays} days`}
+                    className={`group relative z-10 cursor-grab overflow-hidden border border-slate-200 bg-white shadow-sm transition duration-200 hover:shadow-md active:cursor-grabbing ${
+                      isCutting ? "flex items-center justify-center rounded-lg p-0.5" : "m-1 flex flex-col justify-between rounded-xl"
+                    }`}
+                    style={{
+                      gridColumn: columnIndex + 2,
+                      gridRow: `${clippedStart - visibleStartSlot + 2} / span ${clippedEnd - clippedStart}`,
+                      margin: isCutting ? "2px 6px" : undefined,
+                      padding: isCutting ? undefined : "6px 8px",
+                      borderLeft: `4px solid ${tailor.accent}`,
+                      // Let drops fall through to the day cell underneath while dragging.
+                      pointerEvents: draggingTaskId ? "none" : "auto",
+                      opacity: draggingTaskId === task.id ? 0.4 : 1,
+                    }}
+                  >
+                    {isCutting ? (
+                      <TaskThumbnail task={task} className="aspect-square h-full max-h-10" />
+                    ) : (
+                      <>
                         <div className="flex items-start gap-2">
-                          <div className="h-9 w-9 flex-shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-100">
-                            {task.imageUrl ? (
-                              <img src={task.imageUrl} alt={task.designName} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-100 to-slate-100 text-[10px] font-bold text-violet-700">
-                                <ImageIcon className="h-4 w-4" />
-                              </div>
-                            )}
-                          </div>
+                          <TaskThumbnail task={task} className="h-8 w-8" />
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="truncate text-[11px] font-bold text-slate-800">{task.designName}</p>
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-violet-100 text-violet-700">
-                                <GripVertical className="h-3 w-3" />
-                              </span>
-                            </div>
-                            <p className="mt-1 truncate text-[10px] text-slate-500">{task.clientName}</p>
+                            <p className="truncate text-[10px] font-bold text-slate-800">{task.designName}</p>
+                            <p className="mt-0.5 truncate text-[9px] text-slate-500">
+                              {task.clientName}
+                              {quantityLabel}
+                            </p>
                           </div>
                         </div>
 
-                        <div className="mt-2 flex items-center justify-between">
-                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-600">
-                            {task.estimatedDays}d
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-[8px] font-medium text-slate-400">
+                            {formatDateLabel(taskDates[0])}
+                            {taskDates.length > 1 ? ` – ${formatDateLabel(taskDates[taskDates.length - 1])}` : ""}
                           </span>
-                          <button
-                            type="button"
-                            aria-label={`Edit ${task.designName}`}
-                            className="rounded-md border border-slate-200 bg-white p-1 text-slate-500 opacity-80 transition hover:border-violet-200 hover:text-violet-700"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              openTaskEditor(task)
-                            }}
-                          >
-                            <PencilLine className="h-3 w-3" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-slate-600">
+                              {task.estimatedDays}d
+                            </span>
+                            <button
+                              type="button"
+                              aria-label={`Edit ${task.designName}`}
+                              className="rounded-md border border-slate-200 bg-white p-0.5 text-slate-500 opacity-80 transition hover:border-violet-200 hover:text-violet-700"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                openTaskEditor(task)
+                              }}
+                            >
+                              <PencilLine className="h-3 w-3" />
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })}
+                      </>
+                    )}
+                  </div>
+                )
+              })
+            )}
           </div>
         </div>
       </div>
@@ -419,25 +785,20 @@ export function ProductionStitchingBoard() {
                 <div
                   key={task.id}
                   draggable
-                  onDragStart={() => setDraggingTaskId(task.id)}
-                  onDragEnd={() => setDraggingTaskId(null)}
+                  onDragStart={(event) => startDrag(event, task.id)}
+                  onDragEnd={endDrag}
                   onClick={() => openTaskEditor(task)}
                   title={`${task.designName} · ${task.clientName} · ${task.estimatedDays} days`}
                   className="group relative w-[190px] cursor-grab overflow-hidden rounded-xl border border-violet-200 bg-violet-50 p-2 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing"
                 >
                   <div className="flex items-center gap-2">
-                    <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-md border border-violet-200 bg-white">
-                      {task.imageUrl ? (
-                        <img src={task.imageUrl} alt={task.designName} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-violet-100 to-slate-100 text-[10px] font-bold text-violet-700">
-                          <ImageIcon className="h-4 w-4" />
-                        </div>
-                      )}
-                    </div>
+                    <TaskThumbnail task={task} className="h-10 w-10 border-violet-200 bg-white" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[11px] font-bold text-slate-800">{task.designName}</p>
-                      <p className="mt-1 truncate text-[10px] text-slate-500">{task.clientName}</p>
+                      <p className="mt-1 truncate text-[10px] text-slate-500">
+                        {task.clientName}
+                        {task.quantity ? ` · ${task.quantity} pcs` : ""}
+                      </p>
                     </div>
                   </div>
                   <div className="mt-2 flex items-center justify-between">
@@ -482,25 +843,45 @@ export function ProductionStitchingBoard() {
             </div>
 
             <div className="space-y-3 text-sm text-slate-600">
-              <div className="rounded-xl bg-violet-50 p-3">
-                <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-violet-700">Client</span>
-                <span className="mt-1 block text-base font-semibold text-slate-800">{selectedTask.clientName}</span>
+              <div className="flex items-center gap-3 rounded-xl bg-violet-50 p-3">
+                <TaskThumbnail task={selectedTask} className="h-12 w-12" />
+                <div className="min-w-0">
+                  <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-violet-700">Client</span>
+                  <span className="mt-1 block truncate text-base font-semibold text-slate-800">
+                    {selectedTask.clientName}
+                    {selectedTask.quantity ? ` · ${selectedTask.quantity} pcs` : ""}
+                  </span>
+                </div>
               </div>
 
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-slate-700">Estimated completion days</span>
                 <input
                   type="number"
-                  min={1}
+                  min={selectedTaskRole === "tailor" ? 1 : 0.25}
+                  step={selectedTaskRole === "tailor" ? 1 : 0.25}
                   max={30}
                   value={editedDays}
                   onChange={(event) => setEditedDays(Number(event.target.value))}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-base font-medium text-slate-800 outline-none transition focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                  className={inputClassName}
                 />
+                <span className="mt-1 block text-xs text-slate-500">
+                  {selectedTaskRole === "tailor" ? "Tailors are planned in whole days." : "Can be planned in 0.25 day steps."}
+                </span>
               </label>
             </div>
 
-            <div className="mt-5 flex justify-end gap-3">
+            <div className="mt-5 flex items-center justify-end gap-3">
+              {selectedTask.isCustom && (
+                <button
+                  type="button"
+                  onClick={() => removeTask(selectedTask.id)}
+                  className="mr-auto flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Remove order
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setSelectedTask(null)}
@@ -516,6 +897,236 @@ export function ProductionStitchingBoard() {
                 Save estimate
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {customOrderDraft && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <form
+            className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl"
+            onSubmit={(event) => {
+              event.preventDefault()
+              saveCustomOrder()
+            }}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">New order</p>
+                <h3 className="mt-1 text-xl font-bold text-slate-800">Add custom order</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCustomOrderDraft(null)}
+                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Close custom order form"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-sm text-slate-600">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-700">Item name</span>
+                <input
+                  autoFocus
+                  required
+                  placeholder="e.g. Tavi pant"
+                  value={customOrderDraft.designName}
+                  onChange={(event) => setCustomOrderDraft({ ...customOrderDraft, designName: event.target.value })}
+                  className={inputClassName}
+                />
+              </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">Quantity (pcs)</span>
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="e.g. 20"
+                    value={customOrderDraft.quantity}
+                    onChange={(event) => setCustomOrderDraft({ ...customOrderDraft, quantity: event.target.value })}
+                    className={inputClassName}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">Estimated days</span>
+                  <input
+                    type="number"
+                    min={customOrderRole === "tailor" ? 1 : 0.25}
+                    step={customOrderRole === "tailor" ? 1 : 0.25}
+                    max={30}
+                    value={customOrderDraft.estimatedDays}
+                    onChange={(event) =>
+                      setCustomOrderDraft({ ...customOrderDraft, estimatedDays: Number(event.target.value) })
+                    }
+                    className={inputClassName}
+                  />
+                </label>
+              </div>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-slate-700">Client / order (optional)</span>
+                <input
+                  placeholder="Custom order"
+                  value={customOrderDraft.clientName}
+                  onChange={(event) => setCustomOrderDraft({ ...customOrderDraft, clientName: event.target.value })}
+                  className={inputClassName}
+                />
+              </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">Assign to</span>
+                  <select
+                    value={customOrderDraft.tailorId}
+                    onChange={(event) => setCustomOrderDraft({ ...customOrderDraft, tailorId: event.target.value })}
+                    className={inputClassName}
+                  >
+                    <option value="">Ready to cut</option>
+                    {tailors.map((tailor) => (
+                      <option key={tailor.id} value={tailor.id}>
+                        {tailor.name}
+                        {tailor.role === "cutting" ? " (cutting)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">Start date</span>
+                  <input
+                    type="date"
+                    min={dateKeys[0]}
+                    disabled={!customOrderDraft.tailorId}
+                    value={customOrderDraft.dateKey}
+                    onChange={(event) => setCustomOrderDraft({ ...customOrderDraft, dateKey: event.target.value })}
+                    className={`${inputClassName} disabled:opacity-50`}
+                  />
+                </label>
+              </div>
+
+              {customOrderRole === "cutting" && (
+                <label className="block">
+                  <span className="mb-2 block text-sm font-medium text-slate-700">Start time</span>
+                  <select
+                    value={customOrderDraft.startQuarter}
+                    onChange={(event) =>
+                      setCustomOrderDraft({ ...customOrderDraft, startQuarter: Number(event.target.value) })
+                    }
+                    className={inputClassName}
+                  >
+                    {QUARTER_LABELS.map((label, quarter) => (
+                      <option key={label} value={quarter}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              <p className="text-xs text-slate-500">
+                {customOrderDraft.tailorId
+                  ? "The order starts at this point and the later orders of that person move down to make room."
+                  : "The order goes to Ready to cut, so you can drag it onto anyone's timeline."}
+              </p>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setCustomOrderDraft(null)}
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700"
+              >
+                Add order
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {isTeamOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">Production team</p>
+                <h3 className="mt-1 text-xl font-bold text-slate-800">Manage team</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTeamOpen(false)}
+                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Close team manager"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <ul className="max-h-[40vh] space-y-2 overflow-y-auto">
+              {tailors.length === 0 && <li className="py-4 text-center text-sm text-slate-400">No one in the team yet.</li>}
+              {tailors.map((tailor) => (
+                <li
+                  key={tailor.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+                  style={{ borderLeft: `4px solid ${tailor.accent}` }}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-800">{tailor.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {tailor.role === "cutting" ? "Cutting master" : "Tailor"} · {taskCountForTailor(tailor.id)} order(s)
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeWorker(tailor)}
+                    aria-label={`Remove ${tailor.name}`}
+                    className="rounded-lg p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            <form
+              className="mt-4 space-y-3 border-t border-slate-100 pt-4"
+              onSubmit={(event) => {
+                event.preventDefault()
+                addWorker()
+              }}
+            >
+              <div className="grid grid-cols-[1fr_auto] gap-3">
+                <input
+                  required
+                  placeholder="Name"
+                  value={workerDraft.name}
+                  onChange={(event) => setWorkerDraft({ ...workerDraft, name: event.target.value })}
+                  className={inputClassName}
+                />
+                <select
+                  value={workerDraft.role}
+                  onChange={(event) => setWorkerDraft({ ...workerDraft, role: event.target.value as WorkerRole })}
+                  className={inputClassName}
+                >
+                  <option value="tailor">Tailor</option>
+                  <option value="cutting">Cutting master</option>
+                </select>
+              </div>
+              <button
+                type="submit"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-700"
+              >
+                <Plus className="h-4 w-4" />
+                Add to team
+              </button>
+            </form>
           </div>
         </div>
       )}
