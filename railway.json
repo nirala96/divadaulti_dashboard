@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "runtime": "VM",
+    "runtime": "V2",
     "startCommand": "npm run start -- --hostname 0.0.0.0",
     "healthcheckPath": "/",
     "healthcheckTimeout": 100,
