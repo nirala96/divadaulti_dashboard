@@ -1019,7 +1019,7 @@ export function ProductionStitchingBoard() {
                     {isCutting ? (
                       <>
                         <TaskThumbnail task={task} className="aspect-square h-full max-h-10" />
-                        <span className="min-w-0 truncate text-[10px] font-semibold text-slate-700">{task.clientName}</span>
+                        <span className="block min-w-0 flex-1 truncate text-[10px] font-semibold text-slate-700">{task.designName}</span>
                       </>
                     ) : (
                       <>
