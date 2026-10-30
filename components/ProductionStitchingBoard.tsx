@@ -329,8 +329,6 @@ const insertTaskIntoTailorTimeline = (
   const movedTask = next.find((task) => task.id === taskId)
   if (!movedTask) return next
 
-  closeGapInTailorTimeline(next, movedTask)
-
   movedTask.tailorId = tailor.id
   movedTask.dateKey = startDateKey
   movedTask.startQuarter = tailor.role === "cutting" ? startQuarter : 0
@@ -655,7 +653,12 @@ export function ProductionStitchingBoard() {
     setTasks((current) => insertTaskIntoTailorTimeline(current, taskId, tailor, dateKey, startQuarter))
   }
 
-  const startDrag = (event: DragEvent, taskId: string) => {
+  // Quarter-day slot of the tile that was grabbed, so the tile lands where it is drawn, not where the pointer is.
+  const grabSlotOffsetRef = useRef(0)
+
+  const startDrag = (event: DragEvent, taskId: string, fromBoard = false) => {
+    const tileTop = event.currentTarget.getBoundingClientRect().top
+    grabSlotOffsetRef.current = fromBoard ? Math.max(0, Math.floor((event.clientY - tileTop) / SLOT_HEIGHT)) : 0
     event.dataTransfer.setData("text/plain", taskId)
     event.dataTransfer.effectAllowed = "move"
     // Defer so the browser captures the drag image before tiles stop receiving pointer events.
@@ -681,7 +684,15 @@ export function ProductionStitchingBoard() {
       onDrop: (event: DragEvent) => {
         event.preventDefault()
         const taskId = event.dataTransfer.getData("text/plain") || draggingTaskId
-        if (taskId) moveTask(taskId, tailor, dateKey, startQuarter)
+        if (taskId) {
+          const grabOffset = grabSlotOffsetRef.current
+          // Tailors book whole days, so only whole days of the grab offset count there.
+          const startSlot =
+            tailor.role === "tailor"
+              ? (toDayNumber(dateKey) - Math.floor(grabOffset / SLOTS_PER_DAY)) * SLOTS_PER_DAY
+              : toDayNumber(dateKey) * SLOTS_PER_DAY + startQuarter - grabOffset
+          moveTask(taskId, tailor, fromDayNumber(Math.floor(startSlot / SLOTS_PER_DAY)), startSlot % SLOTS_PER_DAY)
+        }
         endDrag()
       },
       isActive: dropTarget === targetId,
@@ -998,7 +1009,7 @@ export function ProductionStitchingBoard() {
                   <div
                     key={task.id}
                     draggable
-                    onDragStart={(event) => startDrag(event, task.id)}
+                    onDragStart={(event) => startDrag(event, task.id, true)}
                     onDragEnd={endDrag}
                     onClick={() => openTaskEditor(task)}
                     title={`${task.designName} · ${task.clientName}${quantityLabel} · ${task.estimatedDays} days`}
