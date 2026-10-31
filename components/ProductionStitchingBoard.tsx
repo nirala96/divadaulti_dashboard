@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react"
-import { CalendarDays, ClipboardPaste, Image as ImageIcon, Loader2, PencilLine, Plus, Scissors, Trash2, Undo2, Upload, Users, X } from "lucide-react"
+import { CalendarDays, Check, ClipboardPaste, Image as ImageIcon, Loader2, PencilLine, Plus, Scissors, Trash2, Undo2, Upload, Users, X } from "lucide-react"
 
 type WorkerRole = "tailor" | "cutting"
 
@@ -27,6 +27,7 @@ type StitchingTask = {
   autoAssign?: boolean
   quantity?: number
   isCustom?: boolean
+  completed?: boolean
 }
 
 type CustomOrderDraft = {
@@ -370,8 +371,31 @@ const autoAssignTasks = (tasks: StitchingTask[], tailors: Tailor[], dateKeys: st
   return next
 }
 
+const CompletionToggle = ({ task, onToggle }: { task: StitchingTask; onToggle: () => void }) => (
+  <button
+    type="button"
+    aria-label={task.completed ? `Mark ${task.designName} as not done` : `Mark ${task.designName} as done`}
+    title={task.completed ? "Done — click to undo" : "Mark as done"}
+    onClick={(event) => {
+      event.stopPropagation()
+      onToggle()
+    }}
+    className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border transition ${
+      task.completed
+        ? "border-emerald-500 bg-emerald-500 text-white"
+        : "border-slate-300 bg-white text-transparent hover:border-emerald-500 hover:text-emerald-500"
+    }`}
+  >
+    <Check className="h-3 w-3" strokeWidth={3} />
+  </button>
+)
+
 const TaskThumbnail = ({ task, className }: { task: StitchingTask; className: string }) => (
-  <div className={`flex-shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-100 ${className}`}>
+  <div
+    className={`flex-shrink-0 overflow-hidden rounded-md border border-slate-200 bg-slate-100 ${
+      task.completed ? "grayscale" : ""
+    } ${className}`}
+  >
     {task.imageUrl ? (
       <img src={task.imageUrl} alt={task.designName} className="h-full w-full object-cover" />
     ) : (
@@ -777,6 +801,12 @@ export function ProductionStitchingBoard() {
     setCustomOrderDraft(null)
   }
 
+  const toggleTaskCompleted = (taskId: string) => {
+    setTasks((current) =>
+      current.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task))
+    )
+  }
+
   const removeTask = (taskId: string) => {
     const removedTask = tasks.find((task) => task.id === taskId)
     if (removedTask) setLastRemoval({ designName: removedTask.designName, previousTasks: tasks })
@@ -835,7 +865,9 @@ export function ProductionStitchingBoard() {
     setTailors((current) => current.filter((entry) => entry.id !== tailor.id))
   }
 
-  const taskCountForTailor = (tailorId: string) => tasks.filter((task) => task.tailorId === tailorId).length
+  // Counts open work only; finished orders stay on the board greyed out.
+  const taskCountForTailor = (tailorId: string) =>
+    tasks.filter((task) => task.tailorId === tailorId && !task.completed).length
 
   const selectedTaskRole = selectedTask ? getTailorRole(selectedTask.tailorId) : null
   const customOrderRole = customOrderDraft ? getTailorRole(customOrderDraft.tailorId || null) : null
@@ -1013,7 +1045,9 @@ export function ProductionStitchingBoard() {
                     onDragEnd={endDrag}
                     onClick={() => openTaskEditor(task)}
                     title={`${task.designName} · ${task.clientName}${quantityLabel} · ${task.estimatedDays} days`}
-                    className={`group relative z-10 cursor-grab overflow-hidden border border-slate-200 bg-white shadow-sm transition duration-200 hover:shadow-md active:cursor-grabbing ${
+                    className={`group relative z-10 cursor-grab overflow-hidden border border-slate-200 shadow-sm transition duration-200 hover:shadow-md active:cursor-grabbing ${
+                      task.completed ? "bg-slate-100" : "bg-white"
+                    } ${
                       isCutting ? "flex items-center gap-1.5 rounded-lg p-0.5 pr-1.5" : "m-1 flex flex-col justify-between rounded-xl"
                     }`}
                     style={{
@@ -1021,7 +1055,7 @@ export function ProductionStitchingBoard() {
                       gridRow: `${clippedStart - visibleStartSlot + 2} / span ${clippedEnd - clippedStart}`,
                       margin: isCutting ? "2px 6px" : undefined,
                       padding: isCutting ? undefined : "6px 8px",
-                      borderLeft: `4px solid ${tailor.accent}`,
+                      borderLeft: `4px solid ${task.completed ? "#cbd5e1" : tailor.accent}`,
                       // Let drops fall through to the day cell underneath while dragging.
                       pointerEvents: draggingTaskId ? "none" : "auto",
                       opacity: draggingTaskId === task.id ? 0.4 : 1,
@@ -1030,19 +1064,33 @@ export function ProductionStitchingBoard() {
                     {isCutting ? (
                       <>
                         <TaskThumbnail task={task} className="aspect-square h-full max-h-10" />
-                        <span className="block min-w-0 flex-1 truncate text-[10px] font-semibold text-slate-700">{task.designName}</span>
+                        <span
+                          className={`block min-w-0 flex-1 truncate text-[10px] font-semibold ${
+                            task.completed ? "text-slate-400 line-through" : "text-slate-700"
+                          }`}
+                        >
+                          {task.designName}
+                        </span>
+                        <CompletionToggle task={task} onToggle={() => toggleTaskCompleted(task.id)} />
                       </>
                     ) : (
                       <>
                         <div className="flex items-start gap-2">
                           <TaskThumbnail task={task} className="h-8 w-8" />
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-[10px] font-bold text-slate-800">{task.designName}</p>
+                            <p
+                              className={`truncate text-[10px] font-bold ${
+                                task.completed ? "text-slate-400 line-through" : "text-slate-800"
+                              }`}
+                            >
+                              {task.designName}
+                            </p>
                             <p className="mt-0.5 truncate text-[9px] text-slate-500">
                               {task.clientName}
                               {quantityLabel}
                             </p>
                           </div>
+                          <CompletionToggle task={task} onToggle={() => toggleTaskCompleted(task.id)} />
                         </div>
 
                         <div className="flex items-center justify-between gap-2">
@@ -1197,6 +1245,24 @@ export function ProductionStitchingBoard() {
                   {selectedTask.quantity ? ` · ${selectedTask.quantity} pcs` : ""}
                 </span>
               </div>
+
+              {selectedTask.tailorId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    toggleTaskCompleted(selectedTask.id)
+                    setSelectedTask({ ...selectedTask, completed: !selectedTask.completed })
+                  }}
+                  className={`flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold transition ${
+                    selectedTask.completed
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:text-emerald-700"
+                  }`}
+                >
+                  <Check className="h-4 w-4" strokeWidth={3} />
+                  {selectedTask.completed ? "Done — click to mark as not done" : "Mark as done"}
+                </button>
+              )}
 
               <ImagePicker
                 imageUrl={editedImageUrl}
