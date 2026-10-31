@@ -87,6 +87,16 @@ const SAVE_STATUS_LABELS: Record<SaveStatus, string> = {
 
 const QUARTER_LABELS = ["Start of day", "¼ day in", "½ day in", "¾ day in"]
 
+// Smallest bookable unit per role, in quarter-day slots: tailors work in half days, cutting in quarter days.
+const ROLE_SLOT_STEP: Record<WorkerRole, number> = { tailor: 2, cutting: 1 }
+
+const getSlotStep = (role: WorkerRole | null) => (role ? ROLE_SLOT_STEP[role] : 1)
+
+const getStepDays = (role: WorkerRole | null) => getSlotStep(role) / SLOTS_PER_DAY
+
+const getStartOptions = (role: WorkerRole | null) =>
+  QUARTER_LABELS.map((label, quarter) => ({ label, quarter })).filter(({ quarter }) => quarter % getSlotStep(role) === 0)
+
 const addDays = (base: Date, offset: number) => {
   const next = new Date(base)
   next.setDate(base.getDate() + offset)
@@ -223,11 +233,12 @@ const initialTasks = (): StitchingTask[] => {
   ]
 }
 
-// Tailors work in whole days; the cutting master can book quarter days.
+// Round a duration up to the worker's step: half days for tailors, quarter days for cutting.
 const normalizeDuration = (days: number, role: WorkerRole | null) => {
-  const value = Number(days) || 0
-  if (role === "tailor") return Math.max(1, Math.ceil(value))
-  return Math.max(0.25, Math.round(value * SLOTS_PER_DAY) / SLOTS_PER_DAY)
+  const step = getSlotStep(role)
+  // The tiny epsilon keeps exact values like 3.5 from being nudged up by floating point error.
+  const slots = Math.ceil((Number(days) || 0) * SLOTS_PER_DAY - 1e-9)
+  return Math.max(step, Math.ceil(slots / step) * step) / SLOTS_PER_DAY
 }
 
 const getTaskSlotCount = (task: Pick<StitchingTask, "estimatedDays">) =>
@@ -332,7 +343,8 @@ const insertTaskIntoTailorTimeline = (
 
   movedTask.tailorId = tailor.id
   movedTask.dateKey = startDateKey
-  movedTask.startQuarter = tailor.role === "cutting" ? startQuarter : 0
+  const step = getSlotStep(tailor.role)
+  movedTask.startQuarter = Math.floor(startQuarter / step) * step
   movedTask.estimatedDays = normalizeDuration(movedTask.estimatedDays, tailor.role)
   movedTask.autoAssign = true
 
@@ -709,12 +721,12 @@ export function ProductionStitchingBoard() {
         event.preventDefault()
         const taskId = event.dataTransfer.getData("text/plain") || draggingTaskId
         if (taskId) {
-          const grabOffset = grabSlotOffsetRef.current
-          // Tailors book whole days, so only whole days of the grab offset count there.
-          const startSlot =
-            tailor.role === "tailor"
-              ? (toDayNumber(dateKey) - Math.floor(grabOffset / SLOTS_PER_DAY)) * SLOTS_PER_DAY
-              : toDayNumber(dateKey) * SLOTS_PER_DAY + startQuarter - grabOffset
+          const step = getSlotStep(tailor.role)
+          // Which quarter of this drop zone the pointer is over, then back up to where the tile's top edge is.
+          const zoneTop = event.currentTarget.getBoundingClientRect().top
+          const slotInZone = Math.min(step - 1, Math.max(0, Math.floor((event.clientY - zoneTop) / SLOT_HEIGHT)))
+          const tileTopSlot = toDayNumber(dateKey) * SLOTS_PER_DAY + startQuarter + slotInZone - grabSlotOffsetRef.current
+          const startSlot = Math.round(tileTopSlot / step) * step
           moveTask(taskId, tailor, fromDayNumber(Math.floor(startSlot / SLOTS_PER_DAY)), startSlot % SLOTS_PER_DAY)
         }
         endDrag()
@@ -984,28 +996,14 @@ export function ProductionStitchingBoard() {
               dateKeys.map((dateKey, dayIndex) => {
                 const dayRow = dayIndex * SLOTS_PER_DAY + 2
 
-                if (tailor.role === "tailor") {
-                  const { isActive, ...handlers } = dropZoneProps(tailor, dateKey, 0)
-                  return (
-                    <div
-                      key={`${tailor.id}-${dateKey}`}
-                      className={`my-1 rounded-xl border border-dashed transition-colors ${
-                        isActive ? "border-violet-400 bg-violet-100" : "border-slate-200 bg-slate-50/60"
-                      }`}
-                      style={{ gridColumn: columnIndex + 2, gridRow: `${dayRow} / span ${SLOTS_PER_DAY}` }}
-                      {...handlers}
-                    />
-                  )
-                }
-
-                // Cutting master days get one drop zone per quarter day.
+                // One drop zone per bookable step: half days for tailors, quarter days for cutting.
                 return (
                   <div
                     key={`${tailor.id}-${dateKey}`}
                     className="my-1 flex flex-col overflow-hidden rounded-xl border border-dashed border-slate-200 bg-slate-50/60"
                     style={{ gridColumn: columnIndex + 2, gridRow: `${dayRow} / span ${SLOTS_PER_DAY}` }}
                   >
-                    {QUARTER_LABELS.map((label, quarter) => {
+                    {getStartOptions(tailor.role).map(({ label, quarter }) => {
                       const { isActive, ...handlers } = dropZoneProps(tailor, dateKey, quarter)
                       return (
                         <div
@@ -1034,7 +1032,8 @@ export function ProductionStitchingBoard() {
                 if (clippedEnd <= clippedStart) return null
 
                 const taskDates = getTaskDateSet(task)
-                const isCutting = tailor.role === "cutting"
+                // Cutting work and half-day tailor work are too short for the full card, so they get a single row.
+                const isCompact = tailor.role === "cutting" || clippedEnd - clippedStart <= 2
                 const quantityLabel = task.quantity ? ` · ${task.quantity} pcs` : ""
 
                 return (
@@ -1048,20 +1047,20 @@ export function ProductionStitchingBoard() {
                     className={`group relative z-10 cursor-grab overflow-hidden border border-slate-200 shadow-sm transition duration-200 hover:shadow-md active:cursor-grabbing ${
                       task.completed ? "bg-slate-100" : "bg-white"
                     } ${
-                      isCutting ? "flex items-center gap-1.5 rounded-lg p-0.5 pr-1.5" : "m-1 flex flex-col justify-between rounded-xl"
+                      isCompact ? "flex items-center gap-1.5 rounded-lg p-0.5 pr-1.5" : "m-1 flex flex-col justify-between rounded-xl"
                     }`}
                     style={{
                       gridColumn: columnIndex + 2,
                       gridRow: `${clippedStart - visibleStartSlot + 2} / span ${clippedEnd - clippedStart}`,
-                      margin: isCutting ? "2px 6px" : undefined,
-                      padding: isCutting ? undefined : "6px 8px",
+                      margin: isCompact ? "2px 6px" : undefined,
+                      padding: isCompact ? undefined : "6px 8px",
                       borderLeft: `4px solid ${task.completed ? "#cbd5e1" : tailor.accent}`,
                       // Let drops fall through to the day cell underneath while dragging.
                       pointerEvents: draggingTaskId ? "none" : "auto",
                       opacity: draggingTaskId === task.id ? 0.4 : 1,
                     }}
                   >
-                    {isCutting ? (
+                    {isCompact ? (
                       <>
                         <TaskThumbnail task={task} className="aspect-square h-full max-h-10" />
                         <span
@@ -1274,15 +1273,15 @@ export function ProductionStitchingBoard() {
                 <span className="mb-2 block text-sm font-medium text-slate-700">Estimated completion days</span>
                 <input
                   type="number"
-                  min={selectedTaskRole === "tailor" ? 1 : 0.25}
-                  step={selectedTaskRole === "tailor" ? 1 : 0.25}
+                  min={getStepDays(selectedTaskRole)}
+                  step={getStepDays(selectedTaskRole)}
                   max={30}
                   value={editedDays}
                   onChange={(event) => setEditedDays(Number(event.target.value))}
                   className={inputClassName}
                 />
                 <span className="mt-1 block text-xs text-slate-500">
-                  {selectedTaskRole === "tailor" ? "Tailors are planned in whole days." : "Can be planned in 0.25 day steps."}
+                  {selectedTaskRole === "tailor" ? "Tailors are planned in 0.5 day steps." : "Can be planned in 0.25 day steps."}
                 </span>
               </label>
             </div>
@@ -1369,8 +1368,8 @@ export function ProductionStitchingBoard() {
                   <span className="mb-2 block text-sm font-medium text-slate-700">Estimated days</span>
                   <input
                     type="number"
-                    min={customOrderRole === "tailor" ? 1 : 0.25}
-                    step={customOrderRole === "tailor" ? 1 : 0.25}
+                    min={getStepDays(customOrderRole)}
+                    step={getStepDays(customOrderRole)}
                     max={30}
                     value={customOrderDraft.estimatedDays}
                     onChange={(event) =>
@@ -1427,7 +1426,7 @@ export function ProductionStitchingBoard() {
                 </label>
               </div>
 
-              {customOrderRole === "cutting" && (
+              {customOrderRole && (
                 <label className="block">
                   <span className="mb-2 block text-sm font-medium text-slate-700">Start time</span>
                   <select
@@ -1437,7 +1436,7 @@ export function ProductionStitchingBoard() {
                     }
                     className={inputClassName}
                   >
-                    {QUARTER_LABELS.map((label, quarter) => (
+                    {getStartOptions(customOrderRole).map(({ label, quarter }) => (
                       <option key={label} value={quarter}>
                         {label}
                       </option>
