@@ -2,7 +2,6 @@
 
 import { Sidebar } from "@/components/Sidebar";
 import { ProductionStatusBoard } from "@/components/ProductionStatusBoard";
-import { ProductionStitchingBoard } from "@/components/ProductionStitchingBoard";
 
 export default function Home() {
   return (
@@ -19,10 +18,6 @@ export default function Home() {
             </p>
           </div>
           <ProductionStatusBoard />
-
-          <div className="pt-2">
-            <ProductionStitchingBoard />
-          </div>
         </div>
       </main>
     </div>
