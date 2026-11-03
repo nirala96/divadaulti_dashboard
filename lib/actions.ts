@@ -1164,7 +1164,7 @@ const DEFAULT_CAPACITY_SETTINGS: CapacitySettings = {
   stitching_production_per_day: 24,
   embroidery_sampling_per_day: 2,
   fabric_finalize_days: 2.5,
-  dye_days: 3,
+  dye_days: 2,
   embroidery_production_days: 7,
   print_days: 18,
 }
