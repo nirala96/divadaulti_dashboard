@@ -18,7 +18,7 @@ const STAGE_ROWS: { stage: string; label: string }[] = [
   { stage: "Finishing", label: "Finishing done" },
 ]
 
-const DEFAULT_VISIBLE_DAYS = 3
+const DEFAULT_VISIBLE_DAYS = 1
 
 function ClearedThumb({ item }: { item: StageClearanceItem }) {
   return (
@@ -111,7 +111,7 @@ export function StageClearanceReport() {
           onClick={() => setShowAll((v) => !v)}
           className="text-sm font-medium text-blue-600 hover:text-blue-700"
         >
-          {showAll ? "Show fewer days" : `Show last ${days.length} days`}
+          {showAll ? "Show less" : "Show more"}
         </button>
       )}
     </div>
