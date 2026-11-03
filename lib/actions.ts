@@ -10,7 +10,7 @@ import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { STAGE_FIXED_EMPLOYEES } from '@/lib/employees'
 import { hashPassword, verifyPassword } from '@/lib/auth'
-import { getStageAlerts, type CheckinSummary, type DailyReport, type DailyReportData } from '@/lib/stagePlan'
+import { getStageAlerts, STAGE_MATCHERS, type ColumnKey, type CheckinSummary, type DailyReport, type DailyReportData } from '@/lib/stagePlan'
 
 export type Client = {
   id: string
@@ -248,6 +248,60 @@ export async function refreshTodaysReport() {
      ON CONFLICT (report_date) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`,
     [istDateKey(new Date()), JSON.stringify(data)]
   )
+}
+
+// Stage Clearance - how many designs cleared a stage each day (IST), from
+// the Activity Log. A design ticked twice on the same day (reset and ticked
+// again) counts once. "Pending" is what's waiting at that stage right now,
+// using the same rules as Today's Plan.
+export type StageClearanceItem = { design_title: string | null; client_name: string | null; actor: string }
+export type StageClearanceReport = {
+  stages: string[]
+  pending: Record<string, number>
+  days: { date: string; cleared: Record<string, StageClearanceItem[]> }[]
+}
+
+const CLEARANCE_PENDING_MATCHERS: Record<string, ColumnKey> = {
+  Consultation: 'consultation',
+  'Fabric Finalize': 'fabricFinalize',
+}
+
+export async function getStageClearanceReport(days = 30): Promise<StageClearanceReport> {
+  const stages = Object.keys(CLEARANCE_PENDING_MATCHERS)
+  const [logs, designs] = await Promise.all([
+    pool.query(
+      `SELECT DISTINCT ON (stage, COALESCE(design_id::text, id::text), day)
+         stage, design_title, client_name, actor_display_name,
+         to_char(created_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD') AS day
+       FROM activity_log
+       WHERE stage = ANY($1) AND created_at >= NOW() - make_interval(days => $2::int)
+       ORDER BY stage, COALESCE(design_id::text, id::text), day, created_at DESC`,
+      [stages, days]
+    ),
+    getDesignsWithClients(),
+  ])
+
+  const today = Date.now()
+  const report: StageClearanceReport = {
+    stages,
+    pending: Object.fromEntries(
+      stages.map((s) => [s, designs.filter(STAGE_MATCHERS[CLEARANCE_PENDING_MATCHERS[s]]).length])
+    ),
+    days: Array.from({ length: days }, (_, i) => ({
+      date: istDateKey(new Date(today - i * 24 * 60 * 60 * 1000)),
+      cleared: Object.fromEntries(stages.map((s) => [s, [] as StageClearanceItem[]])),
+    })),
+  }
+
+  const byDate = new Map(report.days.map((d) => [d.date, d]))
+  for (const row of logs.rows) {
+    byDate.get(row.day)?.cleared[row.stage]?.push({
+      design_title: row.design_title,
+      client_name: row.client_name,
+      actor: row.actor_display_name,
+    })
+  }
+  return report
 }
 
 export async function getDailyReports(): Promise<DailyReport[]> {

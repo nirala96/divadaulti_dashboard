@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/Sidebar"
 import { DailyReportBoard } from "@/components/DailyReportBoard"
+import { StageClearanceReport } from "@/components/StageClearanceReport"
 
 export default function DailyReportPage() {
   return (
@@ -13,6 +14,7 @@ export default function DailyReportPage() {
               Client check-ins per merchandiser, saved every day. Use &quot;Send on WhatsApp&quot;, pick the group and press Send.
             </p>
           </div>
+          <StageClearanceReport />
           <DailyReportBoard />
         </div>
       </main>
