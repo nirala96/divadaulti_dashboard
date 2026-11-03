@@ -10,7 +10,7 @@ import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
 import { STAGE_FIXED_EMPLOYEES } from '@/lib/employees'
 import { hashPassword, verifyPassword } from '@/lib/auth'
-import { getStageAlerts, STAGE_MATCHERS, type ColumnKey, type CheckinSummary, type DailyReport, type DailyReportData } from '@/lib/stagePlan'
+import { getStageAlerts, type CheckinSummary, type DailyReport, type DailyReportData } from '@/lib/stagePlan'
 
 export type Client = {
   id: string
@@ -250,54 +250,49 @@ export async function refreshTodaysReport() {
   )
 }
 
-// Stage Clearance - how many designs cleared a stage each day (IST), from
+// Stage Clearance - which designs cleared each stage each day (IST), from
 // the Activity Log. A design ticked twice on the same day (reset and ticked
-// again) counts once. "Pending" is what's waiting at that stage right now,
-// using the same rules as Today's Plan.
-export type StageClearanceItem = { design_title: string | null; client_name: string | null; actor: string }
-export type StageClearanceReport = {
-  stages: string[]
-  pending: Record<string, number>
-  days: { date: string; cleared: Record<string, StageClearanceItem[]> }[]
+// again) counts once. Photo and quantity come from the design as it is now.
+export type StageClearanceItem = {
+  design_title: string | null
+  client_name: string | null
+  image: string | null
+  quantity: number | null
+  actor: string
 }
+export type StageClearanceDay = { date: string; stages: { stage: string; items: StageClearanceItem[] }[] }
 
-const CLEARANCE_PENDING_MATCHERS: Record<string, ColumnKey> = {
-  Consultation: 'consultation',
-  'Fabric Finalize': 'fabricFinalize',
-}
-
-export async function getStageClearanceReport(days = 30): Promise<StageClearanceReport> {
-  const stages = Object.keys(CLEARANCE_PENDING_MATCHERS)
-  const [logs, designs] = await Promise.all([
-    pool.query(
-      `SELECT DISTINCT ON (stage, COALESCE(design_id::text, id::text), day)
-         stage, design_title, client_name, actor_display_name,
+export async function getStageClearanceReport(days = 14): Promise<StageClearanceDay[]> {
+  const result = await pool.query(
+    `SELECT l.stage, l.day, l.design_title, l.client_name, l.actor_display_name,
+            d.images[1] AS image, d.quantity
+     FROM (
+       SELECT DISTINCT ON (stage, COALESCE(design_id::text, id::text), day)
+         stage, design_id, design_title, client_name, actor_display_name, created_at,
          to_char(created_at AT TIME ZONE 'Asia/Kolkata', 'YYYY-MM-DD') AS day
        FROM activity_log
-       WHERE stage = ANY($1) AND created_at >= NOW() - make_interval(days => $2::int)
-       ORDER BY stage, COALESCE(design_id::text, id::text), day, created_at DESC`,
-      [stages, days]
-    ),
-    getDesignsWithClients(),
-  ])
+       WHERE stage = ANY($1)
+         AND created_at >= (date_trunc('day', NOW() AT TIME ZONE 'Asia/Kolkata') - make_interval(days => $2::int - 1)) AT TIME ZONE 'Asia/Kolkata'
+       ORDER BY stage, COALESCE(design_id::text, id::text), day, created_at DESC
+     ) l
+     LEFT JOIN designs d ON d.id = l.design_id
+     ORDER BY l.created_at`,
+    [ALL_STAGES, days]
+  )
 
-  const today = Date.now()
-  const report: StageClearanceReport = {
-    stages,
-    pending: Object.fromEntries(
-      stages.map((s) => [s, designs.filter(STAGE_MATCHERS[CLEARANCE_PENDING_MATCHERS[s]]).length])
-    ),
-    days: Array.from({ length: days }, (_, i) => ({
-      date: istDateKey(new Date(today - i * 24 * 60 * 60 * 1000)),
-      cleared: Object.fromEntries(stages.map((s) => [s, [] as StageClearanceItem[]])),
-    })),
-  }
+  const now = Date.now()
+  const report: StageClearanceDay[] = Array.from({ length: days }, (_, i) => ({
+    date: istDateKey(new Date(now - i * 24 * 60 * 60 * 1000)),
+    stages: ALL_STAGES.map((stage) => ({ stage, items: [] as StageClearanceItem[] })),
+  }))
 
-  const byDate = new Map(report.days.map((d) => [d.date, d]))
-  for (const row of logs.rows) {
-    byDate.get(row.day)?.cleared[row.stage]?.push({
+  const byDate = new Map(report.map((d) => [d.date, d]))
+  for (const row of result.rows) {
+    byDate.get(row.day)?.stages.find((s) => s.stage === row.stage)?.items.push({
       design_title: row.design_title,
       client_name: row.client_name,
+      image: row.image,
+      quantity: row.quantity == null ? null : Number(row.quantity),
       actor: row.actor_display_name,
     })
   }
