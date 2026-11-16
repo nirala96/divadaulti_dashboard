@@ -9,6 +9,8 @@ import {
   updateDesignPriority,
   updateClientMerchandiser,
   updateDesignDispatchDate,
+  getPlanColumnOrder,
+  setPlanColumnOrder,
   type Design
 } from "@/lib/actions"
 import { MerchandiserTag } from "@/components/MerchandiserTag"
@@ -16,7 +18,7 @@ import { useMerchandiserNames } from "@/lib/useMerchandiserNames"
 import { CLIENT_TAGS } from "@/lib/clientTags"
 import { getClientTagColor } from "@/lib/clientTagColors"
 import { PATTERN_MASTER, CUTTING_MASTER, KARIGAAR_NAMES } from "@/lib/employees"
-import { Scissors, Shirt, PenTool, Star, Loader2, ImageIcon, Droplet, Printer, PackageCheck, Sparkles, Layers, Users } from "lucide-react"
+import { Scissors, Shirt, PenTool, Star, Loader2, GripVertical, ImageIcon, Droplet, Printer, PackageCheck, Sparkles, Layers, Users } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -135,12 +137,20 @@ const daysWaiting = (createdAt: string | undefined): number => {
   return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)))
 }
 
-const sortForColumn = (designs: Design[]): Design[] =>
-  [...designs].sort((a, b) => {
-    const priorityDiff = (b.is_priority ? 1 : 0) - (a.is_priority ? 1 : 0)
-    if (priorityDiff !== 0) return priorityDiff
-    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  })
+const byPriorityThenAge = (a: Design, b: Design) => {
+  const priorityDiff = (b.is_priority ? 1 : 0) - (a.is_priority ? 1 : 0)
+  if (priorityDiff !== 0) return priorityDiff
+  return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+}
+
+// Cards follow the order set by dragging. Designs that arrived since the
+// column was last arranged go to the bottom, or to the top if starred.
+const sortForColumn = (designs: Design[], savedOrder: string[] = []): Design[] => {
+  const rank = new Map(savedOrder.map((id, i) => [id, i]))
+  const ranked = designs.filter(d => rank.has(d.id)).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!)
+  const unranked = designs.filter(d => !rank.has(d.id)).sort(byPriorityThenAge)
+  return [...unranked.filter(d => d.is_priority), ...ranked, ...unranked.filter(d => !d.is_priority)]
+}
 
 export default function TodaysPlanBoard() {
   const { merchandiserNames } = useMerchandiserNames()
@@ -161,11 +171,17 @@ export default function TodaysPlanBoard() {
   const [activeMerchandiserFilter, setActiveMerchandiserFilter] = useState<string | null>(null)
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null)
   const [activeTypeFilter, setActiveTypeFilter] = useState<'All' | 'Sampling' | 'Production'>('All')
+  const [columnOrder, setColumnOrder] = useState<Record<string, string[]>>({})
+  const [dragging, setDragging] = useState<{ columnKey: ColumnKey; designId: string } | null>(null)
+  const [dropTarget, setDropTarget] = useState<{ designId: string | null; after: boolean } | null>(null)
 
   useEffect(() => {
-    getDesignsWithClients()
-      .then(setDesigns)
-      .finally(() => setLoading(false))
+    Promise.all([
+      getDesignsWithClients().then(setDesigns),
+      getPlanColumnOrder()
+        .then(setColumnOrder)
+        .catch((error) => console.error('Error loading column order:', error)),
+    ]).finally(() => setLoading(false))
   }, [])
 
   const filteredDesigns = useMemo(() => {
@@ -176,13 +192,45 @@ export default function TodaysPlanBoard() {
     return out
   }, [designs, activeMerchandiserFilter, activeTagFilter, activeTypeFilter])
 
-  const columns = useMemo(() => {
+  // Order is worked out on the whole column, then filtered, so arranging
+  // cards while a filter is on keeps the hidden ones in place.
+  const fullColumns = useMemo(() => {
     const result = {} as Record<ColumnKey, Design[]>
     for (const column of COLUMNS) {
-      result[column.key] = sortForColumn(filteredDesigns.filter(column.matches))
+      result[column.key] = sortForColumn(designs.filter(column.matches), columnOrder[column.key])
     }
     return result
-  }, [filteredDesigns])
+  }, [designs, columnOrder])
+
+  const columns = useMemo(() => {
+    const visible = new Set(filteredDesigns.map(d => d.id))
+    const result = {} as Record<ColumnKey, Design[]>
+    for (const column of COLUMNS) {
+      result[column.key] = fullColumns[column.key].filter(d => visible.has(d.id))
+    }
+    return result
+  }, [fullColumns, filteredDesigns])
+
+  const moveCard = async (columnKey: ColumnKey, designId: string, targetId: string | null, after: boolean) => {
+    if (designId === targetId) return
+    const ids = fullColumns[columnKey].map(d => d.id).filter(id => id !== designId)
+    const targetIndex = targetId ? ids.indexOf(targetId) : -1
+    ids.splice(targetIndex === -1 ? ids.length : targetIndex + (after ? 1 : 0), 0, designId)
+
+    const previous = columnOrder
+    setColumnOrder(prev => ({ ...prev, [columnKey]: ids }))
+    try {
+      await setPlanColumnOrder(columnKey, ids)
+    } catch (error: any) {
+      console.error('Error saving column order:', error)
+      setColumnOrder(previous)
+    }
+  }
+
+  const endDrag = () => {
+    setDragging(null)
+    setDropTarget(null)
+  }
 
   // Overload alerts look at the whole team, not the current filters.
   const stageAlerts = useMemo(() => getStageAlerts(designs), [designs])
@@ -421,7 +469,21 @@ export default function TodaysPlanBoard() {
                 </span>
               </div>
 
-              <div className="flex-1 p-3 space-y-3">
+              <div
+                className="flex-1 p-3 space-y-3"
+                onDragOver={(e) => {
+                  if (dragging?.columnKey !== column.key) return
+                  e.preventDefault()
+                  if (e.target === e.currentTarget) setDropTarget({ designId: null, after: true })
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  if (dragging?.columnKey === column.key) {
+                    moveCard(column.key, dragging.designId, dropTarget?.designId ?? null, dropTarget?.after ?? true)
+                  }
+                  endDrag()
+                }}
+              >
                 {items.length === 0 && (
                   <div className="text-center text-sm text-gray-400 py-10">Nothing here right now</div>
                 )}
@@ -432,13 +494,36 @@ export default function TodaysPlanBoard() {
                     column.key === 'pattern' ? PATTERN_MASTER : column.key === 'cutting' ? CUTTING_MASTER : null
                   const timing = getStageTiming(design, column.key)
 
+                  const isDragged = dragging?.columnKey === column.key && dragging.designId === design.id
+                  const showDropLine = dragging?.columnKey === column.key && !isDragged && dropTarget?.designId === design.id
+
                   return (
                     <div
                       key={design.id}
-                      className={`rounded-md border p-3 ${design.is_priority ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'}`}
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.effectAllowed = 'move'
+                        e.dataTransfer.setData('text/plain', design.id)
+                        setDragging({ columnKey: column.key, designId: design.id })
+                      }}
+                      onDragEnd={endDrag}
+                      onDragOver={(e) => {
+                        if (dragging?.columnKey !== column.key) return
+                        e.preventDefault()
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        const after = e.clientY > rect.top + rect.height / 2
+                        if (dropTarget?.designId !== design.id || dropTarget.after !== after) {
+                          setDropTarget({ designId: design.id, after })
+                        }
+                      }}
+                      className={`relative rounded-md border p-3 cursor-grab active:cursor-grabbing ${design.is_priority ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-gray-50'} ${isDragged ? 'opacity-40' : ''}`}
                     >
+                      {showDropLine && (
+                        <div className={`absolute left-0 right-0 h-0.5 rounded bg-blue-500 ${dropTarget!.after ? '-bottom-2' : '-top-2'}`} />
+                      )}
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-start gap-2 min-w-0">
+                          <GripVertical className="h-4 w-4 -ml-1 mt-4 flex-shrink-0 text-gray-300" />
                           {design.images && design.images.length > 0 ? (
                             <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden bg-gray-100">
                               <Image
@@ -448,6 +533,7 @@ export default function TodaysPlanBoard() {
                                 className="object-cover"
                                 sizes="48px"
                                 unoptimized
+                                draggable={false}
                               />
                             </div>
                           ) : (

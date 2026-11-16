@@ -873,6 +873,35 @@ export async function updateDesignPriority(designId: string, isPriority: boolean
   revalidatePath('/')
 }
 
+// Today's Plan column order - the sequence each department picks work in,
+// set by dragging cards. Stored per column because a design can sit in
+// several columns at once (e.g. Pattern and Dye).
+async function ensurePlanColumnOrderTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS plan_column_order (
+      column_key TEXT PRIMARY KEY,
+      design_ids TEXT[] NOT NULL DEFAULT '{}',
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `)
+}
+
+export async function getPlanColumnOrder(): Promise<Record<string, string[]>> {
+  await ensurePlanColumnOrderTable()
+  const result = await pool.query('SELECT column_key, design_ids FROM plan_column_order')
+  return Object.fromEntries(result.rows.map((row) => [row.column_key, row.design_ids]))
+}
+
+export async function setPlanColumnOrder(columnKey: string, designIds: string[]) {
+  await ensurePlanColumnOrderTable()
+  await pool.query(
+    `INSERT INTO plan_column_order (column_key, design_ids, updated_at)
+     VALUES ($1, $2, NOW())
+     ON CONFLICT (column_key) DO UPDATE SET design_ids = EXCLUDED.design_ids, updated_at = NOW()`,
+    [columnKey, designIds]
+  )
+}
+
 export async function updateDesignDispatchDate(designId: string, dispatchDate: string | null) {
   await pool.query(
     'UPDATE designs SET dispatch_date = $1 WHERE id = $2',
